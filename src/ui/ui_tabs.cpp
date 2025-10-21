@@ -1,4 +1,5 @@
 #include "ui/ui_tabs.h"
+#include "ui/ui_theme.h"
 #include "ui/tabs/ui_tab_status.h"
 #include "ui/tabs/ui_tab_control.h"
 #include "ui/tabs/ui_tab_files.h"
@@ -38,9 +39,9 @@ void UITabs::createTabs() {
     // Style tab buttons with larger font
     lv_obj_set_style_text_font(tab_bar, &lv_font_montserrat_18, 0);  // Direct to tab bar
     lv_obj_set_style_text_font(tabview, &lv_font_montserrat_18, LV_PART_ITEMS);
-    lv_obj_set_style_bg_color(tabview, lv_color_hex(0x333333), LV_PART_ITEMS);
-    lv_obj_set_style_text_color(tabview, lv_color_hex(0xCCCCCC), LV_PART_ITEMS);
-    lv_obj_set_style_bg_color(tabview, lv_color_hex(0x0078D7), LV_PART_ITEMS | LV_STATE_CHECKED);
+    lv_obj_set_style_bg_color(tabview, UITheme::BG_BUTTON, LV_PART_ITEMS);
+    lv_obj_set_style_text_color(tabview, UITheme::TEXT_LIGHT, LV_PART_ITEMS);
+    lv_obj_set_style_bg_color(tabview, UITheme::ACCENT_PRIMARY, LV_PART_ITEMS | LV_STATE_CHECKED);
     lv_obj_set_style_text_color(tabview, lv_color_white(), LV_PART_ITEMS | LV_STATE_CHECKED);
     
     // Add tabs

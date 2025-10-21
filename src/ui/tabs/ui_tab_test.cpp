@@ -1,4 +1,5 @@
 #include "ui/tabs/ui_tab_test.h"
+#include "ui/ui_theme.h"
 #include <Arduino.h>
 #include <WiFi.h>
 
@@ -6,7 +7,7 @@
 static lv_obj_t* create_metric_card(lv_obj_t* parent, const char* title, const char* value, lv_color_t color) {
     lv_obj_t *card = lv_obj_create(parent);
     lv_obj_set_size(card, 175, 100);
-    lv_obj_set_style_bg_color(card, lv_color_hex(0x2a2a2a), 0);
+    lv_obj_set_style_bg_color(card, UITheme::BG_MEDIUM, 0);
     lv_obj_set_style_border_color(card, color, 0);
     lv_obj_set_style_border_width(card, 2, 0);
     lv_obj_set_style_radius(card, 8, 0);
@@ -18,7 +19,7 @@ static lv_obj_t* create_metric_card(lv_obj_t* parent, const char* title, const c
     lv_obj_t *title_label = lv_label_create(card);
     lv_label_set_text(title_label, title);
     lv_obj_set_style_text_font(title_label, &lv_font_montserrat_14, 0);
-    lv_obj_set_style_text_color(title_label, lv_color_hex(0xAAAAAA), 0);
+    lv_obj_set_style_text_color(title_label, UITheme::TEXT_MEDIUM, 0);
 
     // Value
     lv_obj_t *value_label = lv_label_create(card);
@@ -33,7 +34,7 @@ static lv_obj_t* create_metric_card(lv_obj_t* parent, const char* title, const c
 static lv_obj_t* create_status_indicator(lv_obj_t* parent, const char* label_text, bool is_active) {
     lv_obj_t *container = lv_obj_create(parent);
     lv_obj_set_size(container, 230, 50);
-    lv_obj_set_style_bg_color(container, lv_color_hex(0x2a2a2a), 0);
+    lv_obj_set_style_bg_color(container, UITheme::BG_MEDIUM, 0);
     lv_obj_set_style_border_width(container, 0, 0);
     lv_obj_set_style_radius(container, 6, 0);
     lv_obj_set_style_pad_all(container, 8, 0);
@@ -44,10 +45,10 @@ static lv_obj_t* create_status_indicator(lv_obj_t* parent, const char* label_tex
     lv_obj_t *led = lv_led_create(container);
     lv_obj_set_size(led, 20, 20);
     if (is_active) {
-        lv_led_set_color(led, lv_color_hex(0x4CAF50));
+        lv_led_set_color(led, UITheme::UI_SUCCESS);
         lv_led_on(led);
     } else {
-        lv_led_set_color(led, lv_color_hex(0x666666));
+        lv_led_set_color(led, UITheme::LED_OFF);
         lv_led_off(led);
     }
 
@@ -65,7 +66,7 @@ void UITabTest::create(lv_obj_t *tab) {
     // Main container with scrolling
     lv_obj_t *content = lv_obj_create(tab);
     lv_obj_set_size(content, lv_pct(100), lv_pct(100));
-    lv_obj_set_style_bg_color(content, lv_color_hex(0x1a1a1a), 0);
+    lv_obj_set_style_bg_color(content, UITheme::BG_DARKER, 0);
     lv_obj_set_style_border_width(content, 0, 0);
     lv_obj_set_style_pad_all(content, 15, 0);
     lv_obj_set_flex_flow(content, LV_FLEX_FLOW_COLUMN);
@@ -75,7 +76,7 @@ void UITabTest::create(lv_obj_t *tab) {
     lv_obj_t *title = lv_label_create(content);
     lv_label_set_text(title, LV_SYMBOL_SETTINGS " CNC Machine Monitor");
     lv_obj_set_style_text_font(title, &lv_font_montserrat_24, 0);
-    lv_obj_set_style_text_color(title, lv_color_hex(0x00AA88), 0);
+    lv_obj_set_style_text_color(title, UITheme::ACCENT_SECONDARY, 0);
     lv_obj_set_style_pad_bottom(title, 15, 0);
 
     // ===== SYSTEM METRICS ROW =====
@@ -94,25 +95,25 @@ void UITabTest::create(lv_obj_t *tab) {
     uint32_t uptime_sec = millis() / 1000;
     snprintf(temp_str, sizeof(temp_str), "%02lu:%02lu:%02lu", 
              uptime_sec / 3600, (uptime_sec % 3600) / 60, uptime_sec % 60);
-    create_metric_card(metrics_row, "Uptime", temp_str, lv_color_hex(0x2196F3));
+    create_metric_card(metrics_row, "Uptime", temp_str, UITheme::METRIC_UPTIME);
 
     // Free PSRAM
     snprintf(temp_str, sizeof(temp_str), "%.1f MB", ESP.getFreePsram() / 1024.0 / 1024.0);
-    create_metric_card(metrics_row, "Free PSRAM", temp_str, lv_color_hex(0x9C27B0));
+    create_metric_card(metrics_row, "Free PSRAM", temp_str, UITheme::METRIC_MEMORY);
 
     // Free Heap
     snprintf(temp_str, sizeof(temp_str), "%d KB", ESP.getFreeHeap() / 1024);
-    create_metric_card(metrics_row, "Free Heap", temp_str, lv_color_hex(0xFF9800));
+    create_metric_card(metrics_row, "Free Heap", temp_str, UITheme::METRIC_HEAP);
 
     // WiFi Signal
     snprintf(temp_str, sizeof(temp_str), "%d dBm", WiFi.RSSI());
-    create_metric_card(metrics_row, "WiFi RSSI", temp_str, lv_color_hex(0x4CAF50));
+    create_metric_card(metrics_row, "WiFi RSSI", temp_str, UITheme::METRIC_WIFI);
 
     // ===== CONNECTIVITY STATUS =====
     lv_obj_t *conn_title = lv_label_create(content);
     lv_label_set_text(conn_title, "Connectivity");
     lv_obj_set_style_text_font(conn_title, &lv_font_montserrat_18, 0);
-    lv_obj_set_style_text_color(conn_title, lv_color_hex(0x00BCD4), 0);
+    lv_obj_set_style_text_color(conn_title, UITheme::UI_INFO, 0);
     lv_obj_set_style_pad_top(conn_title, 15, 0);
     lv_obj_set_style_pad_bottom(conn_title, 10, 0);
 
@@ -133,7 +134,7 @@ void UITabTest::create(lv_obj_t *tab) {
     lv_obj_t *axes_title = lv_label_create(content);
     lv_label_set_text(axes_title, "Axis Indicators");
     lv_obj_set_style_text_font(axes_title, &lv_font_montserrat_18, 0);
-    lv_obj_set_style_text_color(axes_title, lv_color_hex(0x00BCD4), 0);
+    lv_obj_set_style_text_color(axes_title, UITheme::UI_INFO, 0);
     lv_obj_set_style_pad_top(axes_title, 15, 0);
     lv_obj_set_style_pad_bottom(axes_title, 10, 0);
 
@@ -154,7 +155,7 @@ void UITabTest::create(lv_obj_t *tab) {
     lv_obj_t *safety_title = lv_label_create(content);
     lv_label_set_text(safety_title, "Safety & Limits");
     lv_obj_set_style_text_font(safety_title, &lv_font_montserrat_18, 0);
-    lv_obj_set_style_text_color(safety_title, lv_color_hex(0x00BCD4), 0);
+    lv_obj_set_style_text_color(safety_title, UITheme::UI_INFO, 0);
     lv_obj_set_style_pad_top(safety_title, 15, 0);
     lv_obj_set_style_pad_bottom(safety_title, 10, 0);
 
@@ -180,7 +181,7 @@ void UITabTest::create(lv_obj_t *tab) {
     lv_label_set_long_mode(note, LV_LABEL_LONG_WRAP);
     lv_obj_set_width(note, lv_pct(95));
     lv_obj_set_style_text_font(note, &lv_font_montserrat_14, 0);
-    lv_obj_set_style_text_color(note, lv_color_hex(0xFFB74D), 0);
+    lv_obj_set_style_text_color(note, UITheme::UI_NOTE, 0);
     lv_obj_set_style_text_align(note, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_set_style_pad_top(note, 20, 0);
 }

@@ -87,21 +87,47 @@ pio run -t clean
 
 ## Project-Specific Conventions
 
-### UI Styling Patterns
+### UI Theme System (`include/ui/ui_theme.h`)
+**CRITICAL**: All colors MUST use the centralized `UITheme` namespace - NO hardcoded `lv_color_hex()` calls allowed.
+
+Theme uses semantic naming organized by category:
 ```cpp
-// Main tab buttons (horizontal top bar)
-lv_obj_set_style_bg_color(tabview, lv_color_hex(0x0078D7), LV_PART_ITEMS | LV_STATE_CHECKED);  // Blue
+// Accent colors - use for primary/secondary selections
+UITheme::ACCENT_PRIMARY          // Main tab selected (blue)
+UITheme::ACCENT_SECONDARY        // Sub-tab selected (teal)
 
-// Sub-tab buttons (vertical left bar in Control tab)
-lv_obj_set_style_bg_color(sub_tabview, lv_color_hex(0x00AA88), LV_PART_ITEMS | LV_STATE_CHECKED);  // Teal
+// Machine states - use for CNC machine status display
+UITheme::STATE_IDLE              // Idle state (green)
+UITheme::STATE_RUN               // Running state (cyan)
+UITheme::STATE_ALARM             // Alarm/Error state (red)
 
-// Background colors
-lv_obj_set_style_bg_color(scr, lv_color_hex(0x1a1a1a), 0);  // Dark main background
-lv_obj_set_style_bg_color(content, lv_color_hex(0x2a2a2a), 0);  // Lighter content areas
+// Axis colors - use for X/Y/Z axis displays
+UITheme::AXIS_X                  // X-axis (cyan)
+UITheme::AXIS_Y                  // Y-axis (green)
+UITheme::AXIS_Z                  // Z-axis (magenta)
+
+// Position displays
+UITheme::POS_MACHINE             // Machine position label (cyan)
+UITheme::POS_WORK                // Work position label (orange)
+
+// Buttons - specific action colors
+UITheme::BTN_PLAY                // Play/Success buttons (green)
+UITheme::BTN_ESTOP               // Emergency stop (dark red)
+UITheme::BTN_CONNECT             // Connect button (blue)
+
+// UI feedback
+UITheme::UI_SUCCESS              // Success messages (green)
+UITheme::UI_WARNING              // Warning messages (orange)
+UITheme::UI_INFO                 // Info text (cyan)
+
+// Backgrounds, text, borders - standard grays
+UITheme::BG_DARK, BG_MEDIUM, TEXT_LIGHT, BORDER_MEDIUM
 ```
 
+**Adding new colors**: Update `ui_theme.h` with semantic naming (purpose-based, not color-based).
+
 ### Configuration Constants
-All hardcoded values live in `include/config.h`:
+All other hardcoded values live in `include/config.h`:
 - Screen dimensions, pin mappings, I2C addresses
 - UI layout constants (`STATUS_BAR_HEIGHT`, `TAB_BUTTON_HEIGHT`)
 - Buffer sizes, timing values, feature flags
@@ -130,6 +156,7 @@ All hardcoded values live in `include/config.h`:
 4. **Tab scrolling**: Most tabs have scrolling disabled - re-enable only if content exceeds screen height
 5. **Display buffer size**: Changing `BUFFER_LINES` in `config.h` affects memory usage and performance
 6. **RGB565 byte order**: LovyanGFX returns byte-swapped RGB565 - swap before decoding (see `screenshot_server.cpp:19-29`)
+7. **Color usage**: NEVER use `lv_color_hex()` directly - always use `UITheme::*` constants for maintainability and consistency
 
 ## External Dependencies
 

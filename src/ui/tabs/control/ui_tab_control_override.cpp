@@ -1,4 +1,5 @@
 #include "ui/tabs/control/ui_tab_control_override.h"
+#include "ui/ui_theme.h"
 #include "config.h"
 
 // Event handler for feed rate override slider
@@ -57,15 +58,15 @@ lv_obj_t* UITabControlOverride::create(lv_obj_t* parent) {
     lv_obj_t* feed_value_label = lv_label_create(cont);
     lv_label_set_text(feed_value_label, "100%");
     lv_obj_set_style_text_font(feed_value_label, &lv_font_montserrat_28, 0);
-    lv_obj_set_style_text_color(feed_value_label, lv_color_hex(0x00AA88), 0);
+    lv_obj_set_style_text_color(feed_value_label, UITheme::ACCENT_SECONDARY, 0);
     
     lv_obj_t* feed_slider = lv_slider_create(cont);
     lv_obj_set_width(feed_slider, lv_pct(85));
     lv_obj_set_height(feed_slider, 20);
     lv_slider_set_range(feed_slider, 10, 200);  // 10% to 200%
     lv_slider_set_value(feed_slider, 100, LV_ANIM_OFF);
-    lv_obj_set_style_bg_color(feed_slider, lv_color_hex(0x00AA88), LV_PART_INDICATOR);
-    lv_obj_set_style_bg_color(feed_slider, lv_color_hex(0x00AA88), LV_PART_KNOB);
+    lv_obj_set_style_bg_color(feed_slider, UITheme::ACCENT_SECONDARY, LV_PART_INDICATOR);
+    lv_obj_set_style_bg_color(feed_slider, UITheme::ACCENT_SECONDARY, LV_PART_KNOB);
     lv_obj_add_event_cb(feed_slider, feed_override_event_handler, LV_EVENT_VALUE_CHANGED, feed_value_label);
     
     // --- Spacer ---
@@ -82,15 +83,15 @@ lv_obj_t* UITabControlOverride::create(lv_obj_t* parent) {
     lv_obj_t* spindle_value_label = lv_label_create(cont);
     lv_label_set_text(spindle_value_label, "100%");
     lv_obj_set_style_text_font(spindle_value_label, &lv_font_montserrat_28, 0);
-    lv_obj_set_style_text_color(spindle_value_label, lv_color_hex(0x00AA88), 0);
+    lv_obj_set_style_text_color(spindle_value_label, UITheme::ACCENT_SECONDARY, 0);
     
     lv_obj_t* spindle_slider = lv_slider_create(cont);
     lv_obj_set_width(spindle_slider, lv_pct(85));
     lv_obj_set_height(spindle_slider, 20);
     lv_slider_set_range(spindle_slider, 10, 200);  // 10% to 200%
     lv_slider_set_value(spindle_slider, 100, LV_ANIM_OFF);
-    lv_obj_set_style_bg_color(spindle_slider, lv_color_hex(0x00AA88), LV_PART_INDICATOR);
-    lv_obj_set_style_bg_color(spindle_slider, lv_color_hex(0x00AA88), LV_PART_KNOB);
+    lv_obj_set_style_bg_color(spindle_slider, UITheme::ACCENT_SECONDARY, LV_PART_INDICATOR);
+    lv_obj_set_style_bg_color(spindle_slider, UITheme::ACCENT_SECONDARY, LV_PART_KNOB);
     lv_obj_add_event_cb(spindle_slider, spindle_override_event_handler, LV_EVENT_VALUE_CHANGED, spindle_value_label);
     
     // --- Spacer ---
@@ -102,7 +103,7 @@ lv_obj_t* UITabControlOverride::create(lv_obj_t* parent) {
     // --- Reset Button ---
     lv_obj_t* reset_btn = lv_button_create(cont);
     lv_obj_set_size(reset_btn, 220, 55);
-    lv_obj_set_style_bg_color(reset_btn, lv_color_hex(0x555555), 0);
+    lv_obj_set_style_bg_color(reset_btn, UITheme::TEXT_DARK, 0);
     lv_obj_add_event_cb(reset_btn, reset_overrides_event_handler, LV_EVENT_CLICKED, NULL);
     
     lv_obj_t* reset_label = lv_label_create(reset_btn);

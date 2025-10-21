@@ -1,5 +1,6 @@
 #include "ui/ui_common.h"
 #include "ui/ui_tabs.h"
+#include "ui/ui_theme.h"
 
 // Static member initialization
 lv_display_t *UICommon::display = nullptr;
@@ -30,8 +31,8 @@ void UICommon::createStatusBar() {
     status_bar = lv_obj_create(lv_screen_active());
     lv_obj_set_size(status_bar, SCREEN_WIDTH, STATUS_BAR_HEIGHT);
     lv_obj_align(status_bar, LV_ALIGN_BOTTOM_MID, 0, 0);
-    lv_obj_set_style_bg_color(status_bar, lv_color_hex(0x0a0a0a), LV_PART_MAIN);
-    lv_obj_set_style_border_color(status_bar, lv_color_hex(0x444444), LV_PART_MAIN);
+    lv_obj_set_style_bg_color(status_bar, UITheme::BG_DARK, LV_PART_MAIN);
+    lv_obj_set_style_border_color(status_bar, UITheme::BORDER_MEDIUM, LV_PART_MAIN);
     lv_obj_set_style_border_width(status_bar, 1, LV_PART_MAIN);
     lv_obj_set_style_border_side(status_bar, LV_BORDER_SIDE_TOP, LV_PART_MAIN);
     lv_obj_set_style_radius(status_bar, 0, LV_PART_MAIN); // No rounded corners
@@ -46,26 +47,26 @@ void UICommon::createStatusBar() {
     lbl_modal_states = lv_label_create(status_bar);
     lv_label_set_text(lbl_modal_states, "G54 G0 G17 G90 G94 G21 M5 M9");
     lv_obj_set_style_text_font(lbl_modal_states, &lv_font_montserrat_16, 0);
-    lv_obj_set_style_text_color(lbl_modal_states, lv_color_hex(0xFFFF00), 0);
+    lv_obj_set_style_text_color(lbl_modal_states, UITheme::POS_MODAL, 0);
     lv_obj_set_pos(lbl_modal_states, 5, 5);
 
     lbl_mpos = lv_label_create(status_bar);
     lv_label_set_text(lbl_mpos, "MPos: X:0000.000 Y:0000.000 Z:0000.000");
     lv_obj_set_style_text_font(lbl_mpos, &lv_font_montserrat_16, 0);
-    lv_obj_set_style_text_color(lbl_mpos, lv_color_hex(0x00BFFF), 0);
+    lv_obj_set_style_text_color(lbl_mpos, UITheme::POS_MACHINE, 0);
     lv_obj_align(lbl_mpos, LV_ALIGN_TOP_RIGHT, -5, 5);
 
     // Line 2: Status and Work coordinates
     lbl_status = lv_label_create(status_bar);
     lv_label_set_text(lbl_status, "Status: Idle");
     lv_obj_set_style_text_font(lbl_status, &lv_font_montserrat_16, 0);
-    lv_obj_set_style_text_color(lbl_status, lv_color_hex(0x00FF00), 0);
+    lv_obj_set_style_text_color(lbl_status, UITheme::STATE_IDLE, 0);
     lv_obj_set_pos(lbl_status, 5, 32);
 
     lbl_wpos = lv_label_create(status_bar);
     lv_label_set_text(lbl_wpos, "WPos: X:0000.000 Y:0000.000 Z:0000.000");
     lv_obj_set_style_text_font(lbl_wpos, &lv_font_montserrat_16, 0);
-    lv_obj_set_style_text_color(lbl_wpos, lv_color_hex(0xFF8C00), 0);
+    lv_obj_set_style_text_color(lbl_wpos, UITheme::POS_WORK, 0);
     lv_obj_align(lbl_wpos, LV_ALIGN_BOTTOM_RIGHT, -5, -5);
 }
 
@@ -93,15 +94,15 @@ void UICommon::updateMachineState(const char *state) {
         
         // Color code the status
         if (strcmp(state, "Idle") == 0) {
-            lv_obj_set_style_text_color(lbl_status, lv_color_hex(0x00FF00), 0); // Green
+            lv_obj_set_style_text_color(lbl_status, UITheme::STATE_IDLE, 0); // Green
         } else if (strcmp(state, "Run") == 0 || strcmp(state, "Jog") == 0) {
-            lv_obj_set_style_text_color(lbl_status, lv_color_hex(0x00BFFF), 0); // Cyan
+            lv_obj_set_style_text_color(lbl_status, UITheme::STATE_RUN, 0); // Cyan
         } else if (strcmp(state, "Alarm") == 0 || strcmp(state, "Error") == 0) {
-            lv_obj_set_style_text_color(lbl_status, lv_color_hex(0xFF0000), 0); // Red
+            lv_obj_set_style_text_color(lbl_status, UITheme::STATE_ALARM, 0); // Red
         } else if (strcmp(state, "Hold") == 0) {
-            lv_obj_set_style_text_color(lbl_status, lv_color_hex(0xFFFF00), 0); // Yellow
+            lv_obj_set_style_text_color(lbl_status, UITheme::STATE_HOLD, 0); // Yellow
         } else {
-            lv_obj_set_style_text_color(lbl_status, lv_color_hex(0xCCCCCC), 0); // Gray
+            lv_obj_set_style_text_color(lbl_status, UITheme::STATE_UNKNOWN, 0); // Gray
         }
     }
 }

@@ -1,8 +1,9 @@
 #include "ui/tabs/ui_tab_macros.h"
+#include "ui/ui_theme.h"
 
 void UITabMacros::create(lv_obj_t *tab) {
     // Set dark background
-    lv_obj_set_style_bg_color(tab, lv_color_hex(0x2a2a2a), LV_PART_MAIN);
+    lv_obj_set_style_bg_color(tab, UITheme::BG_MEDIUM, LV_PART_MAIN);
 
     // Macro buttons - 4x3 grid (12 buttons total)
     const char* macro_default_labels[] = {
@@ -11,10 +12,10 @@ void UITabMacros::create(lv_obj_t *tab) {
         "Safe\nHeight", "Material\nSetup", "Pen\nDown", "Pen\nUp"
     };
     
-    uint32_t macro_colors[] = {
-        0x4CAF50, 0x2196F3, 0x9C27B0, 0xFF9800,  // Row 1: Green, Blue, Purple, Orange
-        0x00BCD4, 0x8BC34A, 0xE91E63, 0xFFC107,  // Row 2: Cyan, Light Green, Pink, Yellow
-        0x3F51B5, 0x009688, 0xFF5722, 0x607D8B   // Row 3: Indigo, Teal, Deep Orange, Blue Grey
+    const lv_color_t macro_colors[] = {
+        UITheme::MACRO_COLOR_1, UITheme::MACRO_COLOR_2, UITheme::MACRO_COLOR_4, UITheme::MACRO_COLOR_3,  // Row 1
+        UITheme::MACRO_COLOR_6, UITheme::MACRO_COLOR_1, UITheme::MACRO_COLOR_5, UITheme::MACRO_COLOR_7,  // Row 2
+        UITheme::MACRO_COLOR_2, UITheme::MACRO_COLOR_6, UITheme::MACRO_COLOR_5, UITheme::MACRO_COLOR_8   // Row 3
     };
 
     int macro_btn_width = 170;
@@ -31,7 +32,7 @@ void UITabMacros::create(lv_obj_t *tab) {
         lv_obj_t *btn_macro = lv_button_create(tab);
         lv_obj_set_size(btn_macro, macro_btn_width, macro_btn_height);
         lv_obj_set_pos(btn_macro, macro_start_x + col * macro_spacing_x, macro_start_y + row * macro_spacing_y);
-        lv_obj_set_style_bg_color(btn_macro, lv_color_hex(macro_colors[i]), LV_PART_MAIN);
+        lv_obj_set_style_bg_color(btn_macro, macro_colors[i], LV_PART_MAIN);
         
         lv_obj_t *lbl_macro = lv_label_create(btn_macro);
         lv_label_set_text(lbl_macro, macro_default_labels[i]);

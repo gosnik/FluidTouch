@@ -1,4 +1,5 @@
 #include "ui/tabs/control/ui_tab_control_actions.h"
+#include "ui/ui_theme.h"
 
 void UITabControlActions::create(lv_obj_t *tab) {
     // Zero buttons section
@@ -62,7 +63,7 @@ void UITabControlActions::create(lv_obj_t *tab) {
     lv_obj_t *btn_estop = lv_button_create(tab);
     lv_obj_set_size(btn_estop, 620, 60);
     lv_obj_set_pos(btn_estop, 10, 260);
-    lv_obj_set_style_bg_color(btn_estop, lv_color_hex(0xB71C1C), LV_PART_MAIN);
+    lv_obj_set_style_bg_color(btn_estop, UITheme::BTN_ESTOP, LV_PART_MAIN);
     lv_obj_t *lbl_estop = lv_label_create(btn_estop);
     lv_label_set_text(lbl_estop, "QUICK STOP");
     lv_obj_set_style_text_font(lbl_estop, &lv_font_montserrat_20, 0);

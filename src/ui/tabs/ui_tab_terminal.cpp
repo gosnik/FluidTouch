@@ -1,4 +1,5 @@
 #include "ui/tabs/ui_tab_terminal.h"
+#include "ui/ui_theme.h"
 #include "config.h"
 
 // Static member initialization
@@ -8,7 +9,7 @@ lv_obj_t *UITabTerminal::keyboard = nullptr;
 
 void UITabTerminal::create(lv_obj_t *tab) {
     // Set dark background
-    lv_obj_set_style_bg_color(tab, lv_color_hex(0x2a2a2a), LV_PART_MAIN);
+    lv_obj_set_style_bg_color(tab, UITheme::BG_MEDIUM, LV_PART_MAIN);
     
     // Calculate available height for content
     // Tab content height = SCREEN_HEIGHT (480) - STATUS_BAR_HEIGHT (60) - TAB_BUTTON_HEIGHT (50) = 370px
@@ -25,7 +26,7 @@ void UITabTerminal::create(lv_obj_t *tab) {
     lv_textarea_set_one_line(input_field, true);
     lv_textarea_set_placeholder_text(input_field, "Enter command...");
     lv_obj_set_style_text_font(input_field, &lv_font_montserrat_18, 0);
-    lv_obj_set_style_bg_color(input_field, lv_color_hex(0x333333), LV_PART_MAIN);
+    lv_obj_set_style_bg_color(input_field, UITheme::BG_BUTTON, LV_PART_MAIN);
     lv_obj_set_style_text_color(input_field, lv_color_white(), LV_PART_MAIN);
     lv_obj_add_event_cb(input_field, input_field_event_cb, LV_EVENT_CLICKED, nullptr);
     
@@ -33,7 +34,7 @@ void UITabTerminal::create(lv_obj_t *tab) {
     lv_obj_t *send_btn = lv_button_create(tab);
     lv_obj_set_size(send_btn, button_width - 10, input_height);
     lv_obj_set_pos(send_btn, SCREEN_WIDTH - button_width - (margin * 3), 0);
-    lv_obj_set_style_bg_color(send_btn, lv_color_hex(0x0078D7), LV_PART_MAIN);
+    lv_obj_set_style_bg_color(send_btn, UITheme::ACCENT_PRIMARY, LV_PART_MAIN);
     lv_obj_add_event_cb(send_btn, send_button_event_cb, LV_EVENT_CLICKED, nullptr);
     
     lv_obj_t *send_label = lv_label_create(send_btn);
@@ -45,8 +46,8 @@ void UITabTerminal::create(lv_obj_t *tab) {
     lv_obj_t *terminal_cont = lv_obj_create(tab);
     lv_obj_set_size(terminal_cont, SCREEN_WIDTH - (margin * 4), terminal_height - (margin * 2));
     lv_obj_set_pos(terminal_cont, 3, input_height + (margin * 2));
-    lv_obj_set_style_bg_color(terminal_cont, lv_color_hex(0x000000), LV_PART_MAIN);
-    lv_obj_set_style_border_color(terminal_cont, lv_color_hex(0x555555), LV_PART_MAIN);
+    lv_obj_set_style_bg_color(terminal_cont, UITheme::BG_BLACK, LV_PART_MAIN);
+    lv_obj_set_style_border_color(terminal_cont, UITheme::BORDER_LIGHT, LV_PART_MAIN);
     lv_obj_set_style_border_width(terminal_cont, 2, LV_PART_MAIN);
     lv_obj_set_style_pad_all(terminal_cont, 5, LV_PART_MAIN);
     // Enable scrolling for terminal output
@@ -99,7 +100,7 @@ void UITabTerminal::create(lv_obj_t *tab) {
         "ok\n"
         "<Idle|MPos:0.000,0.000,0.000|FS:0,0>");
     lv_obj_set_style_text_font(terminal_text, &lv_font_montserrat_14, 0);
-    lv_obj_set_style_text_color(terminal_text, lv_color_hex(0x00FF00), 0);
+    lv_obj_set_style_text_color(terminal_text, UITheme::UI_SUCCESS, 0);
     lv_label_set_long_mode(terminal_text, LV_LABEL_LONG_WRAP);
     lv_obj_set_width(terminal_text, SCREEN_WIDTH - (margin * 4) - 10);
 }

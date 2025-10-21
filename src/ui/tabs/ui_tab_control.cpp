@@ -1,4 +1,5 @@
 #include "ui/tabs/ui_tab_control.h"
+#include "ui/ui_theme.h"
 #include "ui/tabs/control/ui_tab_control_actions.h"
 #include "ui/tabs/control/ui_tab_control_jog.h"
 #include "ui/tabs/control/ui_tab_control_joystick.h"
@@ -14,7 +15,7 @@ void UITabControl::create(lv_obj_t *tab) {
     // Create main content container
     lv_obj_t *content = lv_obj_create(tab);
     lv_obj_set_size(content, lv_pct(100), lv_pct(100));
-    lv_obj_set_style_bg_color(content, lv_color_hex(0x2a2a2a), 0);
+    lv_obj_set_style_bg_color(content, UITheme::BG_MEDIUM, 0);
     lv_obj_set_style_border_width(content, 0, 0);
     lv_obj_set_style_pad_all(content, 0, 0);
     lv_obj_clear_flag(content, LV_OBJ_FLAG_SCROLLABLE);
@@ -32,7 +33,7 @@ void UITabControl::create(lv_obj_t *tab) {
     lv_obj_set_style_pad_all(sub_content, 0, 0);
     
     // Style the sub-tabview
-    lv_obj_set_style_bg_color(sub_tabview, lv_color_hex(0x2a2a2a), 0);
+    lv_obj_set_style_bg_color(sub_tabview, UITheme::BG_MEDIUM, 0);
     lv_obj_set_style_pad_all(sub_tabview, 0, 0);  // Remove padding from tabview
     
     // Get tab bar and remove all padding/spacing
@@ -42,19 +43,19 @@ void UITabControl::create(lv_obj_t *tab) {
     lv_obj_set_style_pad_row(tab_bar, 0, 0);  // Remove vertical spacing between buttons
     lv_obj_set_style_pad_column(tab_bar, 0, 0);  // Remove horizontal spacing
     lv_obj_set_style_text_font(tab_bar, &lv_font_montserrat_18, 0);  // Font for subtabs
-    lv_obj_set_style_bg_color(tab_bar, lv_color_hex(0x1a1a1a), 0);  // Darker background for tab bar
+    lv_obj_set_style_bg_color(tab_bar, UITheme::BG_DARKER, 0);  // Darker background for tab bar
 
     // Also ensure the content area has no padding
     lv_obj_set_style_pad_all(lv_tabview_get_content(sub_tabview), 0, 0);
     
     // Style tab buttons (inactive) - different colors than main tabs
-    lv_obj_set_style_bg_color(sub_tabview, lv_color_hex(0x2a2a2a), LV_PART_ITEMS);
-    lv_obj_set_style_text_color(sub_tabview, lv_color_hex(0xAAAAAA), LV_PART_ITEMS);
+    lv_obj_set_style_bg_color(sub_tabview, UITheme::BG_MEDIUM, LV_PART_ITEMS);
+    lv_obj_set_style_text_color(sub_tabview, UITheme::TEXT_MEDIUM, LV_PART_ITEMS);
     lv_obj_set_style_border_width(sub_tabview, 0, LV_PART_ITEMS);
     lv_obj_set_style_text_font(sub_tabview, &lv_font_montserrat_18, LV_PART_ITEMS);
     
     // Style tab buttons (active/checked) - use a different accent color
-    lv_obj_set_style_bg_color(sub_tabview, lv_color_hex(0x00AA88), LV_PART_ITEMS | LV_STATE_CHECKED);
+    lv_obj_set_style_bg_color(sub_tabview, UITheme::ACCENT_SECONDARY, LV_PART_ITEMS | LV_STATE_CHECKED);
     lv_obj_set_style_text_color(sub_tabview, lv_color_white(), LV_PART_ITEMS | LV_STATE_CHECKED);
 
     
@@ -74,11 +75,11 @@ void UITabControl::create(lv_obj_t *tab) {
     lv_obj_clear_flag(tab_overrides, LV_OBJ_FLAG_SCROLLABLE);
     
     // Set background for sub-tabs
-    lv_obj_set_style_bg_color(tab_actions, lv_color_hex(0x2a2a2a), 0);
-    lv_obj_set_style_bg_color(tab_jog, lv_color_hex(0x2a2a2a), 0);
-    lv_obj_set_style_bg_color(tab_joystick, lv_color_hex(0x2a2a2a), 0);
-    lv_obj_set_style_bg_color(tab_probe, lv_color_hex(0x2a2a2a), 0);
-    lv_obj_set_style_bg_color(tab_overrides, lv_color_hex(0x2a2a2a), 0);
+    lv_obj_set_style_bg_color(tab_actions, UITheme::BG_MEDIUM, 0);
+    lv_obj_set_style_bg_color(tab_jog, UITheme::BG_MEDIUM, 0);
+    lv_obj_set_style_bg_color(tab_joystick, UITheme::BG_MEDIUM, 0);
+    lv_obj_set_style_bg_color(tab_probe, UITheme::BG_MEDIUM, 0);
+    lv_obj_set_style_bg_color(tab_overrides, UITheme::BG_MEDIUM, 0);
     
     // Add 5px padding to all sub-tabs
     lv_obj_set_style_pad_all(tab_actions, 5, 0);
@@ -93,15 +94,15 @@ void UITabControl::create(lv_obj_t *tab) {
         lv_obj_t *btn = lv_obj_get_child(tab_bar, i);
         if (btn) {
             // Inactive state
-            lv_obj_set_style_bg_color(btn, lv_color_hex(0x2a2a2a), 0);
-            lv_obj_set_style_text_color(btn, lv_color_hex(0xAAAAAA), 0);
+            lv_obj_set_style_bg_color(btn, UITheme::BG_MEDIUM, 0);
+            lv_obj_set_style_text_color(btn, UITheme::TEXT_MEDIUM, 0);
             
             // Checked/Active state - teal color scheme
-            lv_obj_set_style_bg_color(btn, lv_color_hex(0x00AA88), LV_STATE_CHECKED);
+            lv_obj_set_style_bg_color(btn, UITheme::ACCENT_SECONDARY, LV_STATE_CHECKED);
             lv_obj_set_style_text_color(btn, lv_color_white(), LV_STATE_CHECKED);
             
             // Set border on right side only (indicator pointing toward content)
-            lv_obj_set_style_border_color(btn, lv_color_hex(0x00AA88), LV_STATE_CHECKED);
+            lv_obj_set_style_border_color(btn, UITheme::ACCENT_SECONDARY, LV_STATE_CHECKED);
             lv_obj_set_style_border_width(btn, 0, LV_STATE_CHECKED);  // Set width to 0 first
             lv_obj_set_style_border_side(btn, LV_BORDER_SIDE_RIGHT, LV_STATE_CHECKED);  // Right side only
             lv_obj_set_style_border_width(btn, 4, LV_STATE_CHECKED);  // Then set width to 4px

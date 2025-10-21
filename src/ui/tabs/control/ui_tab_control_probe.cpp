@@ -1,4 +1,5 @@
 #include "ui/tabs/control/ui_tab_control_probe.h"
+#include "ui/ui_theme.h"
 #include <lvgl.h>
 
 void UITabControlProbe::create(lv_obj_t *parent) {
@@ -94,7 +95,7 @@ void UITabControlProbe::create(lv_obj_t *parent) {
     lv_obj_t *probe_btn = lv_button_create(parent);
     lv_obj_set_size(probe_btn, 270, 60);
     lv_obj_set_pos(probe_btn, 310, 180);
-    lv_obj_set_style_bg_color(probe_btn, lv_color_hex(0x00AA00), 0);
+    lv_obj_set_style_bg_color(probe_btn, UITheme::BTN_PROBE, 0);
     
     lv_obj_t *probe_btn_label = lv_label_create(probe_btn);
     lv_label_set_text(probe_btn_label, "Start Probe");
@@ -111,5 +112,5 @@ void UITabControlProbe::create(lv_obj_t *parent) {
     lv_textarea_set_text(results_text, "No probe data");
     lv_obj_set_size(results_text, 270, 65);
     lv_obj_set_pos(results_text, 310, 290);
-    lv_obj_set_style_bg_color(results_text, lv_color_hex(0x222222), 0);
+    lv_obj_set_style_bg_color(results_text, UITheme::PROBE_RESULTS_BG, 0);
 }

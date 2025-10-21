@@ -1,4 +1,5 @@
 #include "ui/tabs/ui_tab_settings.h"
+#include "ui/ui_theme.h"
 #include <Preferences.h>
 
 // Global references for Settings tab UI elements
@@ -19,7 +20,7 @@ static void btn_save_event_handler(lv_event_t *e);
 
 void UITabSettings::create(lv_obj_t *tab) {
     // Set dark background
-    lv_obj_set_style_bg_color(tab, lv_color_hex(0x2a2a2a), LV_PART_MAIN);
+    lv_obj_set_style_bg_color(tab, UITheme::BG_MEDIUM, LV_PART_MAIN);
     
     // WiFi SSID
     lv_obj_t *ssid_label = lv_label_create(tab);
@@ -88,7 +89,7 @@ void UITabSettings::create(lv_obj_t *tab) {
     lv_obj_t *btn_save = lv_button_create(tab);
     lv_obj_set_size(btn_save, 200, 50);
     lv_obj_set_pos(btn_save, 550, 15);
-    lv_obj_set_style_bg_color(btn_save, lv_color_hex(0x4CAF50), LV_PART_MAIN);
+    lv_obj_set_style_bg_color(btn_save, UITheme::BTN_PLAY, LV_PART_MAIN);
     lv_obj_t *lbl_save = lv_label_create(btn_save);
     lv_label_set_text(lbl_save, "Save Settings");
     lv_obj_set_style_text_font(lbl_save, &lv_font_montserrat_16, 0);
@@ -99,7 +100,7 @@ void UITabSettings::create(lv_obj_t *tab) {
     lv_obj_t *btn_connect = lv_button_create(tab);
     lv_obj_set_size(btn_connect, 200, 50);
     lv_obj_set_pos(btn_connect, 550, 75);
-    lv_obj_set_style_bg_color(btn_connect, lv_color_hex(0x2196F3), LV_PART_MAIN);
+    lv_obj_set_style_bg_color(btn_connect, UITheme::BTN_CONNECT, LV_PART_MAIN);
     lv_obj_t *lbl_connect = lv_label_create(btn_connect);
     lv_label_set_text(lbl_connect, "Connect");
     lv_obj_set_style_text_font(lbl_connect, &lv_font_montserrat_16, 0);
@@ -109,7 +110,7 @@ void UITabSettings::create(lv_obj_t *tab) {
     lv_obj_t *btn_disconnect = lv_button_create(tab);
     lv_obj_set_size(btn_disconnect, 200, 50);
     lv_obj_set_pos(btn_disconnect, 550, 135);
-    lv_obj_set_style_bg_color(btn_disconnect, lv_color_hex(0xFF5722), LV_PART_MAIN);
+    lv_obj_set_style_bg_color(btn_disconnect, UITheme::BTN_DISCONNECT, LV_PART_MAIN);
     lv_obj_t *lbl_disconnect = lv_label_create(btn_disconnect);
     lv_label_set_text(lbl_disconnect, "Disconnect");
     lv_obj_set_style_text_font(lbl_disconnect, &lv_font_montserrat_16, 0);
@@ -119,7 +120,7 @@ void UITabSettings::create(lv_obj_t *tab) {
     lv_obj_t *status_info = lv_label_create(tab);
     lv_label_set_text(status_info, "Connection Status: Disconnected");
     lv_obj_set_style_text_font(status_info, &lv_font_montserrat_14, 0);
-    lv_obj_set_style_text_color(status_info, lv_color_hex(0xFFAA00), 0);
+    lv_obj_set_style_text_color(status_info, UITheme::UI_WARNING, 0);
     lv_obj_set_pos(status_info, 20, 260);
     status_info_global = status_info;  // Store global reference
     
@@ -278,6 +279,6 @@ void UITabSettings::saveSettings() {
     // Update status label
     if (status_info_global != NULL) {
         lv_label_set_text(status_info_global, "Settings saved successfully!");
-        lv_obj_set_style_text_color(status_info_global, lv_color_hex(0x00FF00), 0);
+        lv_obj_set_style_text_color(status_info_global, UITheme::UI_SUCCESS, 0);
     }
 }

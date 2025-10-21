@@ -1,4 +1,5 @@
 #include "ui/tabs/control/ui_tab_control_jog.h"
+#include "ui/ui_theme.h"
 #include <Arduino.h>
 
 // Static member initialization
@@ -67,7 +68,7 @@ void UITabControlJog::create(lv_obj_t *tab) {
         
         // Special styling for center button (step display)
         if (i == 4) {
-            lv_obj_set_style_bg_color(btn_xy, lv_color_hex(0x1a1a1a), 0);
+            lv_obj_set_style_bg_color(btn_xy, UITheme::BG_DARKER, 0);
             lv_obj_clear_flag(btn_xy, LV_OBJ_FLAG_CLICKABLE);
         }
         
@@ -184,7 +185,7 @@ void UITabControlJog::create(lv_obj_t *tab) {
     lv_obj_t *z_step_display_bg = lv_obj_create(tab);
     lv_obj_set_size(z_step_display_bg, 70, 70);
     lv_obj_set_pos(z_step_display_bg, 460, 110);
-    lv_obj_set_style_bg_color(z_step_display_bg, lv_color_hex(0x1a1a1a), 0);
+    lv_obj_set_style_bg_color(z_step_display_bg, UITheme::BG_DARKER, 0);
     lv_obj_set_style_border_width(z_step_display_bg, 0, 0);
     lv_obj_clear_flag(z_step_display_bg, LV_OBJ_FLAG_SCROLLABLE);
     
@@ -317,11 +318,11 @@ void UITabControlJog::update_xy_step_button_styles() {
     for (int i = 0; i < 6; i++) {
         if (xy_step_buttons[i] != nullptr) {
             if (i == xy_current_step_index) {
-                lv_obj_set_style_bg_color(xy_step_buttons[i], lv_color_hex(0x0078D7), LV_PART_MAIN | LV_STATE_DEFAULT);
-                lv_obj_set_style_bg_color(xy_step_buttons[i], lv_color_hex(0x005FA3), LV_PART_MAIN | LV_STATE_PRESSED);
+                lv_obj_set_style_bg_color(xy_step_buttons[i], UITheme::ACCENT_PRIMARY, LV_PART_MAIN | LV_STATE_DEFAULT);
+                lv_obj_set_style_bg_color(xy_step_buttons[i], UITheme::ACCENT_PRIMARY_PRESSED, LV_PART_MAIN | LV_STATE_PRESSED);
             } else {
-                lv_obj_set_style_bg_color(xy_step_buttons[i], lv_color_hex(0x333333), LV_PART_MAIN | LV_STATE_DEFAULT);
-                lv_obj_set_style_bg_color(xy_step_buttons[i], lv_color_hex(0x555555), LV_PART_MAIN | LV_STATE_PRESSED);
+                lv_obj_set_style_bg_color(xy_step_buttons[i], UITheme::BG_BUTTON, LV_PART_MAIN | LV_STATE_DEFAULT);
+                lv_obj_set_style_bg_color(xy_step_buttons[i], UITheme::BORDER_LIGHT, LV_PART_MAIN | LV_STATE_PRESSED);
             }
         }
     }
@@ -332,11 +333,11 @@ void UITabControlJog::update_z_step_button_styles() {
     for (int i = 0; i < 3; i++) {
         if (z_step_buttons[i] != nullptr) {
             if (i == z_current_step_index) {
-                lv_obj_set_style_bg_color(z_step_buttons[i], lv_color_hex(0x0078D7), LV_PART_MAIN | LV_STATE_DEFAULT);
-                lv_obj_set_style_bg_color(z_step_buttons[i], lv_color_hex(0x005FA3), LV_PART_MAIN | LV_STATE_PRESSED);
+                lv_obj_set_style_bg_color(z_step_buttons[i], UITheme::ACCENT_PRIMARY, LV_PART_MAIN | LV_STATE_DEFAULT);
+                lv_obj_set_style_bg_color(z_step_buttons[i], UITheme::ACCENT_PRIMARY_PRESSED, LV_PART_MAIN | LV_STATE_PRESSED);
             } else {
-                lv_obj_set_style_bg_color(z_step_buttons[i], lv_color_hex(0x333333), LV_PART_MAIN | LV_STATE_DEFAULT);
-                lv_obj_set_style_bg_color(z_step_buttons[i], lv_color_hex(0x555555), LV_PART_MAIN | LV_STATE_PRESSED);
+                lv_obj_set_style_bg_color(z_step_buttons[i], UITheme::BG_BUTTON, LV_PART_MAIN | LV_STATE_DEFAULT);
+                lv_obj_set_style_bg_color(z_step_buttons[i], UITheme::BORDER_LIGHT, LV_PART_MAIN | LV_STATE_PRESSED);
             }
         }
     }

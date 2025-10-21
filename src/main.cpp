@@ -3,6 +3,7 @@
 #include "display_driver.h"     // Display driver module
 #include "touch_driver.h"       // Touch driver module
 #include "screenshot_server.h"  // Screenshot web server
+#include "ui/ui_theme.h"        // UI theme colors
 #include "ui/ui_splash.h"       // Splash screen module
 #include "ui/ui_common.h"       // UI common components (status bar)
 #include "ui/ui_tabs.h"         // UI tabs module
@@ -52,7 +53,7 @@ void setup()
     Serial.println("Creating CNC Controller UI...");
     
     lv_obj_t *scr = lv_screen_active();
-    lv_obj_set_style_bg_color(scr, lv_color_hex(0x1a1a1a), LV_PART_MAIN);
+    lv_obj_set_style_bg_color(scr, UITheme::BG_DARKER, LV_PART_MAIN);
 
     // Create status bar using UICommon module
     UICommon::createStatusBar();

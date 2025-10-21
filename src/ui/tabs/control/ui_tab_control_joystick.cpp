@@ -1,4 +1,5 @@
 #include "ui/tabs/control/ui_tab_control_joystick.h"
+#include "ui/ui_theme.h"
 #include <lvgl.h>
 #include <math.h>
 
@@ -149,32 +150,32 @@ void UITabControlJoystick::create(lv_obj_t *parent) {
     lv_obj_t *xy_bg = lv_obj_create(xy_container);
     lv_obj_set_size(xy_bg, 220, 220);
     lv_obj_set_style_radius(xy_bg, LV_RADIUS_CIRCLE, 0);
-    lv_obj_set_style_bg_color(xy_bg, lv_color_hex(0x303030), 0);
+    lv_obj_set_style_bg_color(xy_bg, UITheme::JOYSTICK_BG, 0);
     lv_obj_set_style_border_width(xy_bg, 2, 0);
-    lv_obj_set_style_border_color(xy_bg, lv_color_hex(0x808080), 0);
+    lv_obj_set_style_border_color(xy_bg, UITheme::JOYSTICK_BORDER, 0);
     lv_obj_clear_flag(xy_bg, LV_OBJ_FLAG_SCROLLABLE);  // Disable scrolling
 
     // Horizontal crosshair
     lv_obj_t *xy_h_line = lv_obj_create(xy_bg);
     lv_obj_set_size(xy_h_line, LV_PCT(100), 2);
-    lv_obj_set_style_bg_color(xy_h_line, lv_color_hex(0x606060), 0);
+    lv_obj_set_style_bg_color(xy_h_line, UITheme::JOYSTICK_LINE, 0);
     lv_obj_set_style_border_width(xy_h_line, 0, 0);
     lv_obj_center(xy_h_line);
 
     // Vertical crosshair
     lv_obj_t *xy_v_line = lv_obj_create(xy_bg);
     lv_obj_set_size(xy_v_line, 2, LV_PCT(100));
-    lv_obj_set_style_bg_color(xy_v_line, lv_color_hex(0x606060), 0);
+    lv_obj_set_style_bg_color(xy_v_line, UITheme::JOYSTICK_LINE, 0);
     lv_obj_set_style_border_width(xy_v_line, 0, 0);
     lv_obj_center(xy_v_line);
 
-    // Draggable knob (90x90, blue, centered initially)
+    // Draggable knob (90x90, cyan, centered initially)
     lv_obj_t *xy_knob = lv_obj_create(xy_bg);
     lv_obj_set_size(xy_knob, 90, 90);
     lv_obj_set_style_radius(xy_knob, LV_RADIUS_CIRCLE, 0);
-    lv_obj_set_style_bg_color(xy_knob, lv_color_hex(0x0078D7), 0);
+    lv_obj_set_style_bg_color(xy_knob, UITheme::JOYSTICK_XY, 0);
     lv_obj_set_style_border_width(xy_knob, 3, 0);
-    lv_obj_set_style_border_color(xy_knob, lv_color_hex(0xFFFFFF), 0);
+    lv_obj_set_style_border_color(xy_knob, lv_color_white(), 0);
     lv_obj_center(xy_knob);
     
     // Add label to XY knob
@@ -204,15 +205,15 @@ void UITabControlJoystick::create(lv_obj_t *parent) {
     lv_obj_t *z_bg = lv_obj_create(z_container);
     lv_obj_set_size(z_bg, 80, 220);
     lv_obj_set_style_radius(z_bg, 15, 0);
-    lv_obj_set_style_bg_color(z_bg, lv_color_hex(0x303030), 0);
+    lv_obj_set_style_bg_color(z_bg, UITheme::JOYSTICK_BG, 0);
     lv_obj_set_style_border_width(z_bg, 2, 0);
-    lv_obj_set_style_border_color(z_bg, lv_color_hex(0x808080), 0);
+    lv_obj_set_style_border_color(z_bg, UITheme::JOYSTICK_BORDER, 0);
     lv_obj_clear_flag(z_bg, LV_OBJ_FLAG_SCROLLABLE);  // Disable scrolling
 
     // Center line
     lv_obj_t *z_line = lv_obj_create(z_bg);
     lv_obj_set_size(z_line, LV_PCT(100), 2);
-    lv_obj_set_style_bg_color(z_line, lv_color_hex(0x606060), 0);
+    lv_obj_set_style_bg_color(z_line, UITheme::JOYSTICK_LINE, 0);
     lv_obj_set_style_border_width(z_line, 0, 0);
     lv_obj_center(z_line);
 
@@ -220,9 +221,9 @@ void UITabControlJoystick::create(lv_obj_t *parent) {
     lv_obj_t *z_knob = lv_obj_create(z_bg);
     lv_obj_set_size(z_knob, 70, 70);
     lv_obj_set_style_radius(z_knob, 15, 0);
-    lv_obj_set_style_bg_color(z_knob, lv_color_hex(0x9B59B6), 0);
+    lv_obj_set_style_bg_color(z_knob, UITheme::JOYSTICK_Z, 0);
     lv_obj_set_style_border_width(z_knob, 3, 0);
-    lv_obj_set_style_border_color(z_knob, lv_color_hex(0xFFFFFF), 0);
+    lv_obj_set_style_border_color(z_knob, lv_color_white(), 0);
     lv_obj_center(z_knob);
     
     // Add label to Z knob
