@@ -101,8 +101,10 @@ void loop()
         UITabStatus::updateFeedRate(status.feed_rate, status.feed_override);
         UITabStatus::updateSpindle(status.spindle_speed, status.spindle_override);
         UITabStatus::updateModalStates(status.modal_wcs, status.modal_plane, status.modal_distance,
-                                      status.modal_units, status.modal_motion, status.modal_spindle,
-                                      status.modal_coolant, status.modal_tool);
+                                      status.modal_units, status.modal_motion, status.modal_feedrate,
+                                      status.modal_spindle, status.modal_coolant, status.modal_tool);
+        UITabStatus::updateFileProgress(status.is_sd_printing, status.sd_percent, 
+                                       status.sd_filename, status.sd_elapsed_ms);
         UITabStatus::updateMessage(status.last_message);
     }
     

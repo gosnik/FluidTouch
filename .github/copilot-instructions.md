@@ -36,7 +36,7 @@ The codebase follows a **strict modular pattern** with clear separation:
    - All UI classes use static `create(lv_obj_t *parent)` factory methods
    - Headers in `include/`, implementations in `src/` (matching structure)
 
-### LVGL 9.3 Specifics
+### LVGL 9.4 Specifics
 - **Color depth**: RGB565 (16-bit) via `LV_COLOR_DEPTH 16`
 - **Memory**: 256KB LVGL heap allocated in PSRAM (see `lv_conf.h`)
 - **Display buffers**: Dual full-screen buffers (800×480 lines each) in PSRAM for smooth rendering
@@ -59,7 +59,7 @@ The codebase follows a **strict modular pattern** with clear separation:
    - WebSocket client connects to FluidNC using machine configuration (IP/hostname + port, default 81)
    - Uses **automatic reporting** (`$Report/Interval=250`) instead of polling - FluidNC pushes updates every 250ms
    - Parses three message types:
-     - Status reports (binary frames): `<Idle|MPos:x,y,z|FS:feed,spindle|Ov:feed,rapid,spindle|WCO:x,y,z>`
+     - Status reports (binary frames): `<Idle|MPos:x,y,z|FS:feed,spindle|Ov:feed,rapid,spindle|WCO:x,y,z|SD:percent,filename>`
      - GCode parser state: `[GC:G0 G54 G17 G21 G90 G94 M5 M9 T0 F0 S0]`
      - Realtime feedback: `[MSG:...]`, `[G92:...]`, etc.
    - **Work Position Calculation**: WPos = MPos - WCO (Work Coordinate Offset)
@@ -69,6 +69,11 @@ The codebase follows a **strict modular pattern** with clear separation:
    - **Feed/Spindle Values**: Parsed from both status reports (FS:) and GCode state (F/S)
      - Status report FS: values are current/actual feed and spindle
      - GCode state F/S values are programmed/commanded values (used as fallback)
+   - **SD Card File Progress**: Parsed from status reports (SD:percent,filename)
+     - Tracks elapsed time from file start using millis()
+     - Calculates estimated completion time based on percentage and elapsed time
+     - Displayed in Status tab header spanning columns 2-4 when file is running
+     - Format: filename (truncated), progress bar, elapsed time (H:MM), estimated time (Est: H:MM)
    - **Delta Checking**: UI updates use cached values to prevent unnecessary redraws
      - Only updates labels when values actually change
      - Eliminates visual glitches from constant LVGL label redraws
@@ -105,19 +110,20 @@ The codebase follows a **strict modular pattern** with clear separation:
 ## Development Workflows
 
 ### Building & Flashing
-**CRITICAL**: On Windows, the `pio` shortcut often doesn't work. Use the full PlatformIO path with proper PowerShell quoting:
+**CRITICAL**: On Windows, the `pio` shortcut often doesn't work. Use the full PlatformIO path with proper PowerShell quoting.
+
+**ALWAYS upload after successful builds** - use `--target upload` instead of just building:
 
 ```powershell
 # Windows: Full path to platformio.exe - MUST use quotes and call operator (&)
-& "$env:USERPROFILE\.platformio\penv\Scripts\platformio.exe" run
+# ALWAYS use --target upload to flash after building
+& "$env:USERPROFILE\.platformio\penv\Scripts\platformio.exe" run --target upload
 
 # Or use the explicit path with quotes:
-& "C:\Users\USERNAME\.platformio\penv\Scripts\platformio.exe" run
+& "C:\Users\USERNAME\.platformio\penv\Scripts\platformio.exe" run --target upload
 
-# Build project
-& "$env:USERPROFILE\.platformio\penv\Scripts\platformio.exe" run
-
-# Upload to ESP32-S3 (via USB)
+# Build and upload to ESP32-S3 (via USB) - DEFAULT COMMAND
+& "$env:USERPROFILE\.platformio\penv\Scripts\platformio.exe" run --target upload
 & "$env:USERPROFILE\.platformio\penv\Scripts\platformio.exe" run --target upload
 
 # Serial monitor (115200 baud)
@@ -203,19 +209,24 @@ All other hardcoded values live in `include/config.h`:
 - **`src/display_driver.cpp`**: LovyanGFX RGB parallel setup (lines 11-63 are pin mappings)
 - **`include/config.h`**: Central configuration for ALL hardcoded values (BUFFER_LINES=480 for full-screen buffering)
 - **`src/screenshot_server.cpp`**: WiFi setup, BMP conversion from RGB565 frame buffer
-- **`src/fluidnc_client.cpp`**: FluidNC WebSocket client with automatic reporting, status parsing, WCO handling, and F/S parsing from both status reports and GCode state
+- **`src/fluidnc_client.cpp`**: FluidNC WebSocket client with automatic reporting, status parsing, WCO handling, F/S parsing from both status reports and GCode state, and SD card file progress tracking
 - **`src/ui/ui_common.cpp`**: Status bar implementation with separate axis labels, delta checking for smooth updates, and clickable left/right areas for navigation and machine switching
 - **`src/ui/ui_machine_select.cpp`**: Machine selection screen with reordering, edit, delete, and add functionality (up to 5 machines stored in Preferences)
-- **`src/ui/tabs/ui_tab_status.cpp`**: Status tab with delta-checked position displays, feed/spindle rates with overrides, 8 modal state fields, and message display
+- **`src/ui/tabs/ui_tab_status.cpp`**: Status tab with delta-checked position displays, feed/spindle rates with overrides, 8 modal state fields, message display, and SD card file progress (filename, progress bar, elapsed/estimated time)
 
 ### Status Tab Layout (ui_tab_status.cpp)
-- **Top Section**: STATE (left) + MESSAGE (right, aligned with Machine Position at x=250)
-- **Left Column** (x=15): Work Position (X/Y/Z) → Feed Rate + Override
-- **Center Column** (x=250): Machine Position (X/Y/Z) → Spindle + Override
-- **Right Column** (x=500/620): Modal states in two-column layout (labels at 500, values at 620)
-  - 8 modal fields with 29px vertical spacing: WCS, PLANE, DIST, UNITS, MOTION, SPINDLE, COOLANT, TOOL
-  - All use 20pt font, teal labels (ACCENT_SECONDARY), semantic value colors
+- **Top Section**: STATE (left, x=0) + FILE PROGRESS (spans columns 2-4, x=230-780, hidden when not printing)
+  - File progress shows: filename (truncated to 350px), progress bar (0-100%), elapsed time (H:MM), estimated completion time (Est: H:MM)
+  - Progress container has dark gray background with border, appears only when `is_sd_printing` is true
+- **Column Layout** (after separator line at y=60):
+  - Column 1 (x=0): Work Position (X/Y/Z)
+  - Column 2 (x=225): Machine Position (X/Y/Z)
+  - Column 3 (x=475): Feed Rate + Override, Spindle + Override
+  - Column 4 (x=615/735): Modal states (9 fields: WCS, PLANE, DIST, UNITS, MOTION, FEED, SPINDLE, COOLANT, TOOL)
+- **Bottom Section** (y=325): MESSAGE label spanning columns 1-3 (x=0, width=550px)
+- **Modal States**: 26px vertical spacing, 20pt font, teal labels (ACCENT_SECONDARY), semantic value colors
 - **Position Format**: "X  0000.000" (4 digits before decimal, 3 after, double-space after axis letter)
+- **Padding**: 10px tab padding for consistent margins
 
 ## Common Pitfalls
 
@@ -231,11 +242,12 @@ All other hardcoded values live in `include/config.h`:
 10. **Static label pointers**: UI update methods require static member pointers to labels - never use local variables for labels that need live updates
 11. **Machine switching**: Use `ESP.restart()` to switch between machines - cleanly avoids LVGL memory fragmentation issues that can occur when rebuilding entire UI trees
 12. **WCO caching**: Work position requires cached WCO values since FluidNC only sends WCO periodically - calculate WPos = MPos - WCO on every status update
+13. **SD file progress**: FluidNC sends `SD:percent,filename` in status reports - track start time on first detection, calculate elapsed/estimated times based on percentage and elapsed duration
 
 ## External Dependencies
 
-- **FluidNC**: CNC controller firmware (WebSocket connection on port 81, automatic reporting enabled)
-- **LVGL 9.3.0**: UI library via PlatformIO lib_deps
+- **FluidNC**: CNC controller firmware (WebSocket connection on port 81/82, automatic reporting enabled)
+- **LVGL 9.4.0+**: UI library via PlatformIO lib_deps
 - **LovyanGFX 1.2.7+**: Hardware display driver with RGB parallel support
 - **WebSockets 2.5.4+**: WebSocket client library for FluidNC communication
 - **ESP32 Arduino Framework**: Core platform APIs (Wire, WiFi, WebServer, Preferences)
