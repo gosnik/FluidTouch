@@ -11,6 +11,9 @@ lv_display_t *UIMachineSelect::display = nullptr;
 MachineConfig UIMachineSelect::machines[MAX_MACHINES];
 lv_obj_t *UIMachineSelect::machine_buttons[MAX_MACHINES] = {nullptr};
 lv_obj_t *UIMachineSelect::edit_buttons[MAX_MACHINES] = {nullptr};
+lv_obj_t *UIMachineSelect::move_up_buttons[MAX_MACHINES] = {nullptr};
+lv_obj_t *UIMachineSelect::move_down_buttons[MAX_MACHINES] = {nullptr};
+lv_obj_t *UIMachineSelect::add_button = nullptr;
 lv_obj_t *UIMachineSelect::config_dialog = nullptr;
 lv_obj_t *UIMachineSelect::dialog_content = nullptr;
 lv_obj_t *UIMachineSelect::keyboard = nullptr;
@@ -21,6 +24,8 @@ lv_obj_t *UIMachineSelect::ta_password = nullptr;
 lv_obj_t *UIMachineSelect::ta_url = nullptr;
 lv_obj_t *UIMachineSelect::ta_port = nullptr;
 lv_obj_t *UIMachineSelect::dd_connection_type = nullptr;
+lv_obj_t *UIMachineSelect::delete_dialog = nullptr;
+int UIMachineSelect::deleting_index = -1;
 
 void UIMachineSelect::show(lv_display_t *disp) {
     display = disp;
@@ -43,7 +48,19 @@ void UIMachineSelect::show(lv_display_t *disp) {
     lv_label_set_text(title, "Select Machine");
     lv_obj_set_style_text_font(title, &lv_font_montserrat_24, 0);
     lv_obj_set_style_text_color(title, UITheme::TEXT_LIGHT, 0);
-    lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 20);
+    lv_obj_align(title, LV_ALIGN_TOP_LEFT, 20, 20);
+    
+    // Add Machine button (upper right corner)
+    add_button = lv_btn_create(screen);
+    lv_obj_set_size(add_button, 120, 40);
+    lv_obj_set_style_bg_color(add_button, UITheme::BTN_PLAY, 0);
+    lv_obj_align(add_button, LV_ALIGN_TOP_RIGHT, -20, 15);
+    lv_obj_add_event_cb(add_button, onAddMachine, LV_EVENT_CLICKED, nullptr);
+    
+    lv_obj_t *add_label = lv_label_create(add_button);
+    lv_label_set_text(add_label, LV_SYMBOL_PLUS " Add");
+    lv_obj_set_style_text_font(add_label, &lv_font_montserrat_16, 0);
+    lv_obj_center(add_label);
     
     // Subtitle
     lv_obj_t *subtitle = lv_label_create(screen);
@@ -79,22 +96,33 @@ void UIMachineSelect::hide() {
 
 void UIMachineSelect::refreshMachineList() {
     // Find list container
-    lv_obj_t *list_container = lv_obj_get_child(screen, 2); // 3rd child (title, subtitle, container)
+    lv_obj_t *list_container = lv_obj_get_child(screen, 3); // 4th child (title, add button, subtitle, container)
     
     // Clear existing buttons
     lv_obj_clean(list_container);
     
-    // Create machine slots (5 total, 70px height each with 3px spacing = 365px total)
+    // Count configured machines
+    int configured_count = getConfiguredMachineCount();
+    
+    // Update Add button visibility
+    if (configured_count < MAX_MACHINES) {
+        lv_obj_clear_flag(add_button, LV_OBJ_FLAG_HIDDEN);
+    } else {
+        lv_obj_add_flag(add_button, LV_OBJ_FLAG_HIDDEN);
+    }
+    
+    // Only display configured machines (no empty slots)
+    int displayed_index = 0;
     for (int i = 0; i < MAX_MACHINES; i++) {
-        int y_pos = (i * 73); // 70px button + 3px gap
-        
         if (machines[i].is_configured) {
-            // Machine button
+            int y_pos = (displayed_index * 73); // 70px button + 3px gap
+            
+            // Machine button - now wider to accommodate up/down buttons
             machine_buttons[i] = lv_btn_create(list_container);
-            lv_obj_set_size(machine_buttons[i], 590, 70);
+            lv_obj_set_size(machine_buttons[i], 450, 70);
             lv_obj_set_pos(machine_buttons[i], 0, y_pos);
-            lv_obj_set_style_bg_color(machine_buttons[i], UITheme::BG_BUTTON, 0);
-            lv_obj_set_style_bg_color(machine_buttons[i], UITheme::ACCENT_PRIMARY, LV_STATE_PRESSED);
+            lv_obj_set_style_bg_color(machine_buttons[i], UITheme::ACCENT_PRIMARY, 0);
+            lv_obj_set_style_bg_color(machine_buttons[i], UITheme::ACCENT_SECONDARY, LV_STATE_PRESSED);
             lv_obj_add_event_cb(machine_buttons[i], onMachineSelected, LV_EVENT_CLICKED, (void*)(intptr_t)i);
             
             // Machine label with symbol
@@ -102,13 +130,47 @@ void UIMachineSelect::refreshMachineList() {
             const char *symbol = (machines[i].connection_type == CONN_WIRELESS) ? LV_SYMBOL_WIFI : LV_SYMBOL_USB;
             String text = String(symbol) + " " + String(machines[i].name);
             lv_label_set_text(label, text.c_str());
-            lv_obj_set_style_text_font(label, &lv_font_montserrat_18, 0);
+            lv_obj_set_style_text_font(label, &lv_font_montserrat_22, 0);
             lv_obj_align(label, LV_ALIGN_LEFT_MID, 10, 0);
+            
+            // Move Up button
+            move_up_buttons[i] = lv_btn_create(list_container);
+            lv_obj_set_size(move_up_buttons[i], 60, 70);
+            lv_obj_set_pos(move_up_buttons[i], 455, y_pos);
+            lv_obj_set_style_bg_color(move_up_buttons[i], UITheme::BG_BUTTON, 0);
+            lv_obj_add_event_cb(move_up_buttons[i], onMoveUpMachine, LV_EVENT_CLICKED, (void*)(intptr_t)i);
+            
+            // Disable if first item
+            if (displayed_index == 0) {
+                lv_obj_add_state(move_up_buttons[i], LV_STATE_DISABLED);
+            }
+            
+            lv_obj_t *up_label = lv_label_create(move_up_buttons[i]);
+            lv_label_set_text(up_label, LV_SYMBOL_UP);
+            lv_obj_set_style_text_font(up_label, &lv_font_montserrat_22, 0);
+            lv_obj_center(up_label);
+            
+            // Move Down button
+            move_down_buttons[i] = lv_btn_create(list_container);
+            lv_obj_set_size(move_down_buttons[i], 60, 70);
+            lv_obj_set_pos(move_down_buttons[i], 520, y_pos);
+            lv_obj_set_style_bg_color(move_down_buttons[i], UITheme::BG_BUTTON, 0);
+            lv_obj_add_event_cb(move_down_buttons[i], onMoveDownMachine, LV_EVENT_CLICKED, (void*)(intptr_t)i);
+            
+            // Disable if last item
+            if (displayed_index == configured_count - 1) {
+                lv_obj_add_state(move_down_buttons[i], LV_STATE_DISABLED);
+            }
+            
+            lv_obj_t *down_label = lv_label_create(move_down_buttons[i]);
+            lv_label_set_text(down_label, LV_SYMBOL_DOWN);
+            lv_obj_set_style_text_font(down_label, &lv_font_montserrat_22, 0);
+            lv_obj_center(down_label);
             
             // Edit button
             edit_buttons[i] = lv_btn_create(list_container);
             lv_obj_set_size(edit_buttons[i], 70, 70);
-            lv_obj_set_pos(edit_buttons[i], 595, y_pos);
+            lv_obj_set_pos(edit_buttons[i], 585, y_pos);
             lv_obj_set_style_bg_color(edit_buttons[i], UITheme::ACCENT_SECONDARY, 0);
             lv_obj_add_event_cb(edit_buttons[i], onEditMachine, LV_EVENT_CLICKED, (void*)(intptr_t)i);
             
@@ -120,7 +182,7 @@ void UIMachineSelect::refreshMachineList() {
             // Delete button
             lv_obj_t *del_btn = lv_btn_create(list_container);
             lv_obj_set_size(del_btn, 70, 70);
-            lv_obj_set_pos(del_btn, 670, y_pos);
+            lv_obj_set_pos(del_btn, 660, y_pos);
             lv_obj_set_style_bg_color(del_btn, UITheme::STATE_ALARM, 0);
             lv_obj_add_event_cb(del_btn, onDeleteMachine, LV_EVENT_CLICKED, (void*)(intptr_t)i);
             
@@ -128,23 +190,82 @@ void UIMachineSelect::refreshMachineList() {
             lv_label_set_text(del_label, LV_SYMBOL_TRASH);
             lv_obj_set_style_text_font(del_label, &lv_font_montserrat_20, 0);
             lv_obj_center(del_label);
-        } else {
-            // Empty slot - show "Add Machine" button (full width within padding)
-            lv_obj_t *add_btn = lv_btn_create(list_container);
-            lv_obj_set_size(add_btn, 740, 70);
-            lv_obj_set_pos(add_btn, 0, y_pos);
-            lv_obj_set_style_bg_color(add_btn, UITheme::BG_BUTTON, 0);
-            lv_obj_set_style_bg_color(add_btn, UITheme::ACCENT_SECONDARY, LV_STATE_PRESSED);
-            lv_obj_set_style_border_width(add_btn, 2, 0);
-            lv_obj_set_style_border_color(add_btn, UITheme::ACCENT_SECONDARY, 0);
-            lv_obj_add_event_cb(add_btn, onAddMachine, LV_EVENT_CLICKED, (void*)(intptr_t)i);
             
-            lv_obj_t *add_label = lv_label_create(add_btn);
-            lv_label_set_text(add_label, LV_SYMBOL_PLUS " Add Machine");
-            lv_obj_set_style_text_font(add_label, &lv_font_montserrat_18, 0);
-            lv_obj_set_style_text_color(add_label, UITheme::ACCENT_SECONDARY, 0);
-            lv_obj_center(add_label);
+            displayed_index++;
         }
+    }
+}
+
+// Helper function: Count configured machines
+int UIMachineSelect::getConfiguredMachineCount() {
+    int count = 0;
+    for (int i = 0; i < MAX_MACHINES; i++) {
+        if (machines[i].is_configured) {
+            count++;
+        }
+    }
+    return count;
+}
+
+// Helper function: Swap two machines in the array
+void UIMachineSelect::swapMachines(int index1, int index2) {
+    if (index1 < 0 || index1 >= MAX_MACHINES || index2 < 0 || index2 >= MAX_MACHINES) {
+        Serial.printf("UIMachineSelect::swapMachines: Invalid indices %d, %d\n", index1, index2);
+        return;
+    }
+    
+    if (!machines[index1].is_configured || !machines[index2].is_configured) {
+        Serial.printf("UIMachineSelect::swapMachines: Cannot swap unconfigured machines\n");
+        return;
+    }
+    
+    Serial.printf("UIMachineSelect::swapMachines: Swapping %d <-> %d\n", index1, index2);
+    
+    // Swap the machines
+    MachineConfig temp = machines[index1];
+    machines[index1] = machines[index2];
+    machines[index2] = temp;
+    
+    // Save to preferences
+    MachineConfigManager::saveMachines(machines);
+    
+    // Refresh the display
+    refreshMachineList();
+}
+
+void UIMachineSelect::onMoveUpMachine(lv_event_t *e) {
+    int index = (int)(intptr_t)lv_event_get_user_data(e);
+    
+    // Find previous configured machine
+    int prev_index = -1;
+    for (int i = index - 1; i >= 0; i--) {
+        if (machines[i].is_configured) {
+            prev_index = i;
+            break;
+        }
+    }
+    
+    if (prev_index >= 0) {
+        Serial.printf("UIMachineSelect: Move up machine %d\n", index);
+        swapMachines(index, prev_index);
+    }
+}
+
+void UIMachineSelect::onMoveDownMachine(lv_event_t *e) {
+    int index = (int)(intptr_t)lv_event_get_user_data(e);
+    
+    // Find next configured machine
+    int next_index = -1;
+    for (int i = index + 1; i < MAX_MACHINES; i++) {
+        if (machines[i].is_configured) {
+            next_index = i;
+            break;
+        }
+    }
+    
+    if (next_index >= 0) {
+        Serial.printf("UIMachineSelect: Move down machine %d\n", index);
+        swapMachines(index, next_index);
     }
 }
 
@@ -170,18 +291,42 @@ void UIMachineSelect::onEditMachine(lv_event_t *e) {
 }
 
 void UIMachineSelect::onAddMachine(lv_event_t *e) {
-    int index = (int)(intptr_t)lv_event_get_user_data(e);
-    Serial.printf("UIMachineSelect: Add machine to slot %d\n", index);
-    showConfigDialog(index);
+    // Find first available unconfigured slot
+    int index = -1;
+    for (int i = 0; i < MAX_MACHINES; i++) {
+        if (!machines[i].is_configured) {
+            index = i;
+            break;
+        }
+    }
+    
+    if (index >= 0) {
+        Serial.printf("UIMachineSelect: Add machine to slot %d\n", index);
+        showConfigDialog(index);
+    } else {
+        Serial.println("UIMachineSelect: No available slots");
+    }
 }
 
 void UIMachineSelect::onDeleteMachine(lv_event_t *e) {
     int index = (int)(intptr_t)lv_event_get_user_data(e);
-    Serial.printf("UIMachineSelect: Delete machine %d\n", index);
+    Serial.printf("UIMachineSelect: Delete machine %d - showing confirmation\n", index);
+    showDeleteConfirmDialog(index);
+}
+
+void UIMachineSelect::onDeleteConfirm(lv_event_t *e) {
+    Serial.printf("UIMachineSelect: Delete confirmed for machine %d\n", deleting_index);
     
-    MachineConfigManager::deleteMachine(index);
+    MachineConfigManager::deleteMachine(deleting_index);
     MachineConfigManager::loadMachines(machines);
+    
+    hideDeleteConfirmDialog();
     refreshMachineList();
+}
+
+void UIMachineSelect::onDeleteCancel(lv_event_t *e) {
+    Serial.println("UIMachineSelect: Delete cancelled");
+    hideDeleteConfirmDialog();
 }
 
 void UIMachineSelect::onConfigSave(lv_event_t *e) {
@@ -266,6 +411,10 @@ void UIMachineSelect::showConfigDialog(int index) {
     lv_obj_set_flex_align(dialog_content, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
     lv_obj_set_style_pad_all(dialog_content, 20, 0);
     lv_obj_set_style_pad_gap(dialog_content, 10, 0);
+    
+    // Optimize scroll performance - disable animations for smoother scrolling
+    lv_obj_set_style_anim_time(dialog_content, 0, LV_PART_SCROLLBAR);
+    lv_obj_set_scroll_snap_y(dialog_content, LV_SCROLL_SNAP_NONE);
     
     // Title
     lv_obj_t *dlg_title = lv_label_create(dialog_content);
@@ -446,6 +595,89 @@ void UIMachineSelect::hideConfigDialog() {
         dialog_content = nullptr;
     }
     editing_index = -1;
+}
+
+void UIMachineSelect::showDeleteConfirmDialog(int index) {
+    deleting_index = index;
+    
+    // Create modal background
+    delete_dialog = lv_obj_create(lv_scr_act());
+    lv_obj_set_size(delete_dialog, LV_PCT(100), LV_PCT(100));
+    lv_obj_set_style_bg_color(delete_dialog, lv_color_make(0, 0, 0), 0);
+    lv_obj_set_style_bg_opa(delete_dialog, LV_OPA_70, 0);
+    lv_obj_set_style_border_width(delete_dialog, 0, 0);
+    lv_obj_clear_flag(delete_dialog, LV_OBJ_FLAG_SCROLLABLE);
+    
+    // Dialog content box
+    lv_obj_t *content = lv_obj_create(delete_dialog);
+    lv_obj_set_size(content, 500, 200);
+    lv_obj_center(content);
+    lv_obj_set_style_bg_color(content, UITheme::BG_MEDIUM, 0);
+    lv_obj_set_style_border_color(content, UITheme::STATE_ALARM, 0);
+    lv_obj_set_style_border_width(content, 3, 0);
+    lv_obj_set_flex_flow(content, LV_FLEX_FLOW_COLUMN);
+    lv_obj_set_flex_align(content, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_style_pad_all(content, 20, 0);
+    lv_obj_set_style_pad_gap(content, 15, 0);
+    lv_obj_clear_flag(content, LV_OBJ_FLAG_SCROLLABLE);
+    
+    // Warning icon and title
+    lv_obj_t *title = lv_label_create(content);
+    lv_label_set_text_fmt(title, "%s Delete Machine?", LV_SYMBOL_WARNING);
+    lv_obj_set_style_text_font(title, &lv_font_montserrat_22, 0);
+    lv_obj_set_style_text_color(title, UITheme::STATE_ALARM, 0);
+    
+    // Machine name
+    lv_obj_t *name_label = lv_label_create(content);
+    lv_label_set_text_fmt(name_label, "\"%s\"", machines[index].name);
+    lv_obj_set_style_text_font(name_label, &lv_font_montserrat_20, 0);
+    lv_obj_set_style_text_color(name_label, UITheme::TEXT_LIGHT, 0);
+    
+    // Message
+    lv_obj_t *msg_label = lv_label_create(content);
+    lv_label_set_text(msg_label, "This action cannot be undone.");
+    lv_obj_set_style_text_font(msg_label, &lv_font_montserrat_16, 0);
+    lv_obj_set_style_text_color(msg_label, UITheme::UI_WARNING, 0);
+    
+    // Button container
+    lv_obj_t *btn_container = lv_obj_create(content);
+    lv_obj_set_size(btn_container, LV_PCT(100), LV_SIZE_CONTENT);
+    lv_obj_set_flex_flow(btn_container, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(btn_container, LV_FLEX_ALIGN_SPACE_EVENLY, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_style_bg_opa(btn_container, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_border_width(btn_container, 0, 0);
+    lv_obj_set_style_pad_all(btn_container, 0, 0);
+    lv_obj_clear_flag(btn_container, LV_OBJ_FLAG_SCROLLABLE);
+    
+    // Cancel button
+    lv_obj_t *cancel_btn = lv_btn_create(btn_container);
+    lv_obj_set_size(cancel_btn, 180, 50);
+    lv_obj_set_style_bg_color(cancel_btn, UITheme::BG_BUTTON, 0);
+    lv_obj_add_event_cb(cancel_btn, onDeleteCancel, LV_EVENT_CLICKED, nullptr);
+    
+    lv_obj_t *cancel_label = lv_label_create(cancel_btn);
+    lv_label_set_text(cancel_label, "Cancel");
+    lv_obj_set_style_text_font(cancel_label, &lv_font_montserrat_18, 0);
+    lv_obj_center(cancel_label);
+    
+    // Delete button
+    lv_obj_t *delete_btn = lv_btn_create(btn_container);
+    lv_obj_set_size(delete_btn, 180, 50);
+    lv_obj_set_style_bg_color(delete_btn, UITheme::STATE_ALARM, 0);
+    lv_obj_add_event_cb(delete_btn, onDeleteConfirm, LV_EVENT_CLICKED, nullptr);
+    
+    lv_obj_t *delete_label = lv_label_create(delete_btn);
+    lv_label_set_text(delete_label, LV_SYMBOL_TRASH " Delete");
+    lv_obj_set_style_text_font(delete_label, &lv_font_montserrat_18, 0);
+    lv_obj_center(delete_label);
+}
+
+void UIMachineSelect::hideDeleteConfirmDialog() {
+    if (delete_dialog) {
+        lv_obj_del(delete_dialog);
+        delete_dialog = nullptr;
+    }
+    deleting_index = -1;
 }
 
 void UIMachineSelect::onTextareaFocused(lv_event_t *e) {

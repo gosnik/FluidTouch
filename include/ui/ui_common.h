@@ -17,12 +17,20 @@ public:
     static void updateWorkPosition(float x, float y, float z);
     static void updateMachineState(const char *state);
     
+    // Dialog functions
+    static void showMachineSelectConfirmDialog();
+    static void hideMachineSelectConfirmDialog();
+    
     // Getters for shared objects
     static lv_obj_t* getStatusBar() { return status_bar; }
+    static lv_display_t* getDisplay() { return display; }
     
 private:
     static lv_display_t *display;
     static lv_obj_t *status_bar;
+    static lv_obj_t *status_bar_left_area;   // Clickable area for Status tab
+    static lv_obj_t *status_bar_right_area;  // Clickable area for machine selection
+    static lv_obj_t *machine_select_dialog;  // Confirmation dialog
     static lv_obj_t *lbl_modal_states;
     static lv_obj_t *lbl_status;
     

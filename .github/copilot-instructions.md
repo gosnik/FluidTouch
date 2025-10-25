@@ -42,6 +42,7 @@ The codebase follows a **strict modular pattern** with clear separation:
 - **Tick handling**: Manual `lv_tick_inc()` + `lv_timer_handler()` in main loop every 5ms
 - **No scrolling**: Most tabs disable `LV_OBJ_FLAG_SCROLLABLE` for fixed layouts
 - **Font**: Montserrat 18pt for tab buttons and primary UI text
+- **Event handling**: Use `LV_EVENT_CLICKED` (standard press+release) for all UI interactions - more forgiving of natural finger movement than `LV_EVENT_SHORT_CLICKED`
 
 ### Critical Integration Points
 1. **Main loop sequence** (`main.cpp`):
@@ -52,16 +53,23 @@ The codebase follows a **strict modular pattern** with clear separation:
    ```
 
 2. **Machine Selection**:
-   - `UIMachineSelect` displays 4 machines: V1E LowRider 3, Pen Plotter, Yeagbot (wireless with WiFi symbol), Test Wired Machine (wired with USB symbol)
+   - `UIMachineSelect` supports up to 5 machines with reordering (up/down buttons), edit, delete, and add functionality
+   - Machines stored in Preferences as array under "machines" key (MachineConfig struct)
    - Selected machine stored in Preferences under "machine" key
    - Machine name displayed in status bar with connection symbol
+   - **Layout**: 450px machine buttons + 60px up/down buttons + 70px edit/delete buttons
+   - **Add button**: Single button in upper right corner (green, 120x40px)
+   - **Machine switching**: Clicking right side of status bar shows confirmation dialog, then restarts ESP32 to switch machines cleanly
 
-3. **Status Bar Layout** (60px height, 18pt font, clickable to switch to Status tab):
-   - **Left**: Machine state (IDLE/RUN/ALARM) - 32pt uppercase, vertically centered, color-coded
+3. **Status Bar Layout** (60px height, 18pt font, split into clickable areas):
+   - **Left area** (550px): Machine state (IDLE/RUN/ALARM) - 32pt uppercase, vertically centered, color-coded
+     - Clicking navigates to Status tab (LV_EVENT_CLICKED)
    - **Center**: Work Position (top line, orange label) and Machine Position (bottom line, cyan label)
      - Separate labels for each axis (X/Y/Z) with axis-specific colors (X=cyan, Y=green, Z=magenta)
      - Format: "WPos:" then "X:0000.000 Y:0000.000 Z:0000.000" (4 digits before decimal)
-   - **Right**: Machine name with symbol (top line, blue) and WiFi network (bottom line, cyan)
+   - **Right area** (240px): Machine name with symbol (top line, blue) and WiFi network (bottom line, cyan)
+     - Clicking shows confirmation dialog "This will restart the controller. Continue?" with "⚡ Restart" button
+     - Confirmation triggers ESP32 restart to cleanly reload with new machine selection (LV_EVENT_CLICKED)
 
 4. **Tab creation delegation**:
    - `UITabs` creates tabview structure, delegates content to `UITab*::create()`
@@ -73,29 +81,29 @@ The codebase follows a **strict modular pattern** with clear separation:
 ## Development Workflows
 
 ### Building & Flashing
-**CRITICAL**: On Windows, the `pio` shortcut often doesn't work. Use the full PlatformIO path:
+**CRITICAL**: On Windows, the `pio` shortcut often doesn't work. Use the full PlatformIO path with proper PowerShell quoting:
 
 ```powershell
-# Windows: Full path to platformio.exe (replace USERNAME with your Windows username)
-$env:USERPROFILE\.platformio\penv\Scripts\platformio.exe run
+# Windows: Full path to platformio.exe - MUST use quotes and call operator (&)
+& "$env:USERPROFILE\.platformio\penv\Scripts\platformio.exe" run
 
-# Or use the explicit path:
-C:\Users\USERNAME\.platformio\penv\Scripts\platformio.exe run
+# Or use the explicit path with quotes:
+& "C:\Users\USERNAME\.platformio\penv\Scripts\platformio.exe" run
 
 # Build project
-platformio.exe run
+& "$env:USERPROFILE\.platformio\penv\Scripts\platformio.exe" run
 
 # Upload to ESP32-S3 (via USB)
-platformio.exe run --target upload
+& "$env:USERPROFILE\.platformio\penv\Scripts\platformio.exe" run --target upload
 
 # Serial monitor (115200 baud)
-platformio.exe device monitor -b 115200
+& "$env:USERPROFILE\.platformio\penv\Scripts\platformio.exe" device monitor -b 115200
 
 # Clean build
-platformio.exe run -t clean
+& "$env:USERPROFILE\.platformio\penv\Scripts\platformio.exe" run -t clean
 ```
 
-**Windows Note**: If `platformio.exe` command fails, use the full path: `$env:USERPROFILE\.platformio\penv\Scripts\platformio.exe` instead of just `platformio.exe`
+**Windows PowerShell Note**: The call operator `&` and quotes around the path are REQUIRED because the path contains environment variables and backslashes. Without quotes, PowerShell will throw a parser error. If `platformio.exe` shortcut works in your PATH, you can use it directly without the full path.
 
 ### Screenshot Debugging
 - WiFi credentials stored in ESP32 Preferences (`PREFS_NAMESPACE "fluidtouch"`)
@@ -171,8 +179,8 @@ All other hardcoded values live in `include/config.h`:
 - **`src/display_driver.cpp`**: LovyanGFX RGB parallel setup (lines 11-63 are pin mappings)
 - **`include/config.h`**: Central configuration for ALL hardcoded values
 - **`src/screenshot_server.cpp`**: WiFi setup, BMP conversion from RGB565 frame buffer
-- **`src/ui/ui_common.cpp`**: Status bar implementation with separate axis labels for independent styling
-- **`src/ui/ui_machine_select.cpp`**: Machine selection screen with 4 machines and Preferences storage
+- **`src/ui/ui_common.cpp`**: Status bar implementation with separate axis labels and clickable left/right areas for navigation and machine switching
+- **`src/ui/ui_machine_select.cpp`**: Machine selection screen with reordering, edit, delete, and add functionality (up to 5 machines stored in Preferences)
 - **`src/ui/tabs/ui_tab_status.cpp`**: Status tab with position displays, modal states (8 fields: WCS, PLANE, DIST, UNITS, MOTION, SPINDLE, COOLANT, TOOL), and message field
 
 ### Status Tab Layout (ui_tab_status.cpp)
@@ -193,6 +201,8 @@ All other hardcoded values live in `include/config.h`:
 5. **Display buffer size**: Changing `BUFFER_LINES` in `config.h` affects memory usage and performance
 6. **RGB565 byte order**: LovyanGFX returns byte-swapped RGB565 - swap before decoding (see `screenshot_server.cpp:19-29`)
 7. **Color usage**: NEVER use `lv_color_hex()` directly - always use `UITheme::*` constants for maintainability and consistency
+8. **Event types**: Always use `LV_EVENT_CLICKED` for touch interactions - provides better UX than `LV_EVENT_SHORT_CLICKED` by being more tolerant of slight finger movement
+9. **Machine switching**: Use `ESP.restart()` to switch between machines - cleanly avoids LVGL memory fragmentation issues that can occur when rebuilding entire UI trees
 
 ## External Dependencies
 
