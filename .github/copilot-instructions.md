@@ -28,8 +28,9 @@ The codebase follows a **strict modular pattern** with clear separation:
    - `UIMachineSelect` - Machine selection screen (appears after splash, before main UI)
    - `UISplash` - Startup splash screen (2.5s duration)
    - `UITabs` - Main tabview orchestrator, delegates to tab modules
-   - `UITab*` - Individual tab modules (`UITabStatus`, `UITabControl`, etc.)
+   - `UITab*` - Individual tab modules (`UITabStatus`, `UITabControl`, `UITabTerminal`, etc.)
    - **Nested tabs**: `UITabControl` contains sub-modules in `tabs/control/` (Actions, Jog, Joystick, Probe, Overrides)
+   - **Terminal tab**: `UITabTerminal` - Raw WebSocket message display (currently disabled via commented callback)
 
 3. **Module Naming Convention**:
    - Class files: `ui_tab_control.h/cpp` → class `UITabControl`
@@ -57,7 +58,7 @@ The codebase follows a **strict modular pattern** with clear separation:
 
 2. **FluidNC Communication**:
    - WebSocket client connects to FluidNC using machine configuration (IP/hostname + port, default 81)
-   - Uses **automatic reporting** (`$Report/Interval=250`) instead of polling - FluidNC pushes updates every 250ms
+   - Uses **automatic reporting** (`$Report/Interval=250\n`) - FluidNC pushes updates every 250ms, no polling needed
    - Parses three message types:
      - Status reports (binary frames): `<Idle|MPos:x,y,z|FS:feed,spindle|Ov:feed,rapid,spindle|WCO:x,y,z|SD:percent,filename>`
      - GCode parser state: `[GC:G0 G54 G17 G21 G90 G94 M5 M9 T0 F0 S0]`
@@ -209,7 +210,8 @@ All other hardcoded values live in `include/config.h`:
 - **`src/display_driver.cpp`**: LovyanGFX RGB parallel setup (lines 11-63 are pin mappings)
 - **`include/config.h`**: Central configuration for ALL hardcoded values (BUFFER_LINES=480 for full-screen buffering)
 - **`src/screenshot_server.cpp`**: WiFi setup, BMP conversion from RGB565 frame buffer
-- **`src/fluidnc_client.cpp`**: FluidNC WebSocket client with automatic reporting, status parsing, WCO handling, F/S parsing from both status reports and GCode state, and SD card file progress tracking
+- **`src/fluidnc_client.cpp`**: FluidNC WebSocket client with automatic reporting (no polling), status parsing, WCO handling, F/S parsing from both status reports and GCode state, and SD card file progress tracking. Terminal callback currently disabled.
+- **`src/ui/tabs/ui_tab_terminal.cpp`**: Terminal tab with WebSocket message display, auto-scroll toggle, 8KB buffer with batched UI updates (currently disabled via commented callback in FluidNCClient)
 - **`src/ui/ui_common.cpp`**: Status bar implementation with separate axis labels, delta checking for smooth updates, and clickable left/right areas for navigation and machine switching
 - **`src/ui/ui_machine_select.cpp`**: Machine selection screen with reordering, edit, delete, and add functionality (up to 5 machines stored in Preferences)
 - **`src/ui/tabs/ui_tab_status.cpp`**: Status tab with delta-checked position displays, feed/spindle rates with overrides, 8 modal state fields, message display, and SD card file progress (filename, progress bar, elapsed/estimated time)
@@ -243,6 +245,8 @@ All other hardcoded values live in `include/config.h`:
 11. **Machine switching**: Use `ESP.restart()` to switch between machines - cleanly avoids LVGL memory fragmentation issues that can occur when rebuilding entire UI trees
 12. **WCO caching**: Work position requires cached WCO values since FluidNC only sends WCO periodically - calculate WPos = MPos - WCO on every status update
 13. **SD file progress**: FluidNC sends `SD:percent,filename` in status reports - track start time on first detection, calculate elapsed/estimated times based on percentage and elapsed duration
+14. **No polling needed**: FluidNC automatic reporting (`$Report/Interval=250\n`) handles all status updates - no fallback polling required
+15. **Terminal callback**: Terminal updates can be enabled/disabled by commenting/uncommenting the `terminalCallback()` call in `fluidnc_client.cpp` WebSocket event handler
 
 ## External Dependencies
 

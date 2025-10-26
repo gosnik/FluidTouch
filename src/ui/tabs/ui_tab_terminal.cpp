@@ -1,11 +1,18 @@
 #include "ui/tabs/ui_tab_terminal.h"
 #include "ui/ui_theme.h"
+#include "fluidnc_client.h"
 #include "config.h"
 
 // Static member initialization
 lv_obj_t *UITabTerminal::terminal_text = nullptr;
+lv_obj_t *UITabTerminal::terminal_cont = nullptr;
 lv_obj_t *UITabTerminal::input_field = nullptr;
 lv_obj_t *UITabTerminal::keyboard = nullptr;
+lv_obj_t *UITabTerminal::auto_scroll_switch = nullptr;
+String UITabTerminal::terminal_buffer = "";
+bool UITabTerminal::auto_scroll_enabled = true;
+bool UITabTerminal::buffer_dirty = false;
+uint32_t UITabTerminal::last_update_ms = 0;
 
 void UITabTerminal::create(lv_obj_t *tab) {
     // Set dark background
@@ -21,7 +28,7 @@ void UITabTerminal::create(lv_obj_t *tab) {
 
     // Input text area
     input_field = lv_textarea_create(tab);
-    lv_obj_set_size(input_field, SCREEN_WIDTH - (margin * 4) - button_width, input_height);
+    lv_obj_set_size(input_field, SCREEN_WIDTH - (margin * 5) - button_width - 120, input_height);
     lv_obj_set_pos(input_field, 0, 0);
     lv_textarea_set_one_line(input_field, true);
     lv_textarea_set_placeholder_text(input_field, "Enter command...");
@@ -29,6 +36,18 @@ void UITabTerminal::create(lv_obj_t *tab) {
     lv_obj_set_style_bg_color(input_field, UITheme::BG_BUTTON, LV_PART_MAIN);
     lv_obj_set_style_text_color(input_field, lv_color_white(), LV_PART_MAIN);
     lv_obj_add_event_cb(input_field, input_field_event_cb, LV_EVENT_CLICKED, nullptr);
+    
+    // Auto-scroll toggle (switch + label)
+    lv_obj_t *auto_scroll_label = lv_label_create(tab);
+    lv_label_set_text(auto_scroll_label, "Auto");
+    lv_obj_set_style_text_font(auto_scroll_label, &lv_font_montserrat_14, 0);
+    lv_obj_align(auto_scroll_label, LV_ALIGN_TOP_LEFT, SCREEN_WIDTH - button_width - 125, 5);
+    
+    auto_scroll_switch = lv_switch_create(tab);
+    lv_obj_set_size(auto_scroll_switch, 50, 25);
+    lv_obj_align(auto_scroll_switch, LV_ALIGN_TOP_LEFT, SCREEN_WIDTH - button_width - 125, 20);
+    lv_obj_add_state(auto_scroll_switch, LV_STATE_CHECKED);  // Start enabled
+    lv_obj_add_event_cb(auto_scroll_switch, auto_scroll_event_cb, LV_EVENT_VALUE_CHANGED, nullptr);
     
     // Send button
     lv_obj_t *send_btn = lv_button_create(tab);
@@ -43,7 +62,7 @@ void UITabTerminal::create(lv_obj_t *tab) {
     lv_obj_center(send_label);
     
     // Terminal output container
-    lv_obj_t *terminal_cont = lv_obj_create(tab);
+    terminal_cont = lv_obj_create(tab);
     lv_obj_set_size(terminal_cont, SCREEN_WIDTH - (margin * 4), terminal_height - (margin * 2));
     lv_obj_set_pos(terminal_cont, 3, input_height + (margin * 2));
     lv_obj_set_style_bg_color(terminal_cont, UITheme::BG_BLACK, LV_PART_MAIN);
@@ -54,55 +73,14 @@ void UITabTerminal::create(lv_obj_t *tab) {
     lv_obj_set_scroll_dir(terminal_cont, LV_DIR_VER);
     
     terminal_text = lv_label_create(terminal_cont);
-    lv_label_set_text(terminal_text, 
-        "[MSG:INFO: FluidNC v3.9.4 https://github.com/bdring/FluidNC.git]\n"
-        "[MSG:INFO: Compiled with ESP32 SDK:v4.4.7-dirty]\n"
-        "[MSG:INFO: Local filesystem type is spiffs]\n"
-        "[MSG:INFO: Configuration file:config.yaml]\n"
-        "[MSG:INFO: Machine WallPlotter]\n"
-        "[MSG:INFO: Board Jackpot TMC2209]\n"
-        "[MSG:INFO: UART1 Tx:gpio.0 Rx:gpio.4 RTS:NO_PIN Baud:115200]\n"
-        "[MSG:INFO: I2SO BCK:gpio.22 WS:gpio.17 DATA:gpio.21Min Pulse:2us]\n"
-        "[MSG:INFO: SPI SCK:gpio.18 MOSI:gpio.23 MISO:gpio.19]\n"
-        "[MSG:INFO: SD Card cs_pin:gpio.5 detect:NO_PIN freq:20000000]\n"
-        "[MSG:INFO: Stepping:I2S_STATIC Pulse:4us Dsbl Delay:0us Dir Delay:1us Idle Delay:255ms]\n"
-        "[MSG:INFO: User Digital Output: 0 on Pin:gpio.26]\n"
-        "[MSG:INFO: Axis count 3]\n"
-        "[MSG:INFO: Axis X (0.000,640.000)]\n"
-        "[MSG:INFO:   Motor0]\n"
-        "[MSG:INFO:     tmc_2209 UART1 Addr:0 CS:NO_PIN Step:I2SO.2 Dir:I2SO.1 Disable:I2SO.0 R:0.110]\n"
-        "[MSG:INFO:  X Neg Limit gpio.25]\n"
-        "[MSG:INFO:   Motor1]\n"
-        "[MSG:INFO:     tmc_2209 UART1 Addr:3 CS:I2SO.14 Step:I2SO.13 Dir:I2SO.12 Disable:I2SO.15 R:0.110]\n"
-        "[MSG:INFO: Axis Y (0.000,625.000)]\n"
-        "[MSG:INFO:   Motor0]\n"
-        "[MSG:INFO:     tmc_2209 UART1 Addr:1 CS:NO_PIN Step:I2SO.5 Dir:I2SO.4 Disable:I2SO.7 R:0.110]\n"
-        "[MSG:INFO:  Y Neg Limit gpio.33]\n"
-        "[MSG:INFO: Axis Z (-16.000,0.000)]\n"
-        "[MSG:INFO:   Motor0]\n"
-        "[MSG:INFO:     tmc_2209 UART1 Addr:2 CS:NO_PIN Step:I2SO.10 Dir:I2SO.9 Disable:I2SO.8 R:0.110]\n"
-        "[MSG:INFO:  Z Pos Limit gpio.32]\n"
-        "[MSG:INFO: X Axis driver test passed]\n"
-        "[MSG:INFO: X2 Axis driver test passed]\n"
-        "[MSG:INFO: Y Axis driver test passed]\n"
-        "[MSG:INFO: Z Axis driver test passed]\n"
-        "[MSG:INFO: Kinematic system: Cartesian]\n"
-        "[MSG:INFO: Connecting to STA SSID:TEST]\n"
-        "[MSG:INFO: Connecting.]\n"
-        "[MSG:INFO: Connecting..]\n"
-        "[MSG:INFO: Connected - IP is 192.168.0.123]\n"
-        "[MSG:INFO: WiFi on]\n"
-        "[MSG:INFO: Start mDNS with hostname:http://fluidnc.local/]\n"
-        "[MSG:INFO: HTTP started on port 80]\n"
-        "[MSG:INFO: Telnet started on port 23]\n"
-        "[MSG:INFO: BESC Spindle Out:gpio.27 Min:640us Max:1150us Freq:50Hz Full Period count:1048575 with m6_macro]\n"
-        "[MSG:INFO: Probe gpio.36:low]\n"
-        "ok\n"
-        "<Idle|MPos:0.000,0.000,0.000|FS:0,0>");
+    lv_label_set_text(terminal_text, "FluidTouch Terminal - waiting for messages...");
     lv_obj_set_style_text_font(terminal_text, &lv_font_montserrat_14, 0);
     lv_obj_set_style_text_color(terminal_text, UITheme::UI_SUCCESS, 0);
     lv_label_set_long_mode(terminal_text, LV_LABEL_LONG_WRAP);
     lv_obj_set_width(terminal_text, SCREEN_WIDTH - (margin * 4) - 10);
+    
+    // Initialize buffer
+    terminal_buffer = "FluidTouch Terminal - waiting for messages...\n";
 }
 
 // Send button event handler
@@ -144,32 +122,105 @@ void UITabTerminal::keyboard_event_cb(lv_event_t *e) {
     }
 }
 
+// Auto-scroll event handler
+void UITabTerminal::auto_scroll_event_cb(lv_event_t *e) {
+    lv_obj_t *sw = (lv_obj_t *)lv_event_get_target(e);
+    auto_scroll_enabled = lv_obj_has_state(sw, LV_STATE_CHECKED);
+    Serial.printf("[Terminal] Auto-scroll %s\n", auto_scroll_enabled ? "enabled" : "disabled");
+}
+
 // Send command function
 void UITabTerminal::send_command() {
     const char *cmd = lv_textarea_get_text(input_field);
     
     if (cmd != nullptr && strlen(cmd) > 0) {
         // Log to serial for debugging
-        Serial.print("Terminal command: ");
+        Serial.print("[Terminal] Sending command: ");
         Serial.println(cmd);
         
-        // TODO: Send command to FluidNC via serial/WiFi
-        // For now, just echo it to the terminal display
-        String current_text = lv_label_get_text(terminal_text);
-        current_text += "\n> ";
-        current_text += cmd;
-        current_text += "\nok";  // Simulate response
-        lv_label_set_text(terminal_text, current_text.c_str());
+        // Send command to FluidNC with newline
+        String cmd_with_newline = String(cmd) + "\n";
+        FluidNCClient::sendCommand(cmd_with_newline.c_str());
+        
+        // Echo command to terminal
+        terminal_buffer += "> ";
+        terminal_buffer += cmd;
+        terminal_buffer += "\n";
+        trimBuffer();
+        
+        // Update display immediately for user commands
+        updateDisplay();
+        last_update_ms = millis();  // Reset timer
         
         // Clear input field
         lv_textarea_set_text(input_field, "");
-        
-        // Scroll to bottom of terminal
-        lv_obj_scroll_to_y(lv_obj_get_parent(terminal_text), LV_COORD_MAX, LV_ANIM_ON);
     }
     
     // Hide keyboard after sending
     if (keyboard != nullptr) {
         lv_obj_add_flag(keyboard, LV_OBJ_FLAG_HIDDEN);
+    }
+}
+
+void UITabTerminal::appendMessage(const char *message) {
+    if (message == nullptr || strlen(message) == 0) return;
+    
+    // Append message to buffer
+    terminal_buffer += message;
+    if (message[strlen(message) - 1] != '\n') {
+        terminal_buffer += "\n";
+    }
+    
+    // Trim buffer if needed
+    trimBuffer();
+    
+    // Mark buffer as dirty - UI will be updated in update() method
+    buffer_dirty = true;
+}
+
+void UITabTerminal::trimBuffer() {
+    // If buffer exceeds max size, remove lines from the beginning
+    if (terminal_buffer.length() > MAX_BUFFER_SIZE) {
+        // Find position to start trimming (keep last 75% of buffer)
+        size_t trim_to = MAX_BUFFER_SIZE * 3 / 4;
+        
+        // Find the first newline after the trim point to avoid cutting mid-line
+        int newline_pos = terminal_buffer.indexOf('\n', terminal_buffer.length() - trim_to);
+        
+        if (newline_pos > 0) {
+            terminal_buffer = terminal_buffer.substring(newline_pos + 1);
+        } else {
+            // No newline found, just trim to size
+            terminal_buffer = terminal_buffer.substring(terminal_buffer.length() - trim_to);
+        }
+        
+        Serial.printf("[Terminal] Buffer trimmed to %d bytes\n", terminal_buffer.length());
+    }
+}
+
+void UITabTerminal::update() {
+    // Check if enough time has passed since last update
+    uint32_t now = millis();
+    if (now - last_update_ms < UPDATE_INTERVAL_MS) {
+        return;
+    }
+    
+    // Only update if buffer has changed
+    if (buffer_dirty) {
+        updateDisplay();
+        buffer_dirty = false;
+        last_update_ms = now;
+    }
+}
+
+void UITabTerminal::updateDisplay() {
+    // Update display if terminal exists
+    if (terminal_text) {
+        lv_label_set_text(terminal_text, terminal_buffer.c_str());
+        
+        // Auto-scroll to bottom only if enabled
+        if (terminal_cont && auto_scroll_enabled) {
+            lv_obj_scroll_to_y(terminal_cont, LV_COORD_MAX, LV_ANIM_OFF);
+        }
     }
 }

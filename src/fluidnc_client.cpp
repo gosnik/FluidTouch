@@ -7,6 +7,8 @@ FluidNCStatus FluidNCClient::currentStatus;
 MachineConfig FluidNCClient::currentConfig;
 uint32_t FluidNCClient::lastStatusRequestMs = 0;
 bool FluidNCClient::initialized = false;
+MessageCallback FluidNCClient::messageCallback = nullptr;
+MessageCallback FluidNCClient::terminalCallback = nullptr;
 
 void FluidNCClient::init() {
     if (initialized) return;
@@ -61,7 +63,8 @@ void FluidNCClient::loop() {
     // Handle WebSocket events
     webSocket.loop();
     
-    // No polling needed - FluidNC sends automatic reports when $Report/Interval is set
+    // Automatic reporting is enabled via $Report/Interval=250\n command
+    // No need for polling - FluidNC will send status updates automatically
 }
 
 const FluidNCStatus& FluidNCClient::getStatus() {
@@ -85,6 +88,26 @@ void FluidNCClient::requestStatusReport() {
     webSocket.sendTXT("?");
 }
 
+void FluidNCClient::setMessageCallback(MessageCallback callback) {
+    messageCallback = callback;
+    Serial.println("[FluidNC] Message callback registered");
+}
+
+void FluidNCClient::clearMessageCallback() {
+    messageCallback = nullptr;
+    Serial.println("[FluidNC] Message callback cleared");
+}
+
+void FluidNCClient::setTerminalCallback(MessageCallback callback) {
+    terminalCallback = callback;
+    Serial.println("[FluidNC] Terminal callback registered");
+}
+
+void FluidNCClient::clearTerminalCallback() {
+    terminalCallback = nullptr;
+    Serial.println("[FluidNC] Terminal callback cleared");
+}
+
 void FluidNCClient::onWebSocketEvent(WStype_t type, uint8_t* payload, size_t length) {
     switch(type) {
         case WStype_DISCONNECTED:
@@ -99,12 +122,15 @@ void FluidNCClient::onWebSocketEvent(WStype_t type, uint8_t* payload, size_t len
             currentStatus.state = STATE_IDLE;
             currentStatus.last_update_ms = millis();
             
-            // Try to enable automatic status reporting at 250ms intervals
-            Serial.println("[FluidNC] Attempting to enable automatic reporting (250ms interval)");
+            // Enable automatic status reporting at 250ms intervals
+            Serial.println("[FluidNC] Enabling automatic reporting (250ms)");
             webSocket.sendTXT("$Report/Interval=250\n");
             
+            // Small delay to let the command process
+            delay(50);
+            
             // Request initial status with realtime command
-            Serial.println("[FluidNC] Requesting initial status report");
+            Serial.println("[FluidNC] Requesting initial status");
             webSocket.sendTXT("?");
             
             // Request initial GCode parser state
@@ -116,8 +142,23 @@ void FluidNCClient::onWebSocketEvent(WStype_t type, uint8_t* payload, size_t len
             {
                 // FluidNC sends status reports as binary frames
                 char* message = (char*)payload;
-                Serial.printf("[FluidNC] Received (%s): %s\n", 
-                             type == WStype_TEXT ? "TEXT" : "BIN", message);
+                
+                // Only log non-status messages to reduce serial spam
+                if (message[0] != '<') {
+                    Serial.printf("[FluidNC] Received (%s): %s\n", 
+                                 type == WStype_TEXT ? "TEXT" : "BIN", message);
+                }
+                
+                // Send all messages to terminal callback if registered
+                // DISABLED: Terminal updates temporarily disabled
+                // if (terminalCallback) {
+                //     terminalCallback(message);
+                // }
+                
+                // Call message callback if registered (for file lists, etc.)
+                if (messageCallback) {
+                    messageCallback(message);
+                }
                 
                 // Parse different message types
                 if (message[0] == '<') {
@@ -155,7 +196,13 @@ void FluidNCClient::parseStatusReport(const char* message) {
     // Example: <Idle|MPos:0.000,0.000,0.000|FS:0,0|Ov:100,100,100>
     // Or with WCO: <Idle|MPos:0.000,0.000,0.000|FS:0,0|WCO:0.000,0.000,0.000>
     
-    Serial.printf("[FluidNC] Raw Status: %s\n", message);
+    // Only log status every 5 seconds to reduce spam
+    static uint32_t lastStatusLog = 0;
+    uint32_t now = millis();
+    if (now - lastStatusLog >= 5000) {
+        Serial.printf("[FluidNC] Status update (5s): %s\n", message);
+        lastStatusLog = now;
+    }
     
     currentStatus.last_update_ms = millis();
     
@@ -221,6 +268,52 @@ void FluidNCClient::parseStatusReport(const char* message) {
         sscanf(ov + 3, "%f,%f,%f", &currentStatus.feed_override, &rapid_override, &currentStatus.spindle_override);
         Serial.printf("[FluidNC] Parsed Ov: feed=%.0f%%, spindle=%.0f%%\n", 
                       currentStatus.feed_override, currentStatus.spindle_override);
+    }
+    
+    // Parse SD card file progress (SD:percent,filename)
+    const char* sd = strstr(message, "SD:");
+    if (sd) {
+        // Extract percent and filename
+        float percent = 0;
+        char filename_buf[128] = {0};
+        
+        // Parse: SD:12.5,filename.gcode or SD:100.0,file.nc
+        const char* comma = strchr(sd + 3, ',');
+        if (comma) {
+            sscanf(sd + 3, "%f", &percent);
+            strncpy(filename_buf, comma + 1, sizeof(filename_buf) - 1);
+            
+            // Remove any trailing > or whitespace
+            char* end = strchr(filename_buf, '>');
+            if (end) *end = '\0';
+            end = strchr(filename_buf, '|');
+            if (end) *end = '\0';
+            
+            // Update status
+            currentStatus.is_sd_printing = true;
+            currentStatus.sd_percent = percent;
+            strncpy(currentStatus.sd_filename, filename_buf, sizeof(currentStatus.sd_filename) - 1);
+            currentStatus.sd_filename[sizeof(currentStatus.sd_filename) - 1] = '\0';
+            
+            // Track start time and calculate elapsed time
+            if (currentStatus.sd_start_time_ms == 0) {
+                currentStatus.sd_start_time_ms = millis();
+            }
+            currentStatus.sd_elapsed_ms = millis() - currentStatus.sd_start_time_ms;
+            
+            Serial.printf("[FluidNC] SD Progress: %.1f%% - %s (Elapsed: %lums)\n",
+                          percent, currentStatus.sd_filename, currentStatus.sd_elapsed_ms);
+        }
+    } else {
+        // No SD: field means not printing from SD
+        if (currentStatus.is_sd_printing) {
+            Serial.println("[FluidNC] SD file completed or stopped");
+        }
+        currentStatus.is_sd_printing = false;
+        currentStatus.sd_percent = 0;
+        currentStatus.sd_start_time_ms = 0;
+        currentStatus.sd_elapsed_ms = 0;
+        currentStatus.sd_filename[0] = '\0';
     }
     
     // Parse modal states (Pn:, WCO:, etc.)

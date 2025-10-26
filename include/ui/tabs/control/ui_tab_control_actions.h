@@ -22,8 +22,7 @@ private:
     static void onZeroAllClicked(lv_event_t *e);
     static void onQuickStopClicked(lv_event_t *e);
     
-    // State tracking
-    static bool is_paused;
+    // State tracking for pause/resume button
     static lv_obj_t *btn_pause;
     static lv_obj_t *lbl_pause;
 };

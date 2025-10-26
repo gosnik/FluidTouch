@@ -3,7 +3,6 @@
 #include "fluidnc_client.h"
 
 // Static member initialization
-bool UITabControlActions::is_paused = false;
 lv_obj_t *UITabControlActions::btn_pause = nullptr;
 lv_obj_t *UITabControlActions::lbl_pause = nullptr;
 
@@ -167,19 +166,26 @@ void UITabControlActions::onPauseResumeClicked(lv_event_t *e) {
         return;
     }
     
-    if (is_paused) {
-        // Resume (cycle start)
+    // Check actual machine state instead of local flag
+    FluidNCStatus status = FluidNCClient::getStatus();
+    
+    if (status.state == STATE_HOLD) {
+        // Machine is paused (HOLD state) - send Resume command
         Serial.println("[Actions] Sending Resume command (~)");
         FluidNCClient::sendCommand("~");
-        is_paused = false;
+        if (btn_pause) {
+            lv_obj_set_style_bg_color(btn_pause, UITheme::STATE_RUN, LV_PART_MAIN);
+        }
         if (lbl_pause) {
             lv_label_set_text(lbl_pause, "Pause");
         }
     } else {
-        // Pause (feed hold)
+        // Machine is running or idle - send Pause command
         Serial.println("[Actions] Sending Pause command (!)");
         FluidNCClient::sendCommand("!");
-        is_paused = true;
+        if (btn_pause) {
+            lv_obj_set_style_bg_color(btn_pause, UITheme::STATE_HOLD, LV_PART_MAIN);
+        }
         if (lbl_pause) {
             lv_label_set_text(lbl_pause, "Resume");
         }
@@ -206,7 +212,7 @@ void UITabControlActions::onSoftResetClicked(lv_event_t *e) {
     // Send Ctrl-X (0x18) as a single character
     char reset_cmd[2] = {0x18, 0x00};
     FluidNCClient::sendCommand(reset_cmd);
-    is_paused = false;  // Reset pause state after soft reset
+    // Button will sync with actual state from FluidNC status
     if (lbl_pause) {
         lv_label_set_text(lbl_pause, "Pause");
     }
@@ -305,7 +311,7 @@ void UITabControlActions::onQuickStopClicked(lv_event_t *e) {
     delay(100);
     char reset_cmd[2] = {0x18, 0x00};
     FluidNCClient::sendCommand(reset_cmd);
-    is_paused = false;  // Reset pause state
+    // Button will sync with actual state from FluidNC status
     if (lbl_pause) {
         lv_label_set_text(lbl_pause, "Pause");
     }

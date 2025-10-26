@@ -17,6 +17,12 @@ lv_obj_t *UICommon::machine_select_dialog = nullptr;
 lv_obj_t *UICommon::lbl_modal_states = nullptr;
 lv_obj_t *UICommon::lbl_status = nullptr;
 
+// Connection status labels
+lv_obj_t *UICommon::lbl_machine_symbol = nullptr;
+lv_obj_t *UICommon::lbl_machine_name = nullptr;
+lv_obj_t *UICommon::lbl_wifi_symbol = nullptr;
+lv_obj_t *UICommon::lbl_wifi_name = nullptr;
+
 // Work Position labels
 lv_obj_t *UICommon::lbl_wpos_label = nullptr;
 lv_obj_t *UICommon::lbl_wpos_x = nullptr;
@@ -210,31 +216,46 @@ void UICommon::createStatusBar() {
     // Right side Line 1: Machine name with symbol
     // Get selected machine from config manager
     MachineConfig selected_machine;
-    String machine_display;
     
     if (MachineConfigManager::getSelectedMachine(selected_machine)) {
         const char *symbol = (selected_machine.connection_type == CONN_WIRELESS) ? LV_SYMBOL_WIFI : LV_SYMBOL_USB;
-        machine_display = String(symbol) + " " + String(selected_machine.name);
+        
+        // Symbol (will be colored based on connection status)
+        lbl_machine_symbol = lv_label_create(status_bar);
+        lv_label_set_text(lbl_machine_symbol, symbol);
+        lv_obj_set_style_text_font(lbl_machine_symbol, &lv_font_montserrat_18, 0);
+        lv_obj_set_style_text_color(lbl_machine_symbol, UITheme::STATE_ALARM, 0);  // Start red
+        lv_obj_align(lbl_machine_symbol, LV_ALIGN_TOP_RIGHT, -5, 3);
+        
+        // Machine name
+        lbl_machine_name = lv_label_create(status_bar);
+        lv_label_set_text(lbl_machine_name, selected_machine.name);
+        lv_obj_set_style_text_font(lbl_machine_name, &lv_font_montserrat_18, 0);
+        lv_obj_set_style_text_color(lbl_machine_name, UITheme::ACCENT_PRIMARY, 0);
+        lv_obj_align_to(lbl_machine_name, lbl_machine_symbol, LV_ALIGN_OUT_LEFT_MID, -5, 0);
     } else {
-        machine_display = "No Machine";
+        lbl_modal_states = lv_label_create(status_bar);
+        lv_label_set_text(lbl_modal_states, "No Machine");
+        lv_obj_set_style_text_font(lbl_modal_states, &lv_font_montserrat_18, 0);
+        lv_obj_set_style_text_color(lbl_modal_states, UITheme::ACCENT_PRIMARY, 0);
+        lv_obj_align(lbl_modal_states, LV_ALIGN_TOP_RIGHT, -5, 3);
     }
-    
-    lbl_modal_states = lv_label_create(status_bar);
-    lv_label_set_text(lbl_modal_states, machine_display.c_str());
-    lv_obj_set_style_text_font(lbl_modal_states, &lv_font_montserrat_18, 0);
-    lv_obj_set_style_text_color(lbl_modal_states, UITheme::ACCENT_PRIMARY, 0);
-    lv_obj_align(lbl_modal_states, LV_ALIGN_TOP_RIGHT, -5, 3);
 
     // Right side Line 2: WiFi network
-    // Get WiFi network name
-    String wifi_ssid = WiFi.isConnected() ? WiFi.SSID() : "Not Connected";
-    String wifi_display = LV_SYMBOL_WIFI " " + wifi_ssid;
+    // WiFi symbol (will be colored based on connection status)
+    lbl_wifi_symbol = lv_label_create(status_bar);
+    lv_label_set_text(lbl_wifi_symbol, LV_SYMBOL_WIFI);
+    lv_obj_set_style_text_font(lbl_wifi_symbol, &lv_font_montserrat_18, 0);
+    lv_obj_set_style_text_color(lbl_wifi_symbol, WiFi.isConnected() ? UITheme::STATE_IDLE : UITheme::STATE_ALARM, 0);
+    lv_obj_align(lbl_wifi_symbol, LV_ALIGN_BOTTOM_RIGHT, -5, -3);
     
-    lv_obj_t *lbl_wifi = lv_label_create(status_bar);
-    lv_label_set_text(lbl_wifi, wifi_display.c_str());
-    lv_obj_set_style_text_font(lbl_wifi, &lv_font_montserrat_18, 0);
-    lv_obj_set_style_text_color(lbl_wifi, UITheme::UI_INFO, 0);
-    lv_obj_align(lbl_wifi, LV_ALIGN_BOTTOM_RIGHT, -5, -3);
+    // WiFi network name
+    String wifi_ssid = WiFi.isConnected() ? WiFi.SSID() : "Not Connected";
+    lbl_wifi_name = lv_label_create(status_bar);
+    lv_label_set_text(lbl_wifi_name, wifi_ssid.c_str());
+    lv_obj_set_style_text_font(lbl_wifi_name, &lv_font_montserrat_18, 0);
+    lv_obj_set_style_text_color(lbl_wifi_name, UITheme::UI_INFO, 0);
+    lv_obj_align_to(lbl_wifi_name, lbl_wifi_symbol, LV_ALIGN_OUT_LEFT_MID, -5, 0);
 }
 
 void UICommon::updateModalStates(const char *text) {
@@ -308,6 +329,20 @@ void UICommon::updateMachineState(const char *state) {
         } else {
             lv_obj_set_style_text_color(lbl_status, UITheme::UI_WARNING, 0);
         }
+    }
+}
+
+void UICommon::updateConnectionStatus(bool machine_connected, bool wifi_connected) {
+    // Update machine symbol color
+    if (lbl_machine_symbol) {
+        lv_obj_set_style_text_color(lbl_machine_symbol, 
+            machine_connected ? UITheme::STATE_IDLE : UITheme::STATE_ALARM, 0);
+    }
+    
+    // Update WiFi symbol color
+    if (lbl_wifi_symbol) {
+        lv_obj_set_style_text_color(lbl_wifi_symbol, 
+            wifi_connected ? UITheme::STATE_IDLE : UITheme::STATE_ALARM, 0);
     }
 }
 

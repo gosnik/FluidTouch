@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include <lvgl.h>
+#include <WiFi.h>
 #include "display_driver.h"     // Display driver module
 #include "touch_driver.h"       // Touch driver module
 #include "screenshot_server.h"  // Screenshot web server
@@ -10,6 +11,7 @@
 #include "ui/ui_common.h"       // UI common components (status bar)
 #include "ui/ui_tabs.h"         // UI tabs module
 #include "ui/tabs/ui_tab_status.h" // Status tab for updates
+#include "ui/tabs/ui_tab_terminal.h" // Terminal tab for updates
 
 void setup()
 {
@@ -70,10 +72,18 @@ void loop()
     // Update UI from FluidNC status (every 250ms)
     static uint32_t lastUIUpdate = 0;
     uint32_t currentMillis = millis();
-    if (currentMillis - lastUIUpdate >= 250 && FluidNCClient::isConnected()) {
+    if (currentMillis - lastUIUpdate >= 250) {
         lastUIUpdate = currentMillis;
         
-        const FluidNCStatus& status = FluidNCClient::getStatus();
+        bool machine_connected = FluidNCClient::isConnected();
+        bool wifi_connected = (WiFi.status() == WL_CONNECTED);
+        
+        // Update connection status symbols (always update, even if not connected)
+        UICommon::updateConnectionStatus(machine_connected, wifi_connected);
+        
+        // Only update other status info if machine is connected
+        if (machine_connected) {
+            const FluidNCStatus& status = FluidNCClient::getStatus();
         
         // Update status bar
         const char* state_str = "IDLE";
@@ -106,7 +116,11 @@ void loop()
         UITabStatus::updateFileProgress(status.is_sd_printing, status.sd_percent, 
                                        status.sd_filename, status.sd_elapsed_ms);
         UITabStatus::updateMessage(status.last_message);
+        }
     }
+    
+    // Update Terminal tab (batched UI updates every 100ms) - DISABLED: Terminal tab hidden
+    // UITabTerminal::update();
     
     // Update LVGL tick (CRITICAL for timers and input device polling!)
     static uint32_t lastTick = 0;

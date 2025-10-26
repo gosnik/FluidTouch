@@ -7,6 +7,7 @@
 #include "ui/tabs/ui_tab_terminal.h"
 #include "ui/tabs/ui_tab_settings.h"
 #include "ui/tabs/ui_tab_test.h"
+#include "fluidnc_client.h"
 
 // Static member initialization
 lv_obj_t *UITabs::tabview = nullptr;
@@ -49,7 +50,7 @@ void UITabs::createTabs() {
     tab_control = lv_tabview_add_tab(tabview, "Control");
     tab_files = lv_tabview_add_tab(tabview, "Files");
     tab_macros = lv_tabview_add_tab(tabview, "Macros");
-    tab_terminal = lv_tabview_add_tab(tabview, "Terminal");
+    // tab_terminal = lv_tabview_add_tab(tabview, "Terminal");  // Hidden - terminal updates disabled
     tab_settings = lv_tabview_add_tab(tabview, "Settings");
     tab_test = lv_tabview_add_tab(tabview, "Test");
     
@@ -58,7 +59,7 @@ void UITabs::createTabs() {
     lv_obj_clear_flag(tab_control, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_clear_flag(tab_macros, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_clear_flag(tab_files, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_clear_flag(tab_terminal, LV_OBJ_FLAG_SCROLLABLE);
+    // lv_obj_clear_flag(tab_terminal, LV_OBJ_FLAG_SCROLLABLE);  // Hidden
     // Settings and Test tabs may need scrolling, so leave them enabled
     
     // Create tab content
@@ -66,7 +67,7 @@ void UITabs::createTabs() {
     createControlTab(tab_control);
     createFilesTab(tab_files);
     createMacrosTab(tab_macros);
-    createTerminalTab(tab_terminal);
+    // createTerminalTab(tab_terminal);  // Hidden - terminal updates disabled
     createSettingsTab(tab_settings);
     createTestTab(tab_test);
 }
@@ -94,6 +95,11 @@ void UITabs::createMacrosTab(lv_obj_t *tab) {
 // Create Terminal tab content (delegated to UITabTerminal module)
 void UITabs::createTerminalTab(lv_obj_t *tab) {
     UITabTerminal::create(tab);
+    
+    // Register terminal callback to receive all FluidNC messages
+    FluidNCClient::setTerminalCallback([](const char* message) {
+        UITabTerminal::appendMessage(message);
+    });
 }
 
 // Create Settings tab content (delegated to UITabSettings module)

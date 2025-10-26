@@ -4,6 +4,10 @@
 #include <Arduino.h>
 #include <WebSocketsClient.h>
 #include "ui/machine_config.h"
+#include <functional>
+
+// Callback type for receiving FluidNC messages
+typedef std::function<void(const char* message)> MessageCallback;
 
 // FluidNC machine states
 enum MachineState {
@@ -109,12 +113,26 @@ public:
     // Request status report (sends "?")
     static void requestStatusReport();
     
+    // Set callback for receiving raw messages (for file list, etc.)
+    static void setMessageCallback(MessageCallback callback);
+    
+    // Clear message callback
+    static void clearMessageCallback();
+    
+    // Set callback for terminal display (receives all messages)
+    static void setTerminalCallback(MessageCallback callback);
+    
+    // Clear terminal callback
+    static void clearTerminalCallback();
+    
 private:
     static WebSocketsClient webSocket;
     static FluidNCStatus currentStatus;
     static MachineConfig currentConfig;
     static uint32_t lastStatusRequestMs;
     static bool initialized;
+    static MessageCallback messageCallback;  // Optional callback for raw messages
+    static MessageCallback terminalCallback; // Optional callback for terminal display
     
     // WebSocket event handler
     static void onWebSocketEvent(WStype_t type, uint8_t* payload, size_t length);

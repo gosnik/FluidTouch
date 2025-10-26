@@ -16,6 +16,7 @@ public:
     static void updateMachinePosition(float x, float y, float z);
     static void updateWorkPosition(float x, float y, float z);
     static void updateMachineState(const char *state);
+    static void updateConnectionStatus(bool machine_connected, bool wifi_connected);
     
     // Dialog functions
     static void showMachineSelectConfirmDialog();
@@ -33,6 +34,12 @@ private:
     static lv_obj_t *machine_select_dialog;  // Confirmation dialog
     static lv_obj_t *lbl_modal_states;
     static lv_obj_t *lbl_status;
+    
+    // Connection status labels (symbols only)
+    static lv_obj_t *lbl_machine_symbol;
+    static lv_obj_t *lbl_machine_name;
+    static lv_obj_t *lbl_wifi_symbol;
+    static lv_obj_t *lbl_wifi_name;
     
     // Work Position labels (individual axes)
     static lv_obj_t *lbl_wpos_label;
