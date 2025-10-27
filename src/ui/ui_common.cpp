@@ -329,7 +329,7 @@ void UICommon::createStatusBar() {
     lv_obj_set_style_text_color(lbl_wifi_name, UITheme::UI_INFO, 0);
     lv_obj_set_style_text_align(lbl_wifi_name, LV_TEXT_ALIGN_RIGHT, 0);
     lv_obj_set_width(lbl_wifi_name, 180);  // Set fixed width for right alignment
-    lv_obj_align(lbl_wifi_name, LV_ALIGN_BOTTOM_RIGHT, -30, -3);  // 30px from right for symbol
+    lv_obj_align(lbl_wifi_name, LV_ALIGN_BOTTOM_RIGHT, -32, -3);  // 32px from right for symbol (2px spacing)
     
     // WiFi symbol (will be colored based on connection status)
     lbl_wifi_symbol = lv_label_create(status_bar);
