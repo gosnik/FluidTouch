@@ -10,6 +10,7 @@ private:
     static void createGeneralTab(lv_obj_t *tab);
     static void createJogTab(lv_obj_t *tab);
     static void createFluidNCTab(lv_obj_t *tab);
+    static void createAboutTab(lv_obj_t *tab);
 };
 
 #endif // UI_TAB_SETTINGS_H
