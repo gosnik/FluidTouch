@@ -74,9 +74,9 @@ void UITabStatus::create(lv_obj_t *tab) {
     lv_obj_set_pos(state_label, 0, 0);
 
     lbl_state = lv_label_create(tab);
-    lv_label_set_text(lbl_state, "IDLE");
+    lv_label_set_text(lbl_state, "OFFLINE");
     lv_obj_set_style_text_font(lbl_state, &lv_font_montserrat_32, 0);
-    lv_obj_set_style_text_color(lbl_state, UITheme::STATE_IDLE, 0);
+    lv_obj_set_style_text_color(lbl_state, UITheme::STATE_ALARM, 0);
     lv_obj_set_pos(lbl_state, 0, 20);
 
     // FILE PROGRESS - Spans columns 2-4 (appears only when file is running)
@@ -171,21 +171,21 @@ void UITabStatus::create(lv_obj_t *tab) {
     lv_obj_set_pos(wpos_header, 0, 70);
 
     lbl_wpos_x = lv_label_create(tab);
-    lv_label_set_text(lbl_wpos_x, "X  0000.000");
+    lv_label_set_text(lbl_wpos_x, "X  ----.---");
     lv_obj_set_style_text_font(lbl_wpos_x, &lv_font_montserrat_32, 0);
     lv_obj_set_style_text_color(lbl_wpos_x, UITheme::AXIS_X, 0);
     lv_obj_set_style_text_letter_space(lbl_wpos_x, 1, 0);  // Tighter spacing for monospace feel
     lv_obj_set_pos(lbl_wpos_x, 0, 95);
 
     lbl_wpos_y = lv_label_create(tab);
-    lv_label_set_text(lbl_wpos_y, "Y  0000.000");
+    lv_label_set_text(lbl_wpos_y, "Y  ----.---");
     lv_obj_set_style_text_font(lbl_wpos_y, &lv_font_montserrat_32, 0);
     lv_obj_set_style_text_color(lbl_wpos_y, UITheme::AXIS_Y, 0);
     lv_obj_set_style_text_letter_space(lbl_wpos_y, 1, 0);  // Tighter spacing for monospace feel
     lv_obj_set_pos(lbl_wpos_y, 0, 140);
 
     lbl_wpos_z = lv_label_create(tab);
-    lv_label_set_text(lbl_wpos_z, "Z  0000.000");
+    lv_label_set_text(lbl_wpos_z, "Z  ----.---");
     lv_obj_set_style_text_font(lbl_wpos_z, &lv_font_montserrat_32, 0);
     lv_obj_set_style_text_color(lbl_wpos_z, UITheme::AXIS_Z, 0);
     lv_obj_set_style_text_letter_space(lbl_wpos_z, 1, 0);  // Tighter spacing for monospace feel
@@ -199,21 +199,21 @@ void UITabStatus::create(lv_obj_t *tab) {
     lv_obj_set_pos(mpos_header, 225, 70);
 
     lbl_mpos_x = lv_label_create(tab);
-    lv_label_set_text(lbl_mpos_x, "X  0000.000");
+    lv_label_set_text(lbl_mpos_x, "X  ----.---");
     lv_obj_set_style_text_font(lbl_mpos_x, &lv_font_montserrat_32, 0);
     lv_obj_set_style_text_color(lbl_mpos_x, UITheme::AXIS_X, 0);
     lv_obj_set_style_text_letter_space(lbl_mpos_x, 1, 0);  // Tighter spacing for monospace feel
     lv_obj_set_pos(lbl_mpos_x, 225, 95);
 
     lbl_mpos_y = lv_label_create(tab);
-    lv_label_set_text(lbl_mpos_y, "Y  0000.000");
+    lv_label_set_text(lbl_mpos_y, "Y  ----.---");
     lv_obj_set_style_text_font(lbl_mpos_y, &lv_font_montserrat_32, 0);
     lv_obj_set_style_text_color(lbl_mpos_y, UITheme::AXIS_Y, 0);
     lv_obj_set_style_text_letter_space(lbl_mpos_y, 1, 0);  // Tighter spacing for monospace feel
     lv_obj_set_pos(lbl_mpos_y, 225, 140);
 
     lbl_mpos_z = lv_label_create(tab);
-    lv_label_set_text(lbl_mpos_z, "Z  0000.000");
+    lv_label_set_text(lbl_mpos_z, "Z  ----.---");
     lv_obj_set_style_text_font(lbl_mpos_z, &lv_font_montserrat_32, 0);
     lv_obj_set_style_text_color(lbl_mpos_z, UITheme::AXIS_Z, 0);
     lv_obj_set_style_text_letter_space(lbl_mpos_z, 1, 0);  // Tighter spacing for monospace feel

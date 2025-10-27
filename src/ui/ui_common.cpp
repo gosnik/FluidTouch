@@ -236,9 +236,9 @@ void UICommon::createStatusBar() {
 
     // Left side: Large Status (centered vertically)
     lbl_status = lv_label_create(status_bar);
-    lv_label_set_text(lbl_status, "IDLE");
+    lv_label_set_text(lbl_status, "OFFLINE");
     lv_obj_set_style_text_font(lbl_status, &lv_font_montserrat_32, 0);
-    lv_obj_set_style_text_color(lbl_status, UITheme::STATE_IDLE, 0);
+    lv_obj_set_style_text_color(lbl_status, UITheme::STATE_ALARM, 0);
     lv_obj_align(lbl_status, LV_ALIGN_LEFT_MID, 5, 0);
 
     // Middle: Work Position (line 1) and Machine Position (line 2)
@@ -250,19 +250,19 @@ void UICommon::createStatusBar() {
     lv_obj_align(lbl_wpos_label, LV_ALIGN_TOP_MID, -198, 3);  // -210 + 2 + 10 = -198
 
     lbl_wpos_x = lv_label_create(status_bar);
-    lv_label_set_text(lbl_wpos_x, "X:0000.000");
+    lv_label_set_text(lbl_wpos_x, "X:----.---");
     lv_obj_set_style_text_font(lbl_wpos_x, &lv_font_montserrat_18, 0);
     lv_obj_set_style_text_color(lbl_wpos_x, UITheme::AXIS_X, 0);
     lv_obj_align(lbl_wpos_x, LV_ALIGN_TOP_MID, -110, 3);  // -120 + 10 = -110
 
     lbl_wpos_y = lv_label_create(status_bar);
-    lv_label_set_text(lbl_wpos_y, "Y:0000.000");
+    lv_label_set_text(lbl_wpos_y, "Y:----.---");
     lv_obj_set_style_text_font(lbl_wpos_y, &lv_font_montserrat_18, 0);
     lv_obj_set_style_text_color(lbl_wpos_y, UITheme::AXIS_Y, 0);
     lv_obj_align(lbl_wpos_y, LV_ALIGN_TOP_MID, 0, 3);  // -10 + 10 = 0
 
     lbl_wpos_z = lv_label_create(status_bar);
-    lv_label_set_text(lbl_wpos_z, "Z:0000.000");
+    lv_label_set_text(lbl_wpos_z, "Z:----.---");
     lv_obj_set_style_text_font(lbl_wpos_z, &lv_font_montserrat_18, 0);
     lv_obj_set_style_text_color(lbl_wpos_z, UITheme::AXIS_Z, 0);
     lv_obj_align(lbl_wpos_z, LV_ALIGN_TOP_MID, 110, 3);  // 100 + 10 = 110
@@ -275,19 +275,19 @@ void UICommon::createStatusBar() {
     lv_obj_align(lbl_mpos_label, LV_ALIGN_BOTTOM_MID, -198, -3);  // -210 + 2 + 10 = -198
 
     lbl_mpos_x = lv_label_create(status_bar);
-    lv_label_set_text(lbl_mpos_x, "X:0000.000");
+    lv_label_set_text(lbl_mpos_x, "X:----.---");
     lv_obj_set_style_text_font(lbl_mpos_x, &lv_font_montserrat_18, 0);
     lv_obj_set_style_text_color(lbl_mpos_x, UITheme::AXIS_X, 0);
     lv_obj_align(lbl_mpos_x, LV_ALIGN_BOTTOM_MID, -110, -3);  // -120 + 10 = -110
 
     lbl_mpos_y = lv_label_create(status_bar);
-    lv_label_set_text(lbl_mpos_y, "Y:0000.000");
+    lv_label_set_text(lbl_mpos_y, "Y:----.---");
     lv_obj_set_style_text_font(lbl_mpos_y, &lv_font_montserrat_18, 0);
     lv_obj_set_style_text_color(lbl_mpos_y, UITheme::AXIS_Y, 0);
     lv_obj_align(lbl_mpos_y, LV_ALIGN_BOTTOM_MID, 0, -3);  // -10 + 10 = 0
 
     lbl_mpos_z = lv_label_create(status_bar);
-    lv_label_set_text(lbl_mpos_z, "Z:0000.000");
+    lv_label_set_text(lbl_mpos_z, "Z:----.---");
     lv_obj_set_style_text_font(lbl_mpos_z, &lv_font_montserrat_18, 0);
     lv_obj_set_style_text_color(lbl_mpos_z, UITheme::AXIS_Z, 0);
     lv_obj_align(lbl_mpos_z, LV_ALIGN_BOTTOM_MID, 110, -3);  // 100 + 10 = 110
