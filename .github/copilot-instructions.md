@@ -82,7 +82,28 @@ The codebase follows a **strict modular pattern** with clear separation:
    - UI updates every 250ms from FluidNC status in main loop
    - Connection initiated after machine selection in `UICommon::createMainUI()`
 
-3. **Machine Selection**:
+3. **State Popups (HOLD and ALARM)**:
+   - `UICommon` manages modal popups for HOLD and ALARM states that appear across all tabs
+   - **HOLD Popup**:
+     - Appears when machine enters HOLD state (cyan/teal border, STATE_HOLD color)
+     - Shows "HOLD" title (32pt) and last FluidNC message (24pt, 520px width, 60px top offset)
+     - Buttons: "Close" (dismisses, prevents reappearance until state changes) and "Resume" (sends `~` cycle start)
+     - Resume button does NOT close popup - waits for actual state change from FluidNC
+   - **ALARM Popup**:
+     - Appears when machine enters ALARM state (red border, STATE_ALARM color)
+     - Shows "ALARM" title (32pt) and last FluidNC message (24pt, 520px width, 60px top offset)
+     - Buttons: "Close" (dismisses, prevents reappearance) and "Clear Alarm" (sends `\x18` soft reset + `$X\n` unlock)
+     - Clear Alarm button does NOT close popup - waits for actual state change from FluidNC
+   - **Dismissal Logic**:
+     - When user clicks "Close", popup disappears and sets dismissed flag
+     - Popup will NOT reappear while still in same state (even though condition persists)
+     - When state changes to anything else, dismissed flag is cleared
+     - If machine returns to HOLD/ALARM, popup will appear again (because flag was reset)
+     - Resume/Clear Alarm buttons do NOT set dismissal flag - just send commands
+   - **Auto-hide**: Popups automatically close when state changes (tracked every 250ms in main loop)
+   - Implementation: `UICommon::checkStatePopups()` called from main loop, manages show/hide based on `FluidNCStatus.state` and `last_message`
+
+4. **Machine Selection**:
    - `UIMachineSelect` supports up to 5 machines with reordering (up/down buttons), edit, delete, and add functionality
    - Machines stored in Preferences as array under "machines" key (MachineConfig struct)
    - Selected machine stored in Preferences under "machine" key
@@ -91,7 +112,7 @@ The codebase follows a **strict modular pattern** with clear separation:
    - **Add button**: Single button in upper right corner (green, 120x40px)
    - **Machine switching**: Clicking right side of status bar shows confirmation dialog, then restarts ESP32 to switch machines cleanly
 
-3. **Status Bar Layout** (60px height, 18pt font, split into clickable areas):
+4. **Status Bar Layout** (60px height, 18pt font, split into clickable areas):
    - **Left area** (550px): Machine state (IDLE/RUN/ALARM) - 32pt uppercase, vertically centered, color-coded
      - Clicking navigates to Status tab (LV_EVENT_CLICKED)
    - **Center**: Work Position (top line, orange label) and Machine Position (bottom line, cyan label)
@@ -101,12 +122,12 @@ The codebase follows a **strict modular pattern** with clear separation:
      - Clicking shows confirmation dialog "This will restart the controller. Continue?" with "⚡ Restart" button
      - Confirmation triggers ESP32 restart to cleanly reload with new machine selection (LV_EVENT_CLICKED)
 
-4. **Tab creation delegation**:
+5. **Tab creation delegation**:
    - `UITabs` creates tabview structure, delegates content to `UITab*::create()`
    - Each tab module is responsible for its own layout and event handlers
    - Nested tabviews use `LV_DIR_LEFT` for vertical tabs (see `UITabControl`)
 
-5. **Serial debugging**: All modules use `Serial.println/printf` at 115200 baud with heap/PSRAM monitoring
+6. **Serial debugging**: All modules use `Serial.println/printf` at 115200 baud with heap/PSRAM monitoring
 
 ## Development Workflows
 
@@ -212,7 +233,7 @@ All other hardcoded values live in `include/config.h`:
 - **`src/screenshot_server.cpp`**: WiFi setup, BMP conversion from RGB565 frame buffer
 - **`src/fluidnc_client.cpp`**: FluidNC WebSocket client with automatic reporting (no polling), status parsing, WCO handling, F/S parsing from both status reports and GCode state, and SD card file progress tracking. Terminal callback currently disabled.
 - **`src/ui/tabs/ui_tab_terminal.cpp`**: Terminal tab with WebSocket message display, auto-scroll toggle, 8KB buffer with batched UI updates (currently disabled via commented callback in FluidNCClient)
-- **`src/ui/ui_common.cpp`**: Status bar implementation with separate axis labels, delta checking for smooth updates, and clickable left/right areas for navigation and machine switching
+- **`src/ui/ui_common.cpp`**: Status bar implementation with separate axis labels, delta checking for smooth updates, clickable left/right areas for navigation and machine switching, and modal HOLD/ALARM state popups with dismissal tracking
 - **`src/ui/ui_machine_select.cpp`**: Machine selection screen with reordering, edit, delete, and add functionality (up to 5 machines stored in Preferences)
 - **`src/ui/tabs/ui_tab_status.cpp`**: Status tab with delta-checked position displays, feed/spindle rates with overrides, 8 modal state fields, message display, and SD card file progress (filename, progress bar, elapsed/estimated time)
 
@@ -247,6 +268,7 @@ All other hardcoded values live in `include/config.h`:
 13. **SD file progress**: FluidNC sends `SD:percent,filename` in status reports - track start time on first detection, calculate elapsed/estimated times based on percentage and elapsed duration
 14. **No polling needed**: FluidNC automatic reporting (`$Report/Interval=250\n`) handles all status updates - no fallback polling required
 15. **Terminal callback**: Terminal updates can be enabled/disabled by commenting/uncommenting the `terminalCallback()` call in `fluidnc_client.cpp` WebSocket event handler
+16. **State popup buttons**: Resume and Clear Alarm buttons send commands but do NOT manually close popups - popups auto-close when FluidNC state actually changes, providing visual feedback that command was sent
 
 ## External Dependencies
 
