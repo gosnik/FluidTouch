@@ -1,6 +1,7 @@
 #include "ui/tabs/ui_tab_settings.h"
 #include "ui/tabs/settings/ui_tab_settings_general.h"
 #include "ui/tabs/settings/ui_tab_settings_jog.h"
+#include "ui/tabs/settings/ui_tab_settings_probe.h"
 #include "ui/tabs/settings/ui_tab_settings_fluidnc.h"
 #include "ui/tabs/settings/ui_tab_settings_about.h"
 #include "ui/ui_theme.h"
@@ -59,24 +60,28 @@ void UITabSettings::create(lv_obj_t *tab) {
     // Add sub-tabs
     lv_obj_t *general_tab = lv_tabview_add_tab(sub_tabview, "General");
     lv_obj_t *jog_tab = lv_tabview_add_tab(sub_tabview, "Jog");
+    lv_obj_t *probe_tab = lv_tabview_add_tab(sub_tabview, "Probe");
     lv_obj_t *fluidnc_tab = lv_tabview_add_tab(sub_tabview, "FluidNC");
     lv_obj_t *about_tab = lv_tabview_add_tab(sub_tabview, "About");
     
     // Disable scrolling on sub-tabs
     lv_obj_clear_flag(general_tab, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_clear_flag(jog_tab, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_clear_flag(probe_tab, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_clear_flag(fluidnc_tab, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_clear_flag(about_tab, LV_OBJ_FLAG_SCROLLABLE);
     
     // Set background for sub-tabs
     lv_obj_set_style_bg_color(general_tab, UITheme::BG_MEDIUM, 0);
     lv_obj_set_style_bg_color(jog_tab, UITheme::BG_MEDIUM, 0);
+    lv_obj_set_style_bg_color(probe_tab, UITheme::BG_MEDIUM, 0);
     lv_obj_set_style_bg_color(fluidnc_tab, UITheme::BG_MEDIUM, 0);
     lv_obj_set_style_bg_color(about_tab, UITheme::BG_MEDIUM, 0);
     
     // Add 5px padding to all sub-tabs
     lv_obj_set_style_pad_all(general_tab, 5, 0);
     lv_obj_set_style_pad_all(jog_tab, 5, 0);
+    lv_obj_set_style_pad_all(probe_tab, 5, 0);
     lv_obj_set_style_pad_all(fluidnc_tab, 5, 0);
     lv_obj_set_style_pad_all(about_tab, 5, 0);
 
@@ -104,6 +109,7 @@ void UITabSettings::create(lv_obj_t *tab) {
     // Delegate creation to subtab modules
     createGeneralTab(general_tab);
     createJogTab(jog_tab);
+    createProbeTab(probe_tab);
     createFluidNCTab(fluidnc_tab);
     createAboutTab(about_tab);
 }
@@ -114,6 +120,10 @@ void UITabSettings::createGeneralTab(lv_obj_t *tab) {
 
 void UITabSettings::createJogTab(lv_obj_t *tab) {
     UITabSettingsJog::create(tab);
+}
+
+void UITabSettings::createProbeTab(lv_obj_t *tab) {
+    UITabSettingsProbe::create(tab);
 }
 
 void UITabSettings::createFluidNCTab(lv_obj_t *tab) {

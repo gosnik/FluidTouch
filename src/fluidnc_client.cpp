@@ -1,5 +1,6 @@
 #include "fluidnc_client.h"
 #include "ui/ui_common.h"
+#include "ui/tabs/control/ui_tab_control_probe.h"
 #include <WiFi.h>
 
 // Static member initialization
@@ -321,8 +322,32 @@ void FluidNCClient::parseStatusReport(const char* message) {
 }
 
 void FluidNCClient::parseRealtimeFeedback(const char* message) {
-    // Handle realtime feedback messages like [MSG:...], [G92:...], etc.
+    // Handle realtime feedback messages like [MSG:...], [G92:...], [PRB:...], etc.
     Serial.printf("[FluidNC] Feedback: %s\n", message);
+    
+    // Check for probe result message: [PRB:x,y,z:success]
+    // Example: [PRB:151.000,149.000,-137.505:1] (success=1) or [PRB:0.000,0.000,0.000:0] (failure=0)
+    if (strncmp(message, "[PRB:", 5) == 0) {
+        float x, y, z;
+        int success;
+        if (sscanf(message + 5, "%f,%f,%f:%d", &x, &y, &z, &success) == 4) {
+            char result[256];
+            if (success) {
+                snprintf(result, sizeof(result), 
+                        "Probe SUCCESS\n\nContact at:\nX: %.3f mm\nY: %.3f mm\nZ: %.3f mm", 
+                        x, y, z);
+            } else {
+                snprintf(result, sizeof(result), 
+                        "Probe FAILED\n\nNo contact detected within\nmax distance");
+            }
+            
+            // Update probe tab result display
+            UITabControlProbe::updateResult(result);
+            
+            Serial.printf("[FluidNC] Probe %s at (%.3f, %.3f, %.3f)\n", 
+                         success ? "SUCCESS" : "FAILED", x, y, z);
+        }
+    }
     
     // Check for auto-report confirmation message
     if (strstr(message, "websocket auto report interval set") != nullptr) {

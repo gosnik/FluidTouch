@@ -27,11 +27,19 @@ struct MachineConfig {
     int jog_max_xy_feed;     // Max XY feed for joystick (mm/min)
     int jog_max_z_feed;      // Max Z feed for joystick (mm/min)
     
+    // Probe control defaults
+    int probe_feed_rate;     // Default probe feed rate (mm/min)
+    int probe_max_distance;  // Default max probe distance (mm)
+    int probe_retract;       // Default retract distance (mm)
+    float probe_thickness;   // Default probe thickness (mm, 1 decimal place)
+    
     // Constructor with defaults
     MachineConfig() : connection_type(CONN_WIRELESS), websocket_port(81), is_configured(false),
                       jog_xy_step(10.0f), jog_z_step(1.0f), 
                       jog_xy_feed(3000), jog_z_feed(1000),
-                      jog_max_xy_feed(3000), jog_max_z_feed(1000) {
+                      jog_max_xy_feed(3000), jog_max_z_feed(1000),
+                      probe_feed_rate(100), probe_max_distance(10),
+                      probe_retract(2), probe_thickness(0.0f) {
         name[0] = '\0';
         ssid[0] = '\0';
         password[0] = '\0';

@@ -51,16 +51,16 @@ void UITabSettingsJog::create(lv_obj_t *tab) {
     
     // Title - Column 1
     lv_obj_t *title = lv_label_create(tab);
-    lv_label_set_text(title, "Jog Control Defaults");
+    lv_label_set_text(title, "JOG CONTROL DEFAULTS");
     lv_obj_set_style_text_font(title, &lv_font_montserrat_18, 0);
-    lv_obj_set_style_text_color(title, UITheme::TEXT_LIGHT, 0);
+    lv_obj_set_style_text_color(title, UITheme::TEXT_DISABLED, 0);  // Gray color
     lv_obj_set_pos(title, col1_label_x, y_pos);
     
     // Title - Column 2
     lv_obj_t *title2 = lv_label_create(tab);
-    lv_label_set_text(title2, "Joystick Control Defaults");
+    lv_label_set_text(title2, "JOYSTICK CONTROL DEFAULTS");
     lv_obj_set_style_text_font(title2, &lv_font_montserrat_18, 0);
-    lv_obj_set_style_text_color(title2, UITheme::TEXT_LIGHT, 0);
+    lv_obj_set_style_text_color(title2, UITheme::TEXT_DISABLED, 0);  // Gray color
     lv_obj_set_pos(title2, col2_label_x, y_pos);
     
     y_pos += 40;
@@ -283,12 +283,12 @@ void UITabSettingsJog::showKeyboard(lv_obj_t *ta) {
         if (parent_tab) {
             lv_obj_add_event_cb(parent_tab, [](lv_event_t *e) { UITabSettingsJog::hideKeyboard(); }, LV_EVENT_CLICKED, nullptr);
         }
-        
-        // Enable scrolling on parent tab and add extra padding at bottom for keyboard
-        if (parent_tab) {
-            lv_obj_add_flag(parent_tab, LV_OBJ_FLAG_SCROLLABLE);
-            lv_obj_set_style_pad_bottom(parent_tab, 240, 0); // Extra space for scrolling (keyboard height + margin)
-        }
+    }
+    
+    // Enable scrolling on parent tab and add extra padding at bottom for keyboard (every time keyboard is shown)
+    if (parent_tab) {
+        lv_obj_add_flag(parent_tab, LV_OBJ_FLAG_SCROLLABLE);
+        lv_obj_set_style_pad_bottom(parent_tab, 240, 0); // Extra space for scrolling (keyboard height + margin)
     }
     
     lv_keyboard_set_textarea(keyboard, ta);
@@ -310,7 +310,7 @@ void UITabSettingsJog::showKeyboard(lv_obj_t *ta) {
         // Status bar is 60px, keyboard is 220px, so visible area is 200px (480 - 60 - 220)
         lv_coord_t visible_height = 200; // Height above keyboard and below status bar
         lv_coord_t ta_height = lv_obj_get_height(ta);
-        lv_coord_t target_position = visible_height - ta_height - 20; // 20px margin above keyboard
+        lv_coord_t target_position = visible_height - ta_height - 10; // 10px margin above keyboard
         
         // Scroll amount = (textarea Y position) - (where we want it)
         lv_coord_t scroll_y = ta_y - target_position;

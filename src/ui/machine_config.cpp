@@ -27,6 +27,12 @@ void MachineConfigManager::loadMachines(MachineConfig machines[MAX_MACHINES]) {
             machines[i].jog_z_feed = prefs.getInt((prefix + "jz_fd").c_str(), 1000);
             machines[i].jog_max_xy_feed = prefs.getInt((prefix + "jxy_mx").c_str(), 3000);
             machines[i].jog_max_z_feed = prefs.getInt((prefix + "jz_mx").c_str(), 1000);
+            
+            // Load probe settings (with defaults if not present)
+            machines[i].probe_feed_rate = prefs.getInt((prefix + "p_feed").c_str(), 100);
+            machines[i].probe_max_distance = prefs.getInt((prefix + "p_dist").c_str(), 10);
+            machines[i].probe_retract = prefs.getInt((prefix + "p_ret").c_str(), 2);
+            machines[i].probe_thickness = prefs.getFloat((prefix + "p_thick").c_str(), 0.0f);
         }
     }
     
@@ -57,6 +63,12 @@ void MachineConfigManager::saveMachines(const MachineConfig machines[MAX_MACHINE
             prefs.putInt((prefix + "jz_fd").c_str(), machines[i].jog_z_feed);
             prefs.putInt((prefix + "jxy_mx").c_str(), machines[i].jog_max_xy_feed);
             prefs.putInt((prefix + "jz_mx").c_str(), machines[i].jog_max_z_feed);
+            
+            // Save probe settings
+            prefs.putInt((prefix + "p_feed").c_str(), machines[i].probe_feed_rate);
+            prefs.putInt((prefix + "p_dist").c_str(), machines[i].probe_max_distance);
+            prefs.putInt((prefix + "p_ret").c_str(), machines[i].probe_retract);
+            prefs.putFloat((prefix + "p_thick").c_str(), machines[i].probe_thickness);
         }
     }
     
