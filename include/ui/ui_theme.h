@@ -82,15 +82,15 @@ namespace UITheme {
     static constexpr lv_color_t UI_NOTE = LV_COLOR_MAKE(0xFF, 0xB7, 0x4D);      // Helpful notes (amber)
     static constexpr lv_color_t UI_SECONDARY = LV_COLOR_MAKE(0x00, 0xFF, 0xFF); // Secondary info (bright cyan)
     
-    // Macro Button Colors (predefined palette)
-    static constexpr lv_color_t MACRO_COLOR_1 = LV_COLOR_MAKE(0x4C, 0xAF, 0x50); // Green
-    static constexpr lv_color_t MACRO_COLOR_2 = LV_COLOR_MAKE(0x21, 0x96, 0xF3); // Blue
-    static constexpr lv_color_t MACRO_COLOR_3 = LV_COLOR_MAKE(0xFF, 0x98, 0x00); // Orange
-    static constexpr lv_color_t MACRO_COLOR_4 = LV_COLOR_MAKE(0x9C, 0x27, 0xB0); // Purple
-    static constexpr lv_color_t MACRO_COLOR_5 = LV_COLOR_MAKE(0xF4, 0x43, 0x36); // Red
-    static constexpr lv_color_t MACRO_COLOR_6 = LV_COLOR_MAKE(0x00, 0xBC, 0xD4); // Cyan
-    static constexpr lv_color_t MACRO_COLOR_7 = LV_COLOR_MAKE(0xFF, 0xEB, 0x3B); // Yellow
-    static constexpr lv_color_t MACRO_COLOR_8 = LV_COLOR_MAKE(0x60, 0x7D, 0x8B); // Blue Gray
+    // Macro Button Colors (predefined palette) - Rainbow order (darker shades)
+    static constexpr lv_color_t MACRO_COLOR_1 = LV_COLOR_MAKE(0xCC, 0x00, 0x00); // Bright Red
+    static constexpr lv_color_t MACRO_COLOR_2 = LV_COLOR_MAKE(0xCC, 0x44, 0x00); // Darker Orange
+    static constexpr lv_color_t MACRO_COLOR_3 = LV_COLOR_MAKE(0xF5, 0x7F, 0x17); // Dark Yellow
+    static constexpr lv_color_t MACRO_COLOR_4 = LV_COLOR_MAKE(0x2E, 0x7D, 0x32); // Dark Green
+    static constexpr lv_color_t MACRO_COLOR_5 = LV_COLOR_MAKE(0x00, 0x83, 0x8F); // Dark Cyan
+    static constexpr lv_color_t MACRO_COLOR_6 = LV_COLOR_MAKE(0x00, 0x1F, 0x5C); // Navy Blue
+    static constexpr lv_color_t MACRO_COLOR_7 = LV_COLOR_MAKE(0x6A, 0x1B, 0x9A); // Dark Purple
+    static constexpr lv_color_t MACRO_COLOR_8 = LV_COLOR_MAKE(0x45, 0x45, 0x45); // Dark Gray
 }
 
 #endif // UI_THEME_H
