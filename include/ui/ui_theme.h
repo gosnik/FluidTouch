@@ -27,7 +27,7 @@ namespace UITheme {
     static constexpr lv_color_t STATE_IDLE = LV_COLOR_MAKE(0x00, 0xFF, 0x00);   // Idle state, OK status (green)
     static constexpr lv_color_t STATE_RUN = LV_COLOR_MAKE(0x00, 0xBF, 0xFF);    // Running state (cyan)
     static constexpr lv_color_t STATE_ALARM = LV_COLOR_MAKE(0xFF, 0x00, 0x00);  // Alarm/Error state (red)
-    static constexpr lv_color_t STATE_HOLD = LV_COLOR_MAKE(0xFF, 0xFF, 0x00);   // Hold/Pause state (yellow)
+    static constexpr lv_color_t STATE_HOLD = LV_COLOR_MAKE(0xFB, 0xC0, 0x2D);   // Hold/Pause state (dark yellow)
     static constexpr lv_color_t STATE_UNKNOWN = LV_COLOR_MAKE(0xCC, 0xCC, 0xCC);// Unknown state (gray)
     
     // Axis Colors
@@ -77,7 +77,7 @@ namespace UITheme {
     
     // UI Feedback Colors
     static constexpr lv_color_t UI_SUCCESS = LV_COLOR_MAKE(0x00, 0xFF, 0x00);   // Success messages (green)
-    static constexpr lv_color_t UI_WARNING = LV_COLOR_MAKE(0xFF, 0xAA, 0x00);   // Warning messages (orange)
+    static constexpr lv_color_t UI_WARNING = LV_COLOR_MAKE(0xFB, 0x8C, 0x00);   // Warning messages (orange)
     static constexpr lv_color_t UI_INFO = LV_COLOR_MAKE(0x00, 0xBC, 0xD4);      // Info text, section titles (cyan)
     static constexpr lv_color_t UI_NOTE = LV_COLOR_MAKE(0xFF, 0xB7, 0x4D);      // Helpful notes (amber)
     static constexpr lv_color_t UI_SECONDARY = LV_COLOR_MAKE(0x00, 0xFF, 0xFF); // Secondary info (bright cyan)

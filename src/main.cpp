@@ -13,6 +13,7 @@
 #include "ui/ui_tabs.h"         // UI tabs module
 #include "ui/tabs/ui_tab_status.h" // Status tab for updates
 #include "ui/tabs/ui_tab_terminal.h" // Terminal tab for updates
+#include "ui/tabs/control/ui_tab_control_actions.h" // Actions tab for pause button updates
 #include "ui/tabs/control/ui_tab_control_override.h" // Override tab for updates
 #include "ui/machine_config.h"  // Machine configuration manager
 
@@ -147,6 +148,9 @@ void loop()
         
         // Check for HOLD/ALARM state and show popups if needed
         UICommon::checkStatePopups(status.state, status.last_message);
+        
+        // Update Control Actions pause/resume button based on machine state
+        UITabControlActions::updatePauseButton(status.state);
         
         // Update Status tab
         UITabStatus::updateState(state_str);

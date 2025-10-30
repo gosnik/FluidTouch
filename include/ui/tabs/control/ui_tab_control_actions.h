@@ -6,6 +6,7 @@
 class UITabControlActions {
 public:
     static void create(lv_obj_t *tab);
+    static void updatePauseButton(int machine_state);
 
 private:
     // Event handlers
