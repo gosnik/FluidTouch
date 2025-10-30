@@ -15,12 +15,16 @@ float UITabControlJog::xy_current_step = 10.0f;     // Will be loaded from setti
 float UITabControlJog::z_current_step = 1.0f;       // Will be loaded from settings
 int UITabControlJog::xy_current_step_index = 2;     // Will be recalculated
 int UITabControlJog::z_current_step_index = 1;      // Will be recalculated
+int UITabControlJog::xy_current_feed = 3000;        // Will be loaded from settings
+int UITabControlJog::z_current_feed = 1000;         // Will be loaded from settings
 
 void UITabControlJog::create(lv_obj_t *tab) {
     // Load default values from settings
     UITabSettingsJog::loadPreferences();
     xy_current_step = UITabSettingsJog::getDefaultXYStep();
     z_current_step = UITabSettingsJog::getDefaultZStep();
+    xy_current_feed = UITabSettingsJog::getDefaultXYFeed();
+    z_current_feed = UITabSettingsJog::getDefaultZFeed();
     
     // Calculate the step index from the loaded value
     static const float xy_step_values[] = {0.1f, 1.0f, 10.0f, 50.0f, 100.0f, 500.0f};
@@ -149,7 +153,7 @@ void UITabControlJog::create(lv_obj_t *tab) {
     // XY Feedrate value (plain text label) - load from settings
     xy_feedrate_label = lv_label_create(tab);
     char xy_feed_buf[16];
-    snprintf(xy_feed_buf, sizeof(xy_feed_buf), "%.0f", UITabSettingsJog::getDefaultXYFeed());
+    snprintf(xy_feed_buf, sizeof(xy_feed_buf), "%d", xy_current_feed);
     lv_label_set_text(xy_feedrate_label, xy_feed_buf);
     lv_obj_set_style_text_font(xy_feedrate_label, &lv_font_montserrat_14, 0);
     lv_obj_set_pos(xy_feedrate_label, 155, 280);
@@ -269,7 +273,7 @@ void UITabControlJog::create(lv_obj_t *tab) {
     // Z Feedrate value (plain text label) - load from settings
     z_feedrate_label = lv_label_create(tab);
     char z_feed_buf[16];
-    snprintf(z_feed_buf, sizeof(z_feed_buf), "%.0f", UITabSettingsJog::getDefaultZFeed());
+    snprintf(z_feed_buf, sizeof(z_feed_buf), "%d", z_current_feed);
     lv_label_set_text(z_feedrate_label, z_feed_buf);
     lv_obj_set_style_text_font(z_feedrate_label, &lv_font_montserrat_14, 0);
     lv_obj_set_pos(z_feedrate_label, 460, 280);

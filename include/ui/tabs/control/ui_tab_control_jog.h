@@ -18,6 +18,8 @@ private:
     static float z_current_step;
     static int xy_current_step_index;
     static int z_current_step_index;
+    static int xy_current_feed;
+    static int z_current_feed;
     
     // Octagon stop button
     static void draw_octagon_event_cb(lv_event_t *e);
