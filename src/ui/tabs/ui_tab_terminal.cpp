@@ -14,8 +14,13 @@ String UITabTerminal::terminal_buffer = "";
 bool UITabTerminal::auto_scroll_enabled = true;
 bool UITabTerminal::buffer_dirty = false;
 uint32_t UITabTerminal::last_update_ms = 0;
+bool UITabTerminal::in_json_message = false;
+int UITabTerminal::json_brace_count = 0;
 
 void UITabTerminal::create(lv_obj_t *tab) {
+    // Set 5px margins by using padding
+    lv_obj_set_style_pad_all(tab, 15, 0);
+
     // Set dark background
     lv_obj_set_style_bg_color(tab, UITheme::BG_MEDIUM, LV_PART_MAIN);
 
@@ -55,18 +60,18 @@ void UITabTerminal::create(lv_obj_t *tab) {
     lv_obj_t *auto_scroll_label = lv_label_create(tab);
     lv_label_set_text(auto_scroll_label, "Auto Scroll");
     lv_obj_set_style_text_font(auto_scroll_label, &lv_font_montserrat_14, 0);
-    lv_obj_align(auto_scroll_label, LV_ALIGN_TOP_RIGHT, 0, 0);
+    lv_obj_align(auto_scroll_label, LV_ALIGN_TOP_RIGHT, -5, 0);
 
     auto_scroll_switch = lv_switch_create(tab);
     lv_obj_set_size(auto_scroll_switch, 50, 25);
-    lv_obj_align(auto_scroll_switch, LV_ALIGN_TOP_RIGHT, -10, 18);
+    lv_obj_align(auto_scroll_switch, LV_ALIGN_TOP_RIGHT, -20, 18);
     lv_obj_add_state(auto_scroll_switch, LV_STATE_CHECKED);  // Start enabled
     lv_obj_add_event_cb(auto_scroll_switch, auto_scroll_event_cb, LV_EVENT_VALUE_CHANGED, nullptr);
 
     // Terminal output container
     terminal_cont = lv_obj_create(tab);
-    lv_obj_set_size(terminal_cont, SCREEN_WIDTH - (margin * 4), terminal_height - (margin * 2));
-    lv_obj_set_pos(terminal_cont, 3, input_height + (margin * 2));
+    lv_obj_set_size(terminal_cont, 770, 270);
+    lv_obj_set_pos(terminal_cont, 0, 60);
     lv_obj_set_style_bg_color(terminal_cont, UITheme::BG_BLACK, LV_PART_MAIN);
     lv_obj_set_style_border_color(terminal_cont, UITheme::BORDER_LIGHT, LV_PART_MAIN);
     lv_obj_set_style_border_width(terminal_cont, 2, LV_PART_MAIN);
@@ -79,7 +84,7 @@ void UITabTerminal::create(lv_obj_t *tab) {
     lv_obj_set_style_text_font(terminal_text, &jetbrains_mono_16, 0);
     lv_obj_set_style_text_color(terminal_text, UITheme::UI_SUCCESS, 0);
     lv_label_set_long_mode(terminal_text, LV_LABEL_LONG_WRAP);
-    lv_obj_set_width(terminal_text, SCREEN_WIDTH - (margin * 4) - 10);
+    lv_obj_set_width(terminal_text, 760);
 
     // Initialize buffer (empty)
     terminal_buffer = "";
@@ -184,8 +189,28 @@ void UITabTerminal::appendMessage(const char *message) {
         return;
     }
     
-    // Filter out JSON messages (those starting with '{')
+    // Track JSON message state by counting braces
+    // If we see '{', we're entering a JSON message
     if (message[0] == '{') {
+        in_json_message = true;
+        json_brace_count = 0;
+    }
+    
+    // If we're inside a JSON message, count braces to track when it ends
+    if (in_json_message) {
+        for (size_t i = 0; i < strlen(message); i++) {
+            if (message[i] == '{') {
+                json_brace_count++;
+            } else if (message[i] == '}') {
+                json_brace_count--;
+                // If brace count reaches 0, JSON message is complete
+                if (json_brace_count <= 0) {
+                    in_json_message = false;
+                    json_brace_count = 0;
+                }
+            }
+        }
+        // Filter out this line (it's part of JSON)
         return;
     }
     

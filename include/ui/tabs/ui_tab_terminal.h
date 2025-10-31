@@ -22,6 +22,8 @@ private:
     static bool buffer_dirty;  // Flag to indicate buffer needs UI update
     static uint32_t last_update_ms;  // Timestamp of last UI update
     static const uint32_t UPDATE_INTERVAL_MS = 100;  // Update UI every 100ms
+    static bool in_json_message;  // Track if we're inside a multi-line JSON message
+    static int json_brace_count;  // Track brace depth in JSON messages
 
     static void send_button_event_cb(lv_event_t *e);
     static void input_field_event_cb(lv_event_t *e);
