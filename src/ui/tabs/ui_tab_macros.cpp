@@ -14,6 +14,7 @@ lv_obj_t *UITabMacros::macro_container = nullptr;
 lv_obj_t *UITabMacros::btn_edit = nullptr;
 lv_obj_t *UITabMacros::btn_add = nullptr;
 lv_obj_t *UITabMacros::btn_done = nullptr;
+lv_obj_t *UITabMacros::lbl_empty_message = nullptr;
 lv_obj_t *UITabMacros::progress_container = nullptr;
 lv_obj_t *UITabMacros::lbl_macro_name = nullptr;
 lv_obj_t *UITabMacros::bar_progress = nullptr;
@@ -143,6 +144,16 @@ void UITabMacros::create(lv_obj_t *tab) {
     lv_obj_set_pos(macro_container, 15, 75);  // Position below Edit button
     lv_obj_clear_flag(macro_container, LV_OBJ_FLAG_SCROLLABLE);
 
+    // Empty message label (shown when no macros configured)
+    lbl_empty_message = lv_label_create(macro_container);
+    lv_label_set_text(lbl_empty_message, "No macros configured.\n\nClick " LV_SYMBOL_EDIT " Edit to add macros.");
+    lv_obj_set_style_text_font(lbl_empty_message, &lv_font_montserrat_24, 0);
+    lv_obj_set_style_text_color(lbl_empty_message, UITheme::TEXT_LIGHT, 0);
+    lv_obj_set_style_text_align(lbl_empty_message, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_set_width(lbl_empty_message, 700);  // Constrain width for better text layout
+    lv_obj_center(lbl_empty_message);  // Center both horizontally and vertically
+    lv_obj_add_flag(lbl_empty_message, LV_OBJ_FLAG_HIDDEN);  // Hidden by default
+
     loadMacros();
     refreshMacroList();
 }
@@ -152,7 +163,7 @@ void UITabMacros::loadMacros() {
     Preferences prefs;
     prefs.begin(PREFS_NAMESPACE, true);  // Read-only
     
-    int machine_index = prefs.getInt("machine", 0);
+    int machine_index = prefs.getInt("sel_machine", 0);
     
     char key[32];
     snprintf(key, sizeof(key), "m%d_macros", machine_index);
@@ -180,7 +191,7 @@ void UITabMacros::saveMacros() {
     Preferences prefs;
     prefs.begin(PREFS_NAMESPACE, false);  // Read-write
     
-    int machine_index = prefs.getInt("machine", 0);
+    int machine_index = prefs.getInt("sel_machine", 0);
     
     char key[32];
     snprintf(key, sizeof(key), "m%d_macros", machine_index);
@@ -357,6 +368,23 @@ void UITabMacros::refreshMacroList() {
             lv_obj_set_style_text_font(label, &lv_font_montserrat_20, 0);
             lv_obj_center(label);
         }
+    }
+    
+    // Show/hide empty message based on whether any macros are configured
+    int configured_count = getConfiguredMacroCount();
+    if (configured_count == 0 && !is_edit_mode) {
+        // Clear flex layout and padding for proper centering
+        lv_obj_set_layout(macro_container, LV_LAYOUT_NONE);
+        lv_obj_set_style_pad_all(macro_container, 0, 0);
+        
+        // Recreate empty message label since we cleared the container
+        lbl_empty_message = lv_label_create(macro_container);
+        lv_label_set_text(lbl_empty_message, "No macros configured.\n\nClick " LV_SYMBOL_EDIT " Edit to add macros.");
+        lv_obj_set_style_text_font(lbl_empty_message, &lv_font_montserrat_24, 0);
+        lv_obj_set_style_text_color(lbl_empty_message, UITheme::TEXT_LIGHT, 0);
+        lv_obj_set_style_text_align(lbl_empty_message, LV_TEXT_ALIGN_CENTER, 0);
+        lv_obj_set_width(lbl_empty_message, 700);  // Constrain width for better text layout
+        lv_obj_center(lbl_empty_message);  // Center both horizontally and vertically
     }
 }
 

@@ -30,6 +30,7 @@ private:
     static lv_obj_t *btn_edit;
     static lv_obj_t *btn_add;
     static lv_obj_t *btn_done;
+    static lv_obj_t *lbl_empty_message;  // Message shown when no macros configured
     
     // Progress display (normal mode)
     static lv_obj_t *progress_container;
