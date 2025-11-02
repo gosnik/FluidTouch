@@ -420,18 +420,8 @@ void FluidNCClient::parseRealtimeFeedback(const char* message) {
         float x, y, z;
         int success;
         if (sscanf(message + 5, "%f,%f,%f:%d", &x, &y, &z, &success) == 4) {
-            char result[256];
-            if (success) {
-                snprintf(result, sizeof(result), 
-                        "Probe SUCCESS\n\nContact at:\nX: %.3f mm\nY: %.3f mm\nZ: %.3f mm", 
-                        x, y, z);
-            } else {
-                snprintf(result, sizeof(result), 
-                        "Probe FAILED\n\nNo contact detected within\nmax distance");
-            }
-            
-            // Update probe tab result display
-            UITabControlProbe::updateResult(result);
+            // Update probe tab result display with coordinates
+            UITabControlProbe::updateResult(x, y, z, success != 0);
             
             Serial.printf("[FluidNC] Probe %s at (%.3f, %.3f, %.3f)\n", 
                          success ? "SUCCESS" : "FAILED", x, y, z);
