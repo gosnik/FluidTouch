@@ -1,0 +1,135 @@
+name: Build and Deploy Firmware
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Cache PlatformIO
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.platformio
+          .pio
+        key: ${{ runner.os }}-pio-${{ hashFiles('**/platformio.ini') }}
+        restore-keys: |
+          ${{ runner.os }}-pio-
+          
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        
+    - name: Install PlatformIO
+      run: |
+        python -m pip install --upgrade pip
+        pip install platformio
+        
+    - name: Build firmware
+      run: platformio run
+      
+    - name: Prepare firmware files
+      run: |
+        mkdir -p web/firmware
+        cp .pio/build/elecrow-crowpanel-7-basic/firmware.bin web/firmware/
+        cp .pio/build/elecrow-crowpanel-7-basic/bootloader.bin web/firmware/
+        cp .pio/build/elecrow-crowpanel-7-basic/partitions.bin web/firmware/
+        
+        # boot_app0.bin location varies, try common paths
+        if [ -f ~/.platformio/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin ]; then
+          cp ~/.platformio/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin web/firmware/
+        fi
+        
+    - name: Extract version from tag
+      id: version
+      run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+      
+    - name: Update manifest.json with version
+      run: |
+        sed -i 's/"version": ".*"/"version": "${{ steps.version.outputs.VERSION }}"/' web/manifest.json
+        
+    - name: Upload firmware artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: firmware-${{ steps.version.outputs.VERSION }}
+        path: |
+          web/firmware/*.bin
+          web/manifest.json
+          web/index.html
+          
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      if: startsWith(github.ref, 'refs/tags/')
+      with:
+        files: |
+          .pio/build/elecrow-crowpanel-7-basic/firmware.bin
+        body: |
+          ## FluidTouch ${{ steps.version.outputs.VERSION }}
+          
+          ### Web Installer
+          Install directly from your browser: [FluidTouch Web Installer](https://jeyeager65.github.io/FluidTouch/)
+          
+          ### Manual Installation
+          Download `firmware.bin` and flash using:
+          - [ESP Web Flasher](https://esp.huhn.me/)
+          - [ESPHome Flasher](https://github.com/esphome/esphome-flasher)
+          - esptool.py: `esptool.py --chip esp32s3 write_flash 0x10000 firmware.bin`
+          
+          ### Hardware Requirements
+          - Elecrow CrowPanel 7" Basic ESP32-S3 HMI Display
+          - USB-C cable with data support
+          
+          ### Installation Notes
+          - First-time installation will erase existing data
+          - WiFi credentials will need to be reconfigured
+          - Machine configurations stored in preferences
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        
+  deploy-pages:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+      
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+      
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Download firmware artifacts
+      uses: actions/download-artifact@v4
+      with:
+        pattern: firmware-*
+        path: web/firmware
+        merge-multiple: true
+        
+    - name: Setup Pages
+      uses: actions/configure-pages@v4
+      
+    - name: Upload Pages artifact
+      uses: actions/upload-pages-artifact@v3
+      with:
+        path: 'web'
+        
+    - name: Deploy to GitHub Pages
+      id: deployment
+      uses: actions/deploy-pages@v4

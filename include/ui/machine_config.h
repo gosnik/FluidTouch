@@ -3,7 +3,7 @@
 
 #include <Arduino.h>
 
-#define MAX_MACHINES 5
+#define MAX_MACHINES 4
 
 enum ConnectionType {
     CONN_WIRED = 0,
