@@ -87,7 +87,7 @@ cp .pio/build/elecrow-crowpanel-7-basic/*.bin web/firmware/
 
 Edit `index.html`:
 ```html
-<p class="version">Version: 0.9.0</p>
+<p class="version">Version: 0.9.1</p>
 ```
 
 ### Adding New Features

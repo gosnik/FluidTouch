@@ -126,9 +126,15 @@ The codebase follows a **strict modular pattern** with clear separation:
    - Machines stored in Preferences as array under "machines" key (MachineConfig struct)
    - Selected machine stored in Preferences under "machine" key
    - Machine name displayed in status bar with connection symbol
-   - **Layout**: 450px machine buttons + 60px up/down buttons + 70px edit/delete buttons
-   - **Add button**: Single button in upper right corner (green, 120x40px)
+   - **Edit Mode Layout**: 458px machine buttons + 60×60px control buttons (up/down/edit/delete) with consistent 5px gaps (matches macro list spacing)
+   - **Add button**: Single button in upper right corner (green, 120×45px), only visible in edit mode
    - **Machine switching**: Clicking right side of status bar shows confirmation dialog, then restarts ESP32 to switch machines cleanly
+   - **Add/Edit Dialog**: 780×460px modal with 2-column layout (64% left: Name/SSID/URL, 33% right: Connection/Password/Port)
+     - All fields: 18pt font for improved readability
+     - Text areas: 40px height, Connection dropdown: 48px height for alignment
+     - Title: Uppercase gray (TEXT_DISABLED) matching settings section style
+     - Layout: Absolute positioning for main container prevents keyboard-triggered shifts
+     - Buttons: Fixed at bottom (y=370) with Save (left) and Cancel (right)
 
 4. **Status Bar Layout** (60px height, 18pt font, split into clickable areas):
    - **Left area** (550px): Machine state (IDLE/RUN/ALARM) - 32pt uppercase, vertically centered, color-coded
@@ -252,6 +258,9 @@ All other hardcoded values live in `include/config.h`:
 **Network Modules** (`network/`):
 - **`src/network/screenshot_server.cpp`**: WiFi setup, BMP conversion from RGB565 frame buffer
 - **`src/network/fluidnc_client.cpp`**: FluidNC WebSocket client with automatic reporting (no polling), status parsing, WCO handling, F/S parsing from both status reports and GCode state, and SD card file progress tracking. Terminal callback currently disabled.
+  - **Connection Flow**: 1s reconnect attempts until first successful status report, then 24h interval to effectively disable auto-reconnect
+  - **Disconnect Handling**: Shows error dialog only if previously connected successfully (prevents false alarms during initial handshake)
+  - **Keepalive**: 15s ping interval, 5s pong timeout, disconnects after 2 missed pongs
 
 **UI Assets**:
 - **`src/ui/fonts/jetbrains_mono_16.c`**: Monospace font for terminal display
@@ -339,6 +348,8 @@ All other hardcoded values live in `include/config.h`:
 13. **SD file progress**: FluidNC sends `SD:percent,filename` in status reports - track start time on first detection, calculate elapsed/estimated times based on percentage and elapsed duration
 14. **No polling needed**: FluidNC automatic reporting (`$Report/Interval=250\n`) handles all status updates - no fallback polling required
 15. **Terminal callback**: Terminal updates can be enabled/disabled by commenting/uncommenting the `terminalCallback()` call in `fluidnc_client.cpp` WebSocket event handler
+16. **State popup buttons**: Resume and Clear Alarm buttons send commands but do NOT manually close popups - popups auto-close when FluidNC state actually changes, providing visual feedback that command was sent
+17. **Connection error handling**: Only show disconnect error dialogs if `everConnectedSuccessfully` flag is true - prevents false alarms during initial connection handshake when connection attempts are still in progress
 16. **State popup buttons**: Resume and Clear Alarm buttons send commands but do NOT manually close popups - popups auto-close when FluidNC state actually changes, providing visual feedback that command was sent
 
 ## External Dependencies
