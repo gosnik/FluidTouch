@@ -60,6 +60,10 @@ char UITabStatus::last_modal_feedrate[8] = "";
 char UITabStatus::last_modal_spindle[8] = "";
 char UITabStatus::last_modal_coolant[8] = "";
 char UITabStatus::last_modal_tool[8] = "";
+bool UITabStatus::last_is_printing = false;
+float UITabStatus::last_file_percent = -1.0f;
+char UITabStatus::last_filename[64] = "";
+uint32_t UITabStatus::last_elapsed_seconds = 0;
 
 void UITabStatus::create(lv_obj_t *tab) {
     // Set 5px margins by using padding
@@ -686,31 +690,41 @@ void UITabStatus::updateFileProgress(bool is_printing, float percent, const char
                                      uint32_t elapsed_ms) {
     if (!lbl_file_progress_container) return;
     
+    // Convert elapsed_ms to seconds for coarse comparison (update every second minimum)
+    uint32_t elapsed_seconds = elapsed_ms / 1000;
+    
     if (is_printing && percent > 0) {
-        // Show the file progress container
-        lv_obj_clear_flag(lbl_file_progress_container, LV_OBJ_FLAG_HIDDEN);
-        
-        // Update filename
-        if (lbl_filename && filename) {
-            lv_label_set_text(lbl_filename, filename);
+        // Show the file progress container if it was hidden
+        if (!last_is_printing) {
+            lv_obj_clear_flag(lbl_file_progress_container, LV_OBJ_FLAG_HIDDEN);
+            last_is_printing = true;
         }
         
-        // Update progress bar
-        if (bar_progress) {
+        // Update filename only if changed
+        if (lbl_filename && filename && strcmp(filename, last_filename) != 0) {
+            lv_label_set_text(lbl_filename, filename);
+            strncpy(last_filename, filename, sizeof(last_filename) - 1);
+            last_filename[sizeof(last_filename) - 1] = '\0';
+        }
+        
+        // Update progress bar only if percent changed (integer comparison)
+        if (bar_progress && (int)percent != (int)last_file_percent) {
             lv_bar_set_value(bar_progress, (int)percent, LV_ANIM_OFF);
         }
         
-        // Update percentage label (1 decimal place)
-        if (lbl_percent) {
+        // Update percentage label only if changed (0.1% resolution)
+        if (lbl_percent && fabsf(percent - last_file_percent) >= 0.1f) {
             char percent_buf[8];
             snprintf(percent_buf, sizeof(percent_buf), "%.1f%%", percent);
             lv_label_set_text(lbl_percent, percent_buf);
+            last_file_percent = percent;
         }
         
-        // Calculate and display elapsed time (just the time value, no label)
-        if (lbl_elapsed_time) {
-            uint32_t seconds = elapsed_ms / 1000;
-            uint32_t minutes = seconds / 60;
+        // Calculate and display elapsed time only if seconds changed
+        if (lbl_elapsed_time && elapsed_seconds != last_elapsed_seconds) {
+            last_elapsed_seconds = elapsed_seconds;
+            
+            uint32_t minutes = elapsed_seconds / 60;
             uint32_t hours = minutes / 60;
             
             char time_buf[16];
@@ -720,7 +734,7 @@ void UITabStatus::updateFileProgress(bool is_printing, float percent, const char
                     lv_label_set_text(lbl_elapsed_unit, "hr:min");
                 }
             } else {
-                snprintf(time_buf, sizeof(time_buf), "%02lu:%02lu", minutes, seconds % 60);
+                snprintf(time_buf, sizeof(time_buf), "%02lu:%02lu", minutes, elapsed_seconds % 60);
                 if (lbl_elapsed_unit) {
                     lv_label_set_text(lbl_elapsed_unit, "min:sec");
                 }
@@ -761,7 +775,13 @@ void UITabStatus::updateFileProgress(bool is_printing, float percent, const char
             }
         }
     } else {
-        // Hide the file progress container when not printing
-        lv_obj_add_flag(lbl_file_progress_container, LV_OBJ_FLAG_HIDDEN);
+        // Hide the file progress container if it was showing
+        if (last_is_printing) {
+            lv_obj_add_flag(lbl_file_progress_container, LV_OBJ_FLAG_HIDDEN);
+            last_is_printing = false;
+            last_file_percent = -1.0f;
+            last_filename[0] = '\0';
+            last_elapsed_seconds = 0;
+        }
     }
 }

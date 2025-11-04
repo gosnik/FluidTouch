@@ -52,6 +52,10 @@ float UICommon::last_wpos_z = -9999.0f;
 float UICommon::last_mpos_x = -9999.0f;
 float UICommon::last_mpos_y = -9999.0f;
 float UICommon::last_mpos_z = -9999.0f;
+static char last_machine_state[16] = "";  // Cached state to avoid unnecessary updates
+static bool last_machine_connected = false;  // Cached connection status
+static bool last_wifi_connected = false;     // Cached WiFi status
+static bool last_auto_reporting = false;     // Cached auto-reporting status
 
 // Connection timeout tracking
 static uint32_t connection_timeout_start = 0;
@@ -494,7 +498,16 @@ void UICommon::updateWorkPosition(float x, float y, float z) {
 
 void UICommon::updateMachineState(const char *state) {
     if (status_bar && lbl_status) {
+        // Only update if state actually changed
+        if (strcmp(state, last_machine_state) == 0) {
+            return;  // No change, skip update
+        }
+        
         lv_label_set_text(lbl_status, state);
+        
+        // Update cached state
+        strncpy(last_machine_state, state, sizeof(last_machine_state) - 1);
+        last_machine_state[sizeof(last_machine_state) - 1] = '\0';
         
         // Color code the status (state is already uppercase)
         if (strcmp(state, "IDLE") == 0) {
@@ -510,26 +523,31 @@ void UICommon::updateMachineState(const char *state) {
 }
 
 void UICommon::updateConnectionStatus(bool machine_connected, bool wifi_connected) {
+    bool auto_reporting = FluidNCClient::isAutoReporting();
+    
     // Update machine symbol color with three states:
     // - Red (STATE_ALARM): Disconnected
     // - Orange (UI_WARNING): Connected with fallback polling (degraded)
     // - Green (STATE_IDLE): Connected with auto-reporting (optimal)
-    if (lbl_machine_symbol) {
+    if (lbl_machine_symbol && (machine_connected != last_machine_connected || auto_reporting != last_auto_reporting)) {
         lv_color_t color;
         if (!machine_connected) {
             color = UITheme::STATE_ALARM;  // Red: Disconnected
-        } else if (!FluidNCClient::isAutoReporting()) {
+        } else if (!auto_reporting) {
             color = UITheme::UI_WARNING;   // Orange: Fallback polling (1s updates)
         } else {
             color = UITheme::STATE_IDLE;   // Green: Auto-reporting (250ms updates)
         }
         lv_obj_set_style_text_color(lbl_machine_symbol, color, 0);
+        last_machine_connected = machine_connected;
+        last_auto_reporting = auto_reporting;
     }
     
     // Update WiFi symbol color
-    if (lbl_wifi_symbol) {
+    if (lbl_wifi_symbol && wifi_connected != last_wifi_connected) {
         lv_obj_set_style_text_color(lbl_wifi_symbol, 
             wifi_connected ? UITheme::STATE_IDLE : UITheme::STATE_ALARM, 0);
+        last_wifi_connected = wifi_connected;
     }
 }
 

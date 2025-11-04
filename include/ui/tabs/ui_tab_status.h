@@ -73,6 +73,10 @@ private:
     static char last_modal_spindle[8];
     static char last_modal_coolant[8];
     static char last_modal_tool[8];
+    static bool last_is_printing;
+    static float last_file_percent;
+    static char last_filename[64];
+    static uint32_t last_elapsed_seconds;
 };
 
 #endif // UI_TAB_STATUS_H
