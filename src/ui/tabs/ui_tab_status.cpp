@@ -114,7 +114,7 @@ void UITabStatus::create(lv_obj_t *tab) {
     lv_label_set_text(lbl_percent, "0.0%");
     lv_obj_set_style_text_font(lbl_percent, &lv_font_montserrat_14, 0);
     lv_obj_set_style_text_color(lbl_percent, UITheme::UI_SUCCESS, 0);
-    lv_obj_set_pos(lbl_percent, 340, 18);
+    lv_obj_set_pos(lbl_percent, 335, 20);
     
     // Elapsed time - split into label, value, unit (moved 85px right for 5px more space)
     lv_obj_t *elapsed_label = lv_label_create(lbl_file_progress_container);
@@ -143,14 +143,14 @@ void UITabStatus::create(lv_obj_t *tab) {
     lv_obj_set_style_text_font(estimated_label, &lv_font_montserrat_12, 0);
     lv_obj_set_style_text_color(estimated_label, UITheme::UI_WARNING, 0);  // Colored label
     lv_obj_set_style_text_align(estimated_label, LV_TEXT_ALIGN_RIGHT, 0);
-    lv_obj_set_pos(estimated_label, 385, 22);  // 5px more space (390→385)
+    lv_obj_set_pos(estimated_label, 385, 21);  // 5px more space (390→385)
     lv_obj_set_width(estimated_label, 65);  // 5px wider (60→65)
     
     lbl_estimated_time = lv_label_create(lbl_file_progress_container);
     lv_label_set_text(lbl_estimated_time, "00:00");
     lv_obj_set_style_text_font(lbl_estimated_time, &lv_font_montserrat_12, 0);
     lv_obj_set_style_text_color(lbl_estimated_time, UITheme::TEXT_LIGHT, 0);  // White value
-    lv_obj_set_pos(lbl_estimated_time, 455, 22);
+    lv_obj_set_pos(lbl_estimated_time, 455, 21);
     
     lbl_estimated_unit = lv_label_create(lbl_file_progress_container);
     lv_label_set_text(lbl_estimated_unit, "min:sec");  // Changed from mm:ss
