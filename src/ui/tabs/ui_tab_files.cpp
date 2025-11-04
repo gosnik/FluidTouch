@@ -528,12 +528,12 @@ void UITabFiles::parseFileList(const std::string &response) {
         }
     }
     
-    // Sort: directories first, then files, both alphabetically (case-insensitive)
+    // Sort: files first, then directories at bottom, both alphabetically (case-insensitive)
     std::sort(file_list_with_sizes.begin(), file_list_with_sizes.end(), 
         [](const FileInfo &a, const FileInfo &b) {
-            // Directories come before files
+            // Files come before directories (directories at bottom)
             if (a.is_directory != b.is_directory) {
-                return a.is_directory;  // true (directory) sorts before false (file)
+                return !a.is_directory;  // false (file) sorts before true (directory)
             }
             // Within same type, sort alphabetically (case-insensitive)
             std::string a_lower = a.name;
@@ -609,7 +609,7 @@ void UITabFiles::updateFileListUI() {
         lv_obj_t *lbl_filename = lv_label_create(file_row);
         if (file.is_directory) {
             char label_text[256];
-            snprintf(label_text, sizeof(label_text), LV_SYMBOL_DIRECTORY " /%s", file.name.c_str());
+            snprintf(label_text, sizeof(label_text), LV_SYMBOL_DIRECTORY " %s", file.name.c_str());
             lv_label_set_text(lbl_filename, label_text);
             lv_obj_set_style_text_color(lbl_filename, UITheme::ACCENT_SECONDARY, 0);
         } else {
