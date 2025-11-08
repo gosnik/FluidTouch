@@ -646,7 +646,7 @@
         // Load saved hardware selection
         window.addEventListener('DOMContentLoaded', () => {
             const saved = localStorage.getItem('fluidtouch-hardware');
-            if (saved) {
+            if (saved && (saved === 'basic' || saved === 'advance')) {
                 selectHardware(saved);
             }
         });
