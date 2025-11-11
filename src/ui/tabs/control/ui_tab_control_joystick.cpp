@@ -5,6 +5,26 @@
 #include <lvgl.h>
 #include <math.h>
 
+// Axis mode selection
+enum AxisMode {
+    MODE_XY = 0,
+    MODE_X = 1,
+    MODE_Y = 2
+};
+
+static AxisMode current_axis_mode = MODE_XY;
+static lv_obj_t *xy_joystick_container = NULL;
+static lv_obj_t *xy_bg = NULL;
+static lv_obj_t *xy_knob = NULL;
+
+// Axis selection button references
+static lv_obj_t *btn_xy = NULL;
+static lv_obj_t *btn_x = NULL;
+static lv_obj_t *btn_y = NULL;
+
+// XY jog label (updates based on mode)
+static lv_obj_t *xy_jog_label = NULL;
+
 // Static label pointers for real-time updates
 static lv_obj_t *xy_percent_label = NULL;
 static lv_obj_t *xy_feedrate_label = NULL;
@@ -328,79 +348,464 @@ static void z_joystick_event_handler(lv_event_t *e) {
     }
 }
 
+// X-only Joystick drag event handler (horizontal slider)
+static void x_joystick_event_handler(lv_event_t *e) {
+    lv_event_code_t code = lv_event_get_code(e);
+    lv_obj_t *knob = (lv_obj_t *)lv_event_get_target(e);
+    
+    if (!knob || !lv_obj_is_valid(knob)) return;
+    
+    if (code == LV_EVENT_PRESSING) {
+        lv_obj_t *bg = lv_obj_get_parent(knob);
+        if (!bg || !lv_obj_is_valid(bg)) return;
+        
+        lv_indev_t *indev = lv_indev_get_act();
+        if (indev == NULL) return;
+        
+        lv_point_t point;
+        lv_indev_get_point(indev, &point);
+        
+        int32_t bg_w = lv_obj_get_width(bg);
+        lv_area_t bg_coords;
+        lv_obj_get_coords(bg, &bg_coords);
+        int32_t bg_center_x = (bg_coords.x1 + bg_coords.x2) / 2;
+        int32_t dx = point.x - bg_center_x;
+        int32_t max_offset = (bg_w / 2) - (lv_obj_get_width(knob) / 2) - 5;
+        
+        if (dx < -max_offset) dx = -max_offset;
+        if (dx > max_offset) dx = max_offset;
+        
+        lv_obj_align(knob, LV_ALIGN_CENTER, dx, 0);
+        
+        float x_percent = (dx * 100.0f) / max_offset;
+        float x_percent_curved = applyJoystickCurve(x_percent);
+        
+        int max_xy_feed = UITabSettingsJog::getMaxXYFeed();
+        int x_feedrate = (int)(fabs(x_percent_curved) * max_xy_feed / 100.0f);
+        
+        int current_percent = (int)x_percent_curved;
+        if (abs(current_percent - last_displayed_xy_percent) >= 5) {
+            if (xy_percent_label != NULL) {
+                lv_label_set_text_fmt(xy_percent_label, "X: %d%%", current_percent);
+            }
+            last_displayed_xy_percent = current_percent;
+        }
+        
+        if (abs(x_feedrate - last_displayed_xy_feedrate) >= 50) {
+            if (xy_feedrate_label != NULL) {
+                lv_label_set_text_fmt(xy_feedrate_label, "%d mm/min", x_feedrate);
+            }
+            last_displayed_xy_feedrate = x_feedrate;
+        }
+        
+        unsigned long current_time = millis();
+        if (!xy_jogging || (current_time - last_jog_time >= JOG_INTERVAL_MS)) {
+            float actual_dt = xy_jogging ? ((current_time - last_jog_time) / 1000.0f) : JOG_TIME_INCREMENT;
+            float v_x = (x_percent_curved / 100.0f) * max_xy_feed;
+            float feed_rate = fabs(v_x);
+            
+            if (feed_rate > 1.0f) {
+                float v_x_mm_per_sec = v_x / 60.0f;
+                float x_distance = v_x_mm_per_sec * actual_dt;
+                
+                char jog_cmd[64];
+                snprintf(jog_cmd, sizeof(jog_cmd), "$J=G91 X%.4f F%.0f\n", x_distance, feed_rate);
+                FluidNCClient::sendCommand(jog_cmd);
+                
+                xy_jogging = true;
+                last_jog_time = current_time;
+                last_xy_x_percent = x_percent_curved;
+            }
+        }
+    }
+    else if (code == LV_EVENT_RELEASED) {
+        lv_obj_center(knob);
+        if (xy_percent_label != NULL) lv_label_set_text(xy_percent_label, "X: 0%");
+        if (xy_feedrate_label != NULL) lv_label_set_text(xy_feedrate_label, "0 mm/min");
+        last_displayed_xy_percent = -1;
+        last_displayed_xy_feedrate = -1;
+        if (xy_jogging) {
+            sendJogCancel();
+            xy_jogging = false;
+            last_xy_x_percent = 0.0f;
+        }
+    }
+}
+
+// Y-only Joystick drag event handler (vertical slider)
+static void y_joystick_event_handler(lv_event_t *e) {
+    lv_event_code_t code = lv_event_get_code(e);
+    lv_obj_t *knob = (lv_obj_t *)lv_event_get_target(e);
+    
+    if (!knob || !lv_obj_is_valid(knob)) return;
+    
+    if (code == LV_EVENT_PRESSING) {
+        lv_obj_t *bg = lv_obj_get_parent(knob);
+        if (!bg || !lv_obj_is_valid(bg)) return;
+        
+        lv_indev_t *indev = lv_indev_get_act();
+        if (indev == NULL) return;
+        
+        lv_point_t point;
+        lv_indev_get_point(indev, &point);
+        
+        int32_t bg_h = lv_obj_get_height(bg);
+        lv_area_t bg_coords;
+        lv_obj_get_coords(bg, &bg_coords);
+        int32_t bg_center_y = (bg_coords.y1 + bg_coords.y2) / 2;
+        int32_t dy = point.y - bg_center_y;
+        int32_t max_offset = (bg_h / 2) - (lv_obj_get_height(knob) / 2) - 5;
+        
+        if (dy < -max_offset) dy = -max_offset;
+        if (dy > max_offset) dy = max_offset;
+        
+        lv_obj_align(knob, LV_ALIGN_CENTER, 0, dy);
+        
+        float y_percent = -(dy * 100.0f) / max_offset;  // Invert Y
+        float y_percent_curved = applyJoystickCurve(y_percent);
+        
+        int max_xy_feed = UITabSettingsJog::getMaxXYFeed();
+        int y_feedrate = (int)(fabs(y_percent_curved) * max_xy_feed / 100.0f);
+        
+        int current_percent = (int)y_percent_curved;
+        if (abs(current_percent - last_displayed_xy_percent) >= 5) {
+            if (xy_percent_label != NULL) {
+                lv_label_set_text_fmt(xy_percent_label, "Y: %d%%", current_percent);
+            }
+            last_displayed_xy_percent = current_percent;
+        }
+        
+        if (abs(y_feedrate - last_displayed_xy_feedrate) >= 50) {
+            if (xy_feedrate_label != NULL) {
+                lv_label_set_text_fmt(xy_feedrate_label, "%d mm/min", y_feedrate);
+            }
+            last_displayed_xy_feedrate = y_feedrate;
+        }
+        
+        unsigned long current_time = millis();
+        if (!xy_jogging || (current_time - last_jog_time >= JOG_INTERVAL_MS)) {
+            float actual_dt = xy_jogging ? ((current_time - last_jog_time) / 1000.0f) : JOG_TIME_INCREMENT;
+            float v_y = (y_percent_curved / 100.0f) * max_xy_feed;
+            float feed_rate = fabs(v_y);
+            
+            if (feed_rate > 1.0f) {
+                float v_y_mm_per_sec = v_y / 60.0f;
+                float y_distance = v_y_mm_per_sec * actual_dt;
+                
+                char jog_cmd[64];
+                snprintf(jog_cmd, sizeof(jog_cmd), "$J=G91 Y%.4f F%.0f\n", y_distance, feed_rate);
+                FluidNCClient::sendCommand(jog_cmd);
+                
+                xy_jogging = true;
+                last_jog_time = current_time;
+                last_xy_y_percent = y_percent_curved;
+            }
+        }
+    }
+    else if (code == LV_EVENT_RELEASED) {
+        lv_obj_center(knob);
+        if (xy_percent_label != NULL) lv_label_set_text(xy_percent_label, "Y: 0%");
+        if (xy_feedrate_label != NULL) lv_label_set_text(xy_feedrate_label, "0 mm/min");
+        last_displayed_xy_percent = -1;
+        last_displayed_xy_feedrate = -1;
+        if (xy_jogging) {
+            sendJogCancel();
+            xy_jogging = false;
+            last_xy_y_percent = 0.0f;
+        }
+    }
+}
+
+// Rebuild the joystick display based on current axis mode
+static void rebuildJoystick() {
+    if (!xy_joystick_container || !lv_obj_is_valid(xy_joystick_container)) return;
+    
+    // Delete old background and knob if they exist
+    if (xy_bg && lv_obj_is_valid(xy_bg)) {
+        lv_obj_del(xy_bg);
+        xy_bg = NULL;
+        xy_knob = NULL;  // Knob is child of bg, deleted automatically
+    }
+    
+    if (current_axis_mode == MODE_XY) {
+        // Create circular XY joystick (220x220, centered)
+        xy_bg = lv_obj_create(xy_joystick_container);
+        lv_obj_set_size(xy_bg, 220, 220);
+        lv_obj_set_style_radius(xy_bg, LV_RADIUS_CIRCLE, 0);
+        lv_obj_set_style_bg_color(xy_bg, UITheme::JOYSTICK_BG, 0);
+        lv_obj_set_style_border_width(xy_bg, 2, 0);
+        lv_obj_set_style_border_color(xy_bg, UITheme::JOYSTICK_BORDER, 0);
+        lv_obj_clear_flag(xy_bg, LV_OBJ_FLAG_SCROLLABLE);
+        lv_obj_center(xy_bg);  // Center in container
+        
+        // Horizontal crosshair
+        lv_obj_t *xy_h_line = lv_obj_create(xy_bg);
+        lv_obj_set_size(xy_h_line, 200, 2);
+        lv_obj_set_style_bg_color(xy_h_line, UITheme::JOYSTICK_LINE, 0);
+        lv_obj_set_style_border_width(xy_h_line, 0, 0);
+        lv_obj_center(xy_h_line);
+        
+        // Vertical crosshair
+        lv_obj_t *xy_v_line = lv_obj_create(xy_bg);
+        lv_obj_set_size(xy_v_line, 2, 200);
+        lv_obj_set_style_bg_color(xy_v_line, UITheme::JOYSTICK_LINE, 0);
+        lv_obj_set_style_border_width(xy_v_line, 0, 0);
+        lv_obj_center(xy_v_line);
+        
+        // Draggable knob
+        xy_knob = lv_obj_create(xy_bg);
+        lv_obj_set_size(xy_knob, 90, 90);
+        lv_obj_set_style_radius(xy_knob, LV_RADIUS_CIRCLE, 0);
+        lv_obj_set_style_bg_color(xy_knob, UITheme::JOYSTICK_XY, 0);
+        lv_obj_set_style_border_width(xy_knob, 3, 0);
+        lv_obj_set_style_border_color(xy_knob, lv_color_white(), 0);
+        lv_obj_center(xy_knob);
+        
+        lv_obj_t *xy_knob_label = lv_label_create(xy_knob);
+        lv_label_set_text(xy_knob_label, "XY");
+        lv_obj_set_style_text_font(xy_knob_label, &lv_font_montserrat_20, 0);
+        lv_obj_center(xy_knob_label);
+        
+        lv_obj_add_flag(xy_knob, LV_OBJ_FLAG_CLICKABLE);
+        lv_obj_add_event_cb(xy_knob, xy_joystick_event_handler, LV_EVENT_PRESSING, NULL);
+        lv_obj_add_event_cb(xy_knob, xy_joystick_event_handler, LV_EVENT_RELEASED, NULL);
+    }
+    else if (current_axis_mode == MODE_X) {
+        // Create horizontal X slider (220x80, centered vertically to align knob with Z knob)
+        xy_bg = lv_obj_create(xy_joystick_container);
+        lv_obj_set_size(xy_bg, 220, 80);
+        lv_obj_set_style_radius(xy_bg, 15, 0);
+        lv_obj_set_style_bg_color(xy_bg, UITheme::JOYSTICK_BG, 0);
+        lv_obj_set_style_border_width(xy_bg, 2, 0);
+        lv_obj_set_style_border_color(xy_bg, UITheme::JOYSTICK_BORDER, 0);
+        lv_obj_clear_flag(xy_bg, LV_OBJ_FLAG_SCROLLABLE);
+        lv_obj_center(xy_bg);  // Center in container - knob will be at same position as XY center
+        
+        // Center line
+        lv_obj_t *x_line = lv_obj_create(xy_bg);
+        lv_obj_set_size(x_line, 2, LV_PCT(100));
+        lv_obj_set_style_bg_color(x_line, UITheme::JOYSTICK_LINE, 0);
+        lv_obj_set_style_border_width(x_line, 0, 0);
+        lv_obj_center(x_line);
+        
+        // Draggable knob
+        xy_knob = lv_obj_create(xy_bg);
+        lv_obj_set_size(xy_knob, 70, 70);
+        lv_obj_set_style_radius(xy_knob, 15, 0);
+        lv_obj_set_style_bg_color(xy_knob, UITheme::AXIS_X, 0);
+        lv_obj_set_style_border_width(xy_knob, 3, 0);
+        lv_obj_set_style_border_color(xy_knob, lv_color_white(), 0);
+        lv_obj_center(xy_knob);
+        
+        lv_obj_t *x_knob_label = lv_label_create(xy_knob);
+        lv_label_set_text(x_knob_label, "X");
+        lv_obj_set_style_text_font(x_knob_label, &lv_font_montserrat_20, 0);
+        lv_obj_center(x_knob_label);
+        
+        lv_obj_add_flag(xy_knob, LV_OBJ_FLAG_CLICKABLE);
+        lv_obj_add_event_cb(xy_knob, x_joystick_event_handler, LV_EVENT_PRESSING, NULL);
+        lv_obj_add_event_cb(xy_knob, x_joystick_event_handler, LV_EVENT_RELEASED, NULL);
+    }
+    else if (current_axis_mode == MODE_Y) {
+        // Create vertical Y slider (80x220, centered horizontally to align knob with XY center)
+        xy_bg = lv_obj_create(xy_joystick_container);
+        lv_obj_set_size(xy_bg, 80, 220);
+        lv_obj_set_style_radius(xy_bg, 15, 0);
+        lv_obj_set_style_bg_color(xy_bg, UITheme::JOYSTICK_BG, 0);
+        lv_obj_set_style_border_width(xy_bg, 2, 0);
+        lv_obj_set_style_border_color(xy_bg, UITheme::JOYSTICK_BORDER, 0);
+        lv_obj_clear_flag(xy_bg, LV_OBJ_FLAG_SCROLLABLE);
+        lv_obj_center(xy_bg);  // Center in container - knob will be at same position as XY center
+        
+        // Center line
+        lv_obj_t *y_line = lv_obj_create(xy_bg);
+        lv_obj_set_size(y_line, LV_PCT(100), 2);
+        lv_obj_set_style_bg_color(y_line, UITheme::JOYSTICK_LINE, 0);
+        lv_obj_set_style_border_width(y_line, 0, 0);
+        lv_obj_center(y_line);
+        
+        // Draggable knob
+        xy_knob = lv_obj_create(xy_bg);
+        lv_obj_set_size(xy_knob, 70, 70);
+        lv_obj_set_style_radius(xy_knob, 15, 0);
+        lv_obj_set_style_bg_color(xy_knob, UITheme::AXIS_Y, 0);
+        lv_obj_set_style_border_width(xy_knob, 3, 0);
+        lv_obj_set_style_border_color(xy_knob, lv_color_white(), 0);
+        lv_obj_center(xy_knob);
+        
+        lv_obj_t *y_knob_label = lv_label_create(xy_knob);
+        lv_label_set_text(y_knob_label, "Y");
+        lv_obj_set_style_text_font(y_knob_label, &lv_font_montserrat_20, 0);
+        lv_obj_center(y_knob_label);
+        
+        lv_obj_add_flag(xy_knob, LV_OBJ_FLAG_CLICKABLE);
+        lv_obj_add_event_cb(xy_knob, y_joystick_event_handler, LV_EVENT_PRESSING, NULL);
+        lv_obj_add_event_cb(xy_knob, y_joystick_event_handler, LV_EVENT_RELEASED, NULL);
+    }
+}
+
+// Axis selection button event handler
+static void axis_button_event_handler(lv_event_t *e) {
+    lv_event_code_t code = lv_event_get_code(e);
+    if (code == LV_EVENT_CLICKED) {
+        AxisMode new_mode = (AxisMode)(intptr_t)lv_event_get_user_data(e);
+        
+        if (new_mode != current_axis_mode) {
+            // Cancel any active jogging before switching
+            if (xy_jogging) {
+                sendJogCancel();
+                xy_jogging = false;
+            }
+            
+            current_axis_mode = new_mode;
+            
+            // Update button borders to show selection
+            if (btn_xy && lv_obj_is_valid(btn_xy)) {
+                if (new_mode == MODE_XY) {
+                    lv_obj_set_style_border_width(btn_xy, 3, LV_PART_MAIN);
+                    lv_obj_set_style_border_color(btn_xy, lv_color_white(), LV_PART_MAIN);
+                } else {
+                    lv_obj_set_style_border_width(btn_xy, 0, LV_PART_MAIN);
+                }
+            }
+            
+            if (btn_x && lv_obj_is_valid(btn_x)) {
+                if (new_mode == MODE_X) {
+                    lv_obj_set_style_border_width(btn_x, 3, LV_PART_MAIN);
+                    lv_obj_set_style_border_color(btn_x, lv_color_white(), LV_PART_MAIN);
+                } else {
+                    lv_obj_set_style_border_width(btn_x, 0, LV_PART_MAIN);
+                }
+            }
+            
+            if (btn_y && lv_obj_is_valid(btn_y)) {
+                if (new_mode == MODE_Y) {
+                    lv_obj_set_style_border_width(btn_y, 3, LV_PART_MAIN);
+                    lv_obj_set_style_border_color(btn_y, lv_color_white(), LV_PART_MAIN);
+                } else {
+                    lv_obj_set_style_border_width(btn_y, 0, LV_PART_MAIN);
+                }
+            }
+            
+            rebuildJoystick();
+            
+            // Update XY JOG label text and color based on mode
+            if (xy_jog_label != NULL && lv_obj_is_valid(xy_jog_label)) {
+                const char *jog_label_text = (new_mode == MODE_XY) ? "XY JOG" : 
+                                             (new_mode == MODE_X) ? "X JOG" : "Y JOG";
+                lv_label_set_text(xy_jog_label, jog_label_text);
+                
+                // Update color to match axis
+                lv_color_t jog_label_color = (new_mode == MODE_XY) ? UITheme::AXIS_XY : 
+                                             (new_mode == MODE_X) ? UITheme::AXIS_X : UITheme::AXIS_Y;
+                lv_obj_set_style_text_color(xy_jog_label, jog_label_color, 0);
+            }
+            
+            // Reset info labels and update colors based on mode
+            if (xy_percent_label != NULL) {
+                const char *label = (new_mode == MODE_XY) ? "XY: 0%" : 
+                                    (new_mode == MODE_X) ? "X: 0%" : "Y: 0%";
+                lv_label_set_text(xy_percent_label, label);
+                
+                // Update color to match axis
+                lv_color_t color = (new_mode == MODE_XY) ? UITheme::JOYSTICK_XY : 
+                                   (new_mode == MODE_X) ? UITheme::AXIS_X : UITheme::AXIS_Y;
+                lv_obj_set_style_text_color(xy_percent_label, color, 0);
+            }
+            if (xy_feedrate_label != NULL) {
+                lv_label_set_text(xy_feedrate_label, "0 mm/min");
+            }
+            last_displayed_xy_percent = -1;
+            last_displayed_xy_feedrate = -1;
+        }
+    }
+}
+
 void UITabControlJoystick::create(lv_obj_t *parent) {
     // Set parent to use horizontal flex layout (XY joystick on left, info in center, Z slider on right)
     lv_obj_set_flex_flow(parent, LV_FLEX_FLOW_ROW);
-    lv_obj_set_flex_align(parent, LV_FLEX_ALIGN_SPACE_EVENLY, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_flex_align(parent, LV_FLEX_ALIGN_SPACE_EVENLY, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER);  // Align to top
     lv_obj_set_style_pad_left(parent, 15, 0);  // Shift everything right by 5px (10px default + 5px offset)
     lv_obj_set_style_pad_right(parent, 10, 0);
-    lv_obj_set_style_pad_top(parent, 10, 0);
+    lv_obj_set_style_pad_top(parent, 20, 0);  // Move everything down 10px (was 10px, now 20px)
     lv_obj_set_style_pad_bottom(parent, 10, 0);
     lv_obj_set_style_pad_gap(parent, 20, 0);
 
     // ========== XY Joystick (Circular) ==========
-    lv_obj_t *xy_container = lv_obj_create(parent);
-    lv_obj_set_size(xy_container, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
-    lv_obj_set_style_pad_all(xy_container, 5, 0);
-    lv_obj_set_flex_flow(xy_container, LV_FLEX_FLOW_COLUMN);
-    lv_obj_set_flex_align(xy_container, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    lv_obj_clear_flag(xy_container, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_set_style_bg_opa(xy_container, LV_OPA_TRANSP, 0);  // Transparent background
-    lv_obj_set_style_border_width(xy_container, 0, 0);  // No border
+    lv_obj_t *xy_outer_container = lv_obj_create(parent);
+    lv_obj_set_size(xy_outer_container, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+    lv_obj_set_style_pad_all(xy_outer_container, 5, 0);
+    lv_obj_set_flex_flow(xy_outer_container, LV_FLEX_FLOW_COLUMN);
+    lv_obj_set_flex_align(xy_outer_container, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_clear_flag(xy_outer_container, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_style_bg_opa(xy_outer_container, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_border_width(xy_outer_container, 0, 0);
     
-    // XY Label (centered above joystick) - Settings-style header with XY axis color
-    lv_obj_t *xy_label = lv_label_create(xy_container);
-    lv_label_set_text(xy_label, "XY JOG");
-    lv_obj_set_style_text_font(xy_label, &lv_font_montserrat_18, 0);
-    lv_obj_set_style_text_color(xy_label, UITheme::AXIS_XY, 0);
+    // XY Label (centered above joystick) - will update based on mode
+    xy_jog_label = lv_label_create(xy_outer_container);
+    lv_label_set_text(xy_jog_label, "XY JOG");
+    lv_obj_set_style_text_font(xy_jog_label, &lv_font_montserrat_18, 0);
+    lv_obj_set_style_text_color(xy_jog_label, UITheme::AXIS_XY, 0);
 
-    // Background circle (220x220 with crosshairs)
-    lv_obj_t *xy_bg = lv_obj_create(xy_container);
-    lv_obj_set_size(xy_bg, 220, 220);
-    lv_obj_set_style_radius(xy_bg, LV_RADIUS_CIRCLE, 0);
-    lv_obj_set_style_bg_color(xy_bg, UITheme::JOYSTICK_BG, 0);
-    lv_obj_set_style_border_width(xy_bg, 2, 0);
-    lv_obj_set_style_border_color(xy_bg, UITheme::JOYSTICK_BORDER, 0);
-    lv_obj_clear_flag(xy_bg, LV_OBJ_FLAG_SCROLLABLE);  // Disable scrolling
-
-    // Horizontal crosshair (extends to circle edge)
-    lv_obj_t *xy_h_line = lv_obj_create(xy_bg);
-    lv_obj_set_size(xy_h_line, 200, 2);  // 200px width
-    lv_obj_set_style_bg_color(xy_h_line, UITheme::JOYSTICK_LINE, 0);
-    lv_obj_set_style_border_width(xy_h_line, 0, 0);
-    lv_obj_center(xy_h_line);
-
-    // Vertical crosshair (extends to circle edge)
-    lv_obj_t *xy_v_line = lv_obj_create(xy_bg);
-    lv_obj_set_size(xy_v_line, 2, 200);  // 200px height
-    lv_obj_set_style_bg_color(xy_v_line, UITheme::JOYSTICK_LINE, 0);
-    lv_obj_set_style_border_width(xy_v_line, 0, 0);
-    lv_obj_center(xy_v_line);
-
-    // Draggable knob (90x90, cyan, centered initially)
-    lv_obj_t *xy_knob = lv_obj_create(xy_bg);
-    lv_obj_set_size(xy_knob, 90, 90);
-    lv_obj_set_style_radius(xy_knob, LV_RADIUS_CIRCLE, 0);
-    lv_obj_set_style_bg_color(xy_knob, UITheme::JOYSTICK_XY, 0);
-    lv_obj_set_style_border_width(xy_knob, 3, 0);
-    lv_obj_set_style_border_color(xy_knob, lv_color_white(), 0);
-    lv_obj_center(xy_knob);
+    // Joystick container (will be rebuilt based on mode)
+    xy_joystick_container = lv_obj_create(xy_outer_container);
+    lv_obj_set_size(xy_joystick_container, 220, 220);
+    lv_obj_set_style_pad_all(xy_joystick_container, 0, 0);
+    lv_obj_clear_flag(xy_joystick_container, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_style_bg_opa(xy_joystick_container, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_border_width(xy_joystick_container, 0, 0);
     
-    // Add label to XY knob
-    lv_obj_t *xy_knob_label = lv_label_create(xy_knob);
-    lv_label_set_text(xy_knob_label, "XY");
-    lv_obj_set_style_text_font(xy_knob_label, &lv_font_montserrat_20, 0);
-    lv_obj_center(xy_knob_label);
+    // Build initial joystick (XY mode)
+    rebuildJoystick();
     
-    // Add drag event to knob
-    lv_obj_add_flag(xy_knob, LV_OBJ_FLAG_CLICKABLE);
-    lv_obj_add_event_cb(xy_knob, xy_joystick_event_handler, LV_EVENT_PRESSING, NULL);
-    lv_obj_add_event_cb(xy_knob, xy_joystick_event_handler, LV_EVENT_RELEASED, NULL);
+    // Axis selection buttons (XY, X, Y)
+    lv_obj_t *axis_button_container = lv_obj_create(xy_outer_container);
+    lv_obj_set_size(axis_button_container, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+    lv_obj_set_style_pad_all(axis_button_container, 5, 0);
+    lv_obj_set_flex_flow(axis_button_container, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(axis_button_container, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_style_pad_gap(axis_button_container, 5, 0);
+    lv_obj_clear_flag(axis_button_container, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_style_bg_opa(axis_button_container, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_border_width(axis_button_container, 0, 0);
+    
+    // XY button (initially selected with white border)
+    btn_xy = lv_button_create(axis_button_container);
+    lv_obj_set_size(btn_xy, 60, 40);
+    lv_obj_set_style_bg_color(btn_xy, UITheme::JOYSTICK_XY, LV_PART_MAIN);
+    lv_obj_set_style_border_width(btn_xy, 3, LV_PART_MAIN);  // Initial selection border
+    lv_obj_set_style_border_color(btn_xy, lv_color_white(), LV_PART_MAIN);
+    lv_obj_t *lbl_xy = lv_label_create(btn_xy);
+    lv_label_set_text(lbl_xy, "XY");
+    lv_obj_set_style_text_font(lbl_xy, &lv_font_montserrat_16, 0);
+    lv_obj_center(lbl_xy);
+    lv_obj_add_event_cb(btn_xy, axis_button_event_handler, LV_EVENT_CLICKED, (void*)MODE_XY);
+    
+    // X button
+    btn_x = lv_button_create(axis_button_container);
+    lv_obj_set_size(btn_x, 60, 40);
+    lv_obj_set_style_bg_color(btn_x, UITheme::AXIS_X, LV_PART_MAIN);
+    lv_obj_t *lbl_x = lv_label_create(btn_x);
+    lv_label_set_text(lbl_x, "X");
+    lv_obj_set_style_text_font(lbl_x, &lv_font_montserrat_16, 0);
+    lv_obj_center(lbl_x);
+    lv_obj_add_event_cb(btn_x, axis_button_event_handler, LV_EVENT_CLICKED, (void*)MODE_X);
+    
+    // Y button
+    btn_y = lv_button_create(axis_button_container);
+    lv_obj_set_size(btn_y, 60, 40);
+    lv_obj_set_style_bg_color(btn_y, UITheme::AXIS_Y, LV_PART_MAIN);
+    lv_obj_t *lbl_y = lv_label_create(btn_y);
+    lv_label_set_text(lbl_y, "Y");
+    lv_obj_set_style_text_font(lbl_y, &lv_font_montserrat_16, 0);
+    lv_obj_center(lbl_y);
+    lv_obj_add_event_cb(btn_y, axis_button_event_handler, LV_EVENT_CLICKED, (void*)MODE_Y);
 
     // ========== Center Info Display (XY + Z values) ==========
     lv_obj_t *info_container = lv_obj_create(parent);
     lv_obj_set_size(info_container, 160, LV_SIZE_CONTENT);
     lv_obj_set_style_pad_all(info_container, 10, 0);
+    lv_obj_set_style_pad_top(info_container, 50, 0);  // Additional 30px down (20px from before + 30px = 50px total)
     lv_obj_set_flex_flow(info_container, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_flex_align(info_container, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER);
     lv_obj_set_style_pad_gap(info_container, 10, 0);
