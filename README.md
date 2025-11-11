@@ -4,7 +4,7 @@
 
 FluidTouch provides an intuitive 800×480 touchscreen interface for controlling CNC machines running FluidNC firmware. Built on the Elecrow CrowPanel 7" ESP32-S3 HMI display with hardware-accelerated graphics and a responsive LVGL-based UI.
 
-![Version](https://img.shields.io/badge/version-0.9.1-blue)
+![Version](https://img.shields.io/badge/version-0.9.4-blue)
 ![Platform](https://img.shields.io/badge/platform-ESP32--S3-green)
 ![License](https://img.shields.io/badge/license-MIT-orange)
 
@@ -38,10 +38,7 @@ The easiest way to install FluidTouch is using our web-based installer:
 ### Option 2: Pre-built Binaries
 
 Download the latest firmware from [Releases](https://github.com/jeyeager65/FluidTouch/releases) and flash using:
-
-- [ESP Web Flasher](https://esp.huhn.me/) (browser-based)
-- [ESPHome Flasher](https://github.com/esphome/esphome-flasher) (desktop app)
-- esptool.py: `esptool.py --chip esp32s3 --port COM6 write_flash 0x10000 firmware.bin`
+- [esptool.py](https://docs.espressif.com/projects/esptool/en/latest/esp32s3/index.html): `esptool.py --chip esp32s3 --port COM6 write_flash 0x10000 firmware.bin`
 
 ### Option 3: Build from Source
 
