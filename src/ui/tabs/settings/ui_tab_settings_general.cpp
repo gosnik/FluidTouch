@@ -6,6 +6,7 @@
 // Global references for UI elements
 static lv_obj_t *status_label = NULL;
 static lv_obj_t *show_machine_select_switch = NULL;
+static lv_obj_t *folders_on_top_switch = NULL;
 
 // Forward declarations for event handlers
 static void btn_save_general_event_handler(lv_event_t *e);
@@ -18,13 +19,14 @@ void UITabSettingsGeneral::create(lv_obj_t *tab) {
     // Disable scrolling for fixed layout
     lv_obj_clear_flag(tab, LV_OBJ_FLAG_SCROLLABLE);
     
-    // Load current preference
+    // Load current preferences
     Preferences prefs;
     prefs.begin(PREFS_SYSTEM_NAMESPACE, true);  // Read-only
     bool show_machine_select = prefs.getBool("show_mach_sel", true);  // Default to true
+    bool folders_on_top = prefs.getBool("folders_on_top", false);  // Default to false (folders at bottom)
     prefs.end();
     
-    Serial.printf("UITabSettingsGeneral: Loaded show_mach_sel=%d\n", show_machine_select);
+    Serial.printf("UITabSettingsGeneral: Loaded show_mach_sel=%d, folders_on_top=%d\n", show_machine_select, folders_on_top);
     
     // === Machine Selection Section ===
     lv_obj_t *section_title = lv_label_create(tab);
@@ -48,10 +50,37 @@ void UITabSettingsGeneral::create(lv_obj_t *tab) {
     
     // Description text
     lv_obj_t *desc_label = lv_label_create(tab);
-    lv_label_set_text(desc_label, "When disabled, the first configured machine\nwill be loaded automatically at startup.");
+    lv_label_set_text(desc_label, "When disabled, the first configured\nmachine will be loaded automatically\nat startup.");
     lv_obj_set_style_text_font(desc_label, &lv_font_montserrat_14, 0);
     lv_obj_set_style_text_color(desc_label, UITheme::TEXT_DISABLED, 0);
     lv_obj_set_pos(desc_label, 20, 107);  // 20 + 40 (title) + 40 (switch row) + 7 (spacing)
+    
+    // === Files Section (Second Column) ===
+    lv_obj_t *files_section_title = lv_label_create(tab);
+    lv_label_set_text(files_section_title, "FILES");
+    lv_obj_set_style_text_font(files_section_title, &lv_font_montserrat_18, 0);
+    lv_obj_set_style_text_color(files_section_title, UITheme::TEXT_DISABLED, 0);
+    lv_obj_set_pos(files_section_title, 360, 20);  // Second column, aligned with Machine Selection title
+    
+    // Folders on top label and switch
+    lv_obj_t *folders_label = lv_label_create(tab);
+    lv_label_set_text(folders_label, "Folders on Top:");
+    lv_obj_set_style_text_font(folders_label, &lv_font_montserrat_18, 0);
+    lv_obj_set_style_text_color(folders_label, UITheme::TEXT_LIGHT, 0);
+    lv_obj_set_pos(folders_label, 360, 70);  // Second column, aligned with Machine Selection switch row
+    
+    folders_on_top_switch = lv_switch_create(tab);
+    lv_obj_set_pos(folders_on_top_switch, 560, 65);  // Aligned with Machine Selection switch
+    if (folders_on_top) {
+        lv_obj_add_state(folders_on_top_switch, LV_STATE_CHECKED);
+    }
+    
+    // Description text for folders setting
+    lv_obj_t *folders_desc_label = lv_label_create(tab);
+    lv_label_set_text(folders_desc_label, "When enabled, folders appear at the top\nof the file list instead of the bottom.");
+    lv_obj_set_style_text_font(folders_desc_label, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_color(folders_desc_label, UITheme::TEXT_DISABLED, 0);
+    lv_obj_set_pos(folders_desc_label, 360, 107);  // Aligned with Machine Selection description
     
     // === Action Buttons (positioned at bottom with 20px margins) ===
     // Save button
@@ -88,10 +117,11 @@ void UITabSettingsGeneral::create(lv_obj_t *tab) {
 static void btn_save_general_event_handler(lv_event_t *e) {
     lv_event_code_t code = lv_event_get_code(e);
     if (code == LV_EVENT_CLICKED) {
-        // Save machine selection preference
+        // Save preferences
         bool show_machine_select = lv_obj_has_state(show_machine_select_switch, LV_STATE_CHECKED);
+        bool folders_on_top = lv_obj_has_state(folders_on_top_switch, LV_STATE_CHECKED);
         
-        Serial.printf("UITabSettingsGeneral: Saving show_mach_sel=%d\n", show_machine_select);
+        Serial.printf("UITabSettingsGeneral: Saving show_mach_sel=%d, folders_on_top=%d\n", show_machine_select, folders_on_top);
         
         Preferences prefs;
         if (!prefs.begin(PREFS_SYSTEM_NAMESPACE, false)) {  // Read-write
@@ -104,14 +134,16 @@ static void btn_save_general_event_handler(lv_event_t *e) {
         }
         
         prefs.putBool("show_mach_sel", show_machine_select);
+        prefs.putBool("folders_on_top", folders_on_top);
         prefs.end();
         
         // Verify it was saved
         prefs.begin(PREFS_SYSTEM_NAMESPACE, true);
-        bool verified = prefs.getBool("show_mach_sel", true);
+        bool verified_machine = prefs.getBool("show_mach_sel", true);
+        bool verified_folders = prefs.getBool("folders_on_top", false);
         prefs.end();
         
-        Serial.printf("UITabSettingsGeneral: Verified show_mach_sel=%d\n", verified);
+        Serial.printf("UITabSettingsGeneral: Verified show_mach_sel=%d, folders_on_top=%d\n", verified_machine, verified_folders);
         
         if (status_label != NULL) {
             lv_label_set_text(status_label, "Settings saved!");
@@ -124,8 +156,9 @@ static void btn_save_general_event_handler(lv_event_t *e) {
 static void btn_reset_event_handler(lv_event_t *e) {
     lv_event_code_t code = lv_event_get_code(e);
     if (code == LV_EVENT_CLICKED) {
-        // Reset to default (show machine selection enabled)
+        // Reset to defaults (show machine selection enabled, folders at bottom)
         lv_obj_add_state(show_machine_select_switch, LV_STATE_CHECKED);
+        lv_obj_clear_state(folders_on_top_switch, LV_STATE_CHECKED);  // Default: folders at bottom
         
         if (status_label != NULL) {
             lv_label_set_text(status_label, "Reset to defaults");

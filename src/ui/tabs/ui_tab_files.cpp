@@ -1,9 +1,11 @@
 #include "ui/tabs/ui_tab_files.h"
 #include "ui/ui_theme.h"
 #include "network/fluidnc_client.h"
+#include "config.h"
 #include <Arduino.h>
 #include <algorithm>
 #include <ArduinoJson.h>
+#include <Preferences.h>
 
 // Static member initialization
 lv_obj_t *UITabFiles::file_list_container = nullptr;
@@ -528,22 +530,46 @@ void UITabFiles::parseFileList(const std::string &response) {
         }
     }
     
-    // Sort: files first, then directories at bottom, both alphabetically (case-insensitive)
-    std::sort(file_list_with_sizes.begin(), file_list_with_sizes.end(), 
-        [](const FileInfo &a, const FileInfo &b) {
-            // Files come before directories (directories at bottom)
-            if (a.is_directory != b.is_directory) {
-                return !a.is_directory;  // false (file) sorts before true (directory)
-            }
-            // Within same type, sort alphabetically (case-insensitive)
-            std::string a_lower = a.name;
-            std::string b_lower = b.name;
-            std::transform(a_lower.begin(), a_lower.end(), a_lower.begin(), ::tolower);
-            std::transform(b_lower.begin(), b_lower.end(), b_lower.begin(), ::tolower);
-            return a_lower < b_lower;
-        });
+    // Load folders_on_top preference
+    Preferences prefs;
+    prefs.begin(PREFS_SYSTEM_NAMESPACE, true);  // Read-only
+    bool folders_on_top = prefs.getBool("folders_on_top", false);  // Default to false (folders at bottom)
+    prefs.end();
     
-    Serial.printf("[Files] Parsed %d files from JSON\n", file_list_with_sizes.size());
+    // Sort based on user preference
+    if (folders_on_top) {
+        // Folders first (at top), then files, both alphabetically (case-insensitive)
+        std::sort(file_list_with_sizes.begin(), file_list_with_sizes.end(), 
+            [](const FileInfo &a, const FileInfo &b) {
+                // Directories come before files (directories at top)
+                if (a.is_directory != b.is_directory) {
+                    return a.is_directory;  // true (directory) sorts before false (file)
+                }
+                // Within same type, sort alphabetically (case-insensitive)
+                std::string a_lower = a.name;
+                std::string b_lower = b.name;
+                std::transform(a_lower.begin(), a_lower.end(), a_lower.begin(), ::tolower);
+                std::transform(b_lower.begin(), b_lower.end(), b_lower.begin(), ::tolower);
+                return a_lower < b_lower;
+            });
+    } else {
+        // Files first, then directories at bottom, both alphabetically (case-insensitive)
+        std::sort(file_list_with_sizes.begin(), file_list_with_sizes.end(), 
+            [](const FileInfo &a, const FileInfo &b) {
+                // Files come before directories (directories at bottom)
+                if (a.is_directory != b.is_directory) {
+                    return !a.is_directory;  // false (file) sorts before true (directory)
+                }
+                // Within same type, sort alphabetically (case-insensitive)
+                std::string a_lower = a.name;
+                std::string b_lower = b.name;
+                std::transform(a_lower.begin(), a_lower.end(), a_lower.begin(), ::tolower);
+                std::transform(b_lower.begin(), b_lower.end(), b_lower.begin(), ::tolower);
+                return a_lower < b_lower;
+            });
+    }
+    
+    Serial.printf("[Files] Parsed %d files from JSON (folders_on_top=%d)\n", file_list_with_sizes.size(), folders_on_top);
     
     updateFileListUI();
 }
