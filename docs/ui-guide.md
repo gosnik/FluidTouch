@@ -23,6 +23,7 @@
   - [General](#general)
   - [Jog](#jog-settings)
   - [Probe](#probe-settings)
+  - [Power](#power-settings)
   - [About](#about)
 
 ---
@@ -41,18 +42,48 @@ On startup, FluidTouch displays a splash screen before proceeding to machine sel
 
 ![Machine Selection](./images/machine-selection.png)
 
-The machine selection screen allows you to:
-- **Select** from up to 4 saved machine configurations
-- **Reorder** machines using up/down buttons
-- **Edit** existing machine configurations
-- **Delete** machines you no longer need
-- **Add** new machines (green button in upper right)
+The machine selection screen appears after the splash screen when you first power on FluidTouch. It displays all configured machines (up to 4) with their names, WiFi networks, and connection status. Tap any machine to connect.
+
+If no machines are configured, you'll see a prompt to add your first machine using the "⚙️ Manage" button in the upper right corner.
 
 Each machine configuration stores:
 - Machine name
-- Connection (currently only Wireless is supported)
-- FluidNC IP address
+- Connection type (currently only Wireless is supported)
+- WiFi SSID and password
+- FluidNC IP address or hostname
 - WebSocket port (default: 81)
+
+### Machine Selection Edit Mode
+
+![Machine Selection Edit Mode](./images/machine-selection-edit.png)
+
+Clicking the "⚙️ Manage" button enters edit mode, which allows you to reorder, edit, or delete machines:
+
+- **Layout**: Machine buttons (458px wide) on the left, control buttons (60×60px) on the right
+- **Control buttons**: Up/down arrows for reordering, edit (✏️) for configuration, delete (🗑️) for removal
+- **Add button**: Green "➕ Add" button (120×45px) in upper right corner appears in edit mode
+- **Spacing**: Consistent 5px gaps between all elements (matches macro list spacing)
+- **Workflow**: Manage → configure slots → tap machine to exit edit mode and connect
+
+### Machine Add/Edit Dialog
+
+![Machine Add/Edit Dialog](./images/machine-dialog.png)
+
+Modal dialog for adding or editing machine configurations:
+
+**Left Column (64% width):**
+- **Name:** Machine identifier (32 characters max)
+- **SSID:** WiFi network name
+- **FluidNC URL:** IP address or hostname (e.g., 192.168.1.100 or fluidnc.local)
+
+**Right Column (33% width):**
+- **Connection:** Wireless (only option currently)
+- **Password:** WiFi password
+- **Port:** WebSocket port (default: 81)
+
+**Buttons:**
+- **Save** (bottom left) - Save configuration
+- **Cancel** (bottom right) - Discard changes
 
 ---
 
@@ -224,7 +255,51 @@ Real-time override controls:
 
 ![Files Tab](./images/files-tab.png)
 
-List and manage files on the SD card and flash memory of the FluidNC controller.
+Browse and manage files on FluidNC SD card and flash storage:
+
+**Features:**
+- Navigate folders (tap to open)
+- View file sizes
+- Play files (GCode programs)
+- Upload files from browser
+- Delete files and folders
+
+**File List:**
+- Shows folders and files from current directory
+- Folders appear first (if "Folders on Top" enabled)
+- File sizes displayed for files
+- Back button to navigate to parent directory
+
+### File Upload Dialog
+
+![File Upload Dialog](./images/file-upload-dialog.png)
+
+Modal dialog for uploading files to FluidNC:
+
+**Steps:**
+1. Tap "Upload" button in Files tab
+2. Dialog shows current directory path
+3. Displays web URL with QR code
+4. Open URL in browser on computer/phone
+5. Select file to upload
+6. Progress bar shows upload status
+7. File appears in file list when complete
+
+**Upload Progress:**
+- Shows current/total bytes transferred
+- Percentage complete
+- Progress bar visual
+- "Reset device to cancel upload" during transfer
+- "Close" button after completion
+
+### Delete Confirmation
+
+![File Delete Dialog](./images/file-delete-dialog.png)
+
+Confirmation dialog before deleting files:
+- Shows filename to be deleted
+- "Delete" button (red) - Confirm deletion
+- "Cancel" button (gray) - Abort operation
 
 ---
 
@@ -232,7 +307,57 @@ List and manage files on the SD card and flash memory of the FluidNC controller.
 
 ![Macros Tab](./images/macros-tab.png)
 
-Store up to 9 file-based macros with Name, filename (selectable from dropdown of existing files in /sd/FluidTouch/Macros), and a color.
+Store and execute up to 9 file-based macros:
+
+**Normal Mode:**
+- 3×3 grid of macro buttons
+- Tap to execute macro file
+- Color-coded for quick identification
+- Empty slots show "Empty"
+- Gear icon (upper right) to enter edit mode
+
+### Macro Edit Mode
+
+![Macros Edit Mode](./images/macros-edit.png)
+
+Configure all 9 macro slots simultaneously:
+
+**Layout:**
+- 3×3 grid matching normal mode layout
+- Each slot shows: macro button, edit button, delete button
+- "Done" button (upper right) to exit edit mode
+
+**Per-Slot Controls:**
+- **Macro Button:** Preview with current name/color
+- **Edit Button:** Opens configuration dialog for that slot
+- **Delete Button:** Removes macro configuration (slot becomes "Empty")
+
+**Workflow:**
+1. Tap gear icon to enter edit mode
+2. Tap edit button on any slot to configure
+3. Set name, select file, choose color in dialog
+4. Save to apply changes
+5. Tap "Done" to return to normal mode
+
+### Macro Configuration Dialog
+
+![Macro Config Dialog](./images/macro-dialog.png)
+
+Modal dialog for configuring individual macros:
+
+**Fields:**
+- **Name:** Macro display name (shown on button)
+- **File:** Dropdown of available macro files from `/sd/FluidTouch/Macros/`
+- **Color:** Color picker for button background
+
+**Buttons:**
+- **Save** - Save macro configuration
+- **Cancel** - Discard changes
+
+**Notes:**
+- Macro files must be placed in `/sd/FluidTouch/Macros/` directory on FluidNC
+- Files should contain valid GCode commands
+- Common macros: warm-up routines, homing sequences, tool changes
 
 ---
 
@@ -249,7 +374,7 @@ Raw WebSocket message display:
 
 ## Settings Tab
 
-The Settings tab contains four sub-tabs for configuration:
+The Settings tab contains five sub-tabs for configuration:
 
 ### General
 
@@ -257,6 +382,9 @@ The Settings tab contains four sub-tabs for configuration:
 
 Machine Selection:
 - Whether or not to show the machine selection screen.  If skipped, it will automatically load the configuration for the first machine.
+
+File Browser:
+- **Folders on Top:** When enabled, folders appear first in the Files tab, followed by files (both sorted alphabetically)
 
 ### Jog Settings
 
@@ -276,6 +404,27 @@ Probe operation defaults:
 - Max Distance (mm)
 - Retract Distance (mm)
 - Probe Thickness (mm)
+
+### Power Settings
+
+![Settings Power](./images/settings-power.png)
+
+Power management and display brightness:
+
+**Power Management:**
+- **Enable/Disable:** Toggle power saving features
+- **Dim Timeout:** Time until screen dims (Disabled, 15s-300s)
+- **Sleep Timeout:** Time until screen off (Disabled, 60s-3600s)
+- **Deep Sleep:** Time until deep sleep (Disabled, 5min-90min)
+
+**Brightness Control:**
+- **Normal Brightness:** Active display brightness (25%, 50%, 75%, 100%)
+- **Dim Brightness:** Dimmed display brightness (5%, 10%, 25%, 50%)
+
+**Notes:**
+- Power saving only active during IDLE and DISCONNECTED states
+- Touch activity resets timers and restores full brightness
+- Deep sleep requires reset button to wake
 
 ### About
 

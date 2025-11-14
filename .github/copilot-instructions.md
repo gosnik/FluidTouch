@@ -68,11 +68,13 @@ The codebase follows a **strict modular pattern** with clear separation:
    - `TouchDriver` - LVGL input device that delegates touch reading to LovyanGFX (`core/touch_driver.h/cpp`)
    - `PowerManager` - Power management for battery-powered operation with three power states (`core/power_manager.h/cpp`)
      - **States**: FULL_BRIGHTNESS → DIMMED → SCREEN_OFF → DEEP_SLEEP (optional)
-     - **Settings stored in NVS**: `pm_enabled`, `pm_dim_timeout`, `pm_sleep_timeout`, `pm_deep_sleep_timeout`, `pm_normal_brightness`, `pm_dim_brightness`
+     - **Brightness Storage**: NVS stores percentages (0-100), DisplayDriver converts to hardware values (0-255)
+     - **NVS Keys** (shortened to fit 15-char limit): `pm_enabled`, `pm_dim_to`, `pm_sleep_to`, `pm_deepsleep`, `pm_norm_bri`, `pm_dim_bri`
      - **State-aware**: Only applies power saving in IDLE and DISCONNECTED states - all other states (RUN, ALARM, HOLD, JOG) stay at full brightness
      - **User activity**: Touch events call `onUserActivity()` to reset timer and restore full brightness
      - **Deep sleep**: Enters ESP32 deep sleep after timeout (0 = disabled), only reset button wakes
-     - **Display control**: Uses `DisplayDriver::setBrightness()` for dimming, `DisplayDriver::powerDown()` for sleep
+     - **Display control**: Uses `DisplayDriver::setBacklight(percentage)` for dimming, `DisplayDriver::powerDown()` for sleep
+     - **Brightness initialization**: Applied immediately on init after loading settings from NVS
 
 2. **Network Modules** (`network/` subdirectory):
    - `ScreenshotServer` - WiFi web server for remote screenshots via LovyanGFX `readRect()` (`network/screenshot_server.h/cpp`)
