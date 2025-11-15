@@ -185,7 +185,7 @@ Button-based jogging interface:
 - Step selection buttons: 50, 25, 10, 1, 0.1 mm
 - Z+ / Z- buttons (magenta)
 - Feed rate controls
-- Stop button
+- Stop button (Jog Cancel)
 
 ### Joystick
 
