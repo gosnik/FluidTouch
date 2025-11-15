@@ -41,6 +41,16 @@ static UITabFiles::StorageCache* getCurrentCache() {
     }
 }
 
+// Check if Display SD card is available
+bool UITabFiles::isDisplaySDAvailable() {
+    uint8_t cardType = SD.cardType();
+    if (cardType == CARD_NONE) {
+        Serial.println("[Files] No SD card detected");
+        return false;
+    }
+    return true;
+}
+
 // Request a refresh (called from callbacks)
 void UITabFiles::requestRefresh() {
     refresh_pending = true;
@@ -280,7 +290,12 @@ void UITabFiles::refresh_button_event_cb(lv_event_t *e) {
         display_sd_cache.is_cached = false;
     }
     
-    refreshFileList(current_path);  // Always refresh with current path, not just on initial load
+    // Use appropriate refresh function based on storage type
+    if (current_storage == StorageSource::DISPLAY_SD) {
+        listDisplaySDFiles(current_path);
+    } else {
+        refreshFileList(current_path);  // Always refresh with current path, not just on initial load
+    }
 }
 
 void UITabFiles::storage_dropdown_event_cb(lv_event_t *e) {
@@ -333,6 +348,25 @@ void UITabFiles::storage_dropdown_event_cb(lv_event_t *e) {
         
         // Check if already cached - restore cached path
         if (display_sd_cache.is_cached) {
+            // Verify SD card is still available before using cache
+            if (!isDisplaySDAvailable()) {
+                Serial.println("[Files] SD card no longer available, invalidating cache");
+                display_sd_cache.is_cached = false;
+                display_sd_cache.file_list.clear();
+                if (status_label) {
+                    lv_label_set_text(status_label, "SD card not available");
+                    lv_obj_set_style_text_color(status_label, UITheme::UI_WARNING, 0);
+                }
+                if (path_label) {
+                    lv_label_set_text(path_label, "/");
+                }
+                // Clear file list UI
+                if (file_list_container) {
+                    lv_obj_clean(file_list_container);
+                }
+                return;
+            }
+            
             current_path = display_sd_cache.cached_path;
             Serial.printf("[Files] Using cached Display SD file list (%d items) at %s\n", display_sd_cache.file_list.size(), current_path.c_str());
             if (path_label) {
@@ -353,14 +387,16 @@ void UITabFiles::storage_dropdown_event_cb(lv_event_t *e) {
         if (!sdInitialized) {
             Serial.println("[Files] Display SD card initialization failed");
             if (status_label) {
-                lv_label_set_text(status_label, "Display SD not available");
+                lv_label_set_text(status_label, "SD card not available");
                 lv_obj_set_style_text_color(status_label, UITheme::UI_WARNING, 0);
             }
-            // Switch back to FluidNC SD
-            current_storage = StorageSource::FLUIDNC_SD;
-            lv_dropdown_set_selected(dropdown, 0);
-            current_path = "/sd/";
-            refreshFileList(current_path);
+            if (path_label) {
+                lv_label_set_text(path_label, "/");
+            }
+            // Clear file list UI
+            if (file_list_container) {
+                lv_obj_clean(file_list_container);
+            }
             return;
         }
         
@@ -906,6 +942,25 @@ void UITabFiles::updateFileListUI() {
 void UITabFiles::listDisplaySDFiles(const std::string &path) {
     Serial.printf("[Files] Listing Display SD: %s\n", path.c_str());
     
+    // Check if SD card is available
+    if (!isDisplaySDAvailable()) {
+        Serial.println("[Files] SD card not available");
+        display_sd_cache.is_cached = false;
+        display_sd_cache.file_list.clear();
+        if (status_label) {
+            lv_label_set_text(status_label, "SD card not available");
+            lv_obj_set_style_text_color(status_label, UITheme::UI_WARNING, 0);
+        }
+        if (path_label) {
+            lv_label_set_text(path_label, "/");
+        }
+        // Clear file list UI
+        if (file_list_container) {
+            lv_obj_clean(file_list_container);
+        }
+        return;
+    }
+    
     // Update current path
     current_path = path;
     
@@ -985,6 +1040,44 @@ void UITabFiles::listDisplaySDFiles(const std::string &path) {
 // Upload button event callback
 void UITabFiles::upload_button_event_cb(lv_event_t *e) {
     const char* fullPath = (const char*)lv_event_get_user_data(e);
+    
+    // Check if SD card is still available
+    if (!isDisplaySDAvailable()) {
+        Serial.println("[Files] SD card not available for upload");
+        // Create error dialog
+        lv_obj_t *dialog = lv_obj_create(lv_scr_act());
+        lv_obj_set_size(dialog, LV_PCT(100), LV_PCT(100));
+        lv_obj_set_style_bg_color(dialog, lv_color_make(0, 0, 0), 0);
+        lv_obj_set_style_bg_opa(dialog, LV_OPA_70, 0);
+        lv_obj_set_style_border_width(dialog, 0, 0);
+        lv_obj_clear_flag(dialog, LV_OBJ_FLAG_SCROLLABLE);
+        
+        lv_obj_t *content = lv_obj_create(dialog);
+        lv_obj_set_size(content, 500, 200);
+        lv_obj_center(content);
+        lv_obj_set_style_bg_color(content, UITheme::BG_MEDIUM, 0);
+        lv_obj_set_style_border_color(content, UITheme::UI_WARNING, 0);
+        lv_obj_set_style_border_width(content, 3, 0);
+        
+        lv_obj_t *label = lv_label_create(content);
+        lv_label_set_text(label, "SD card not available.\nPlease insert SD card.");
+        lv_obj_set_style_text_font(label, &lv_font_montserrat_18, 0);
+        lv_obj_align(label, LV_ALIGN_CENTER, 0, -20);
+        
+        lv_obj_t *btn = lv_btn_create(content);
+        lv_obj_set_size(btn, 120, 45);
+        lv_obj_align(btn, LV_ALIGN_BOTTOM_MID, 0, -10);
+        lv_obj_add_event_cb(btn, [](lv_event_t *e) {
+            lv_obj_delete((lv_obj_t*)lv_event_get_user_data(e));
+        }, LV_EVENT_CLICKED, dialog);
+        
+        lv_obj_t *btn_label = lv_label_create(btn);
+        lv_label_set_text(btn_label, "OK");
+        lv_obj_set_style_text_font(btn_label, &lv_font_montserrat_18, 0);
+        lv_obj_center(btn_label);
+        
+        return;
+    }
     
     // Extract just the filename from the full path for display
     std::string pathStr(fullPath);
