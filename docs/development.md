@@ -27,6 +27,9 @@
 - Elecrow CrowPanel 7" ESP32-S3 HMI Display:
   - [Basic version](https://www.elecrow.com/esp32-display-7-inch-hmi-display-rgb-tft-lcd-touch-screen-support-lvgl.html) (4MB flash)
   - [Advance version](https://www.elecrow.com/crowpanel-advance-7-0-hmi-esp32-ai-display-800x480-artificial-intelligent-ips-touch-screen-support-meshtastic-and-arduino-lvgl-micropython.html) (16MB flash)
+    - ⚠️ **Advance Version Compatibility:** Currently only supports hardware Version 1.3
+    - **Version 1.3 Configuration:** DIP switches S0 and S1 must both be set to position 1
+    - If you have an earlier version (1.0, 1.1, 1.2), please [create a GitHub issue](https://github.com/jeyeager65/FluidTouch/issues) for assistance
 - Serial terminal (PlatformIO includes one)
 - Chrome/Edge browser (for ESP Web Tools testing)
 

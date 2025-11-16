@@ -60,6 +60,9 @@ Refer to the **[Development Guide](./docs/development.md)** for additional instr
 - 800×480 IPS RGB LCD
 - GT911 Capacitive Touch
 - I2C Backlight Control (STC8H1K28)
+- ⚠️ **Hardware Version 1.3 Only** 
+  - DIP switches S0 and S1 must both be set to position 1
+  - If you have an earlier version (1.0, 1.1, 1.2), please [create a GitHub issue](https://github.com/jeyeager65/FluidTouch/issues)
 - [Product Page](https://www.elecrow.com/crowpanel-advance-7-0-hmi-esp32-ai-display-800x480-artificial-intelligent-ips-touch-screen-support-meshtastic-and-arduino-lvgl-micropython.html)
 
 ---

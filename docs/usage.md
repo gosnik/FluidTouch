@@ -5,6 +5,7 @@
 ## Table of Contents
 
 - [First-Time Setup](#first-time-setup)
+- [Importing Settings](#importing-settings)
 - [Connecting to Your Machine](#connecting-to-your-machine)
 - [Basic Operations](#basic-operations)
 - [Jogging](#jogging)
@@ -48,6 +49,37 @@ Check the status bar:
 - **Right:** Shows machine name and WiFi network
 
 If showing ALARM, clear it: **Control → Actions → Unlock**
+
+---
+
+## Importing Settings
+
+If you have a settings backup file from another FluidTouch device or a previous installation:
+
+### Automatic Import on Boot
+
+1. Copy `fluidtouch_settings.json` to the root of your Display SD card
+2. Power on FluidTouch (with no machines configured)
+3. Settings are automatically imported during startup
+4. Device restarts after successful import
+5. **Important:** Re-enter WiFi passwords for each machine (passwords are not included in backups for security)
+
+### Manual Import After Setup
+
+1. Copy `fluidtouch_settings.json` to Display SD card root
+2. Go to **Settings → General**
+3. Tap **Clear All Settings** button
+4. Confirm the warning dialog
+5. Device restarts and auto-imports settings
+6. Configure WiFi passwords for wireless machines
+
+### After Import
+
+1. Check each machine configuration
+2. Enter WiFi passwords (Settings → Machine Selection → Edit)
+3. Test connection to each machine
+4. Verify jog/probe settings are correct
+5. Check that macros are properly loaded
 
 ---
 
@@ -234,6 +266,8 @@ Status tab displays:
 - WiFi network is 2.4GHz (ESP32 doesn't support 5GHz)
 - Router is in range and operational
 
+**Note:** If importing settings, WiFi passwords must be manually re-entered for security reasons.
+
 ### Can't Connect to FluidNC
 
 **Check:**
@@ -241,11 +275,42 @@ Status tab displays:
 - IP address/hostname is correct
 - Port is correct (default: 81)
 - Both devices on same WiFi network
+- WiFi password is configured (check machine settings)
 
 **Try:**
 - Access FluidNC WebUI from browser
 - Check FluidNC YAML configuration for WebSocket port
 - Restart both FluidTouch and FluidNC
+
+### Settings Lost After Power Cycle
+
+FluidTouch stores settings in non-volatile memory, but if settings are lost:
+
+**Prevention:**
+1. Go to **Settings → General**
+2. Tap **Export Settings**
+3. Keep backup file on Display SD card
+4. Copy backup to computer for safekeeping
+
+**Recovery:**
+1. Insert Display SD card with `fluidtouch_settings.json`
+2. Go to **Settings → General → Clear All Settings**
+3. Restart triggers automatic import
+4. Re-enter WiFi passwords
+
+### Import/Export Issues
+
+**Export Failed:**
+- Ensure Display SD card is inserted
+- Check SD card has free space
+- Try removing and re-inserting SD card
+- Restart device and try again
+
+**Auto-Import Not Working:**
+- Verify file is named exactly `fluidtouch_settings.json`
+- File must be in root directory of Display SD card
+- Auto-import only works when no machines are configured
+- Check file is valid JSON (view in text editor)
 
 ---
 

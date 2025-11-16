@@ -204,15 +204,38 @@ The codebase follows a **strict modular pattern** with clear separation:
      - Buttons: Fixed at bottom (y=370) with Save (left) and Cancel (right)
 
 5. **Settings → General Tab**:
-   - **FILES Section** (second column at x=360):
-     - "Folders on Top" toggle switch controls file browser sorting behavior
-     - Preference: `PREFS_SYSTEM_NAMESPACE`, key `"folders_on_top"` (bool, default: false)
-     - When enabled: Folders appear first in Files tab (alphabetically, then files alphabetically)
-     - When disabled: Files appear first, then folders (original behavior)
-     - Implementation: Conditional `std::sort()` in `ui_tab_files.cpp` parseFileList()
-     - Switch UI: Label + switch + description text, follows standard settings layout pattern
+   - **Layout**: Two-column design (x=20 and x=400)
+   - **Column 1 (x=20)**:
+     - Machine Selection section with buttons for navigation
+     - FILES section with "Folders on Top" toggle switch
+       - Preference: `PREFS_SYSTEM_NAMESPACE`, key `"folders_on_top"` (bool, default: false)
+       - When enabled: Folders appear first in Files tab (alphabetically, then files alphabetically)
+       - When disabled: Files appear first, then folders (original behavior)
+       - Implementation: Conditional `std::sort()` in `ui_tab_files.cpp` parseFileList()
+   - **Column 2 (x=400)**:
+     - BACKUP & RESTORE section with export and clear functionality
+     - Export button: Creates `/fluidtouch_settings.json` on Display SD card
+     - Clear All button: Wipes all settings and restarts device
+     - Status label for operation feedback
 
-6. **Files Tab Architecture** (`ui_tab_files.h/cpp`):
+6. **Settings Import/Export System** (`ui/settings_manager.h/cpp`):
+   - **Export Format**: JSON file at `/fluidtouch_settings.json` (root of Display SD card)
+   - **Version**: 1.0 (stored in JSON for future compatibility)
+   - **Exported Data**:
+     - Machine configurations (name, connection type, hostname/IP, port, SSID)
+     - Jog settings (XY feed rate, Z feed rate)
+     - Probe settings (feed rate, max distance, retract distance, thickness)
+     - Macros (up to 8 per machine)
+     - Power management settings (enabled, timeouts, brightness levels, deep sleep)
+     - UI preferences (folders_on_top)
+   - **Security**: WiFi passwords are NOT exported (empty string exported for security)
+   - **Auto-Import**: On boot, if no machines configured and `/fluidtouch_settings.json` exists, automatically imports and restarts
+   - **Manual Import**: Copy JSON file to Display SD root, Clear All settings, restart to trigger auto-import
+   - **Export Dialog**: Modal popup (600×300) with success message and WiFi password warning
+   - **Clear All Dialog**: Modal confirmation (600×350) with bullet list of items to be deleted, two-button layout (Clear & Restart, Cancel)
+   - **Validation**: Machine selection validates WiFi password presence before connecting, shows modal warning if missing
+
+7. **Files Tab Architecture** (`ui_tab_files.h/cpp`):
    - **Three Storage Sources**:
      - `StorageSource::FLUIDNC_SD` - FluidNC SD card (default: `/sd/`)
      - `StorageSource::FLUIDNC_FLASH` - FluidNC flash filesystem (default: `/localfs/`)
@@ -239,7 +262,7 @@ The codebase follows a **strict modular pattern** with clear separation:
      5. Completion callback shows success/error, refreshes FluidNC file list
    - **UI Layout**: Storage dropdown + path label + refresh/up buttons + file list container (270px height, vertical scroll)
 
-7. **Status Bar Layout** (60px height, 18pt font, split into clickable areas):
+8. **Status Bar Layout** (60px height, 18pt font, split into clickable areas):
    - **Left area** (550px): Machine state (IDLE/RUN/ALARM) - 32pt uppercase, vertically centered, color-coded
      - Clicking navigates to Status tab (LV_EVENT_CLICKED)
    - **Center**: Work Position (top line, orange label) and Machine Position (bottom line, cyan label)
@@ -249,12 +272,12 @@ The codebase follows a **strict modular pattern** with clear separation:
      - Clicking shows confirmation dialog "This will restart the controller. Continue?" with "⚡ Restart" button
      - Confirmation triggers ESP32 restart to cleanly reload with new machine selection (LV_EVENT_CLICKED)
 
-7. **Tab creation delegation**:
+9. **Tab creation delegation**:
    - `UITabs` creates tabview structure, delegates content to `UITab*::create()`
    - Each tab module is responsible for its own layout and event handlers
    - Nested tabviews use `LV_DIR_LEFT` for vertical tabs (see `UITabControl`)
 
-8. **Serial debugging**: All modules use `Serial.println/printf` at 115200 baud with heap/PSRAM monitoring
+10. **Serial debugging**: All modules use `Serial.println/printf` at 115200 baud with heap/PSRAM monitoring
 
 ## Development Workflows
 
@@ -375,7 +398,9 @@ All other hardcoded values live in `include/config.h`:
 
 **UI Modules** (`ui/`):
 - **`src/ui/ui_common.cpp`**: Status bar implementation with separate axis labels, delta checking for smooth updates, clickable left/right areas for navigation and machine switching, and modal HOLD/ALARM state popups with dismissal tracking
-- **`src/ui/ui_machine_select.cpp`**: Machine selection screen with reordering, edit, delete, and add functionality (up to 5 machines stored in Preferences)
+- **`src/ui/ui_machine_select.cpp`**: Machine selection screen with reordering, edit, delete, and add functionality (up to 5 machines stored in Preferences). Validates WiFi passwords before connection attempts.
+- **`src/ui/settings_manager.cpp`**: Settings backup/restore system with JSON export/import, auto-import on boot, WiFi password security
+- **`src/ui/tabs/settings/ui_tab_settings_general.cpp`**: General settings tab with machine selection, file preferences, backup/restore controls. Export and Clear All dialogs use modal backdrop pattern.
 - **`src/ui/tabs/ui_tab_status.cpp`**: Status tab with delta-checked position displays, feed/spindle rates with overrides, 8 modal state fields, message display, and SD card file progress (filename, progress bar, elapsed/estimated time)
 - **`src/ui/tabs/ui_tab_terminal.cpp`**: Terminal tab with WebSocket message display, auto-scroll toggle, 8KB buffer with batched UI updates (currently disabled via commented callback in FluidNCClient)
 - **`src/ui/tabs/ui_tab_files.cpp`**: File browser with three storage sources (FluidNC SD/Flash, Display SD), per-source caching, SD card detection, and upload functionality

@@ -389,11 +389,25 @@ The Settings tab contains five sub-tabs for configuration:
 
 ![Settings General](./images/settings-general.png)
 
-Machine Selection:
-- Whether or not to show the machine selection screen.  If skipped, it will automatically load the configuration for the first machine.
+**Machine Selection:**
+- Whether or not to show the machine selection screen. If skipped, it will automatically load the configuration for the first machine.
 
-File Browser:
+**File Browser:**
 - **Folders on Top:** When enabled, folders appear first in the Files tab, followed by files (both sorted alphabetically)
+
+**Backup & Restore:**
+- **Export Settings:** Creates `/fluidtouch_settings.json` on Display SD card
+  - Includes all machine configurations, jog/probe settings, macros, power settings, and UI preferences
+  - **Security Note:** WiFi passwords are NOT included in the export for security reasons
+  - When importing settings, you'll need to manually set WiFi passwords for each machine
+- **Clear All Settings:** Permanently deletes all settings and restarts the controller
+  - Removes all machines, macros, power settings, and preferences
+  - **Warning:** This action cannot be undone
+  - Consider exporting settings before clearing
+
+**Import Settings:**
+- Automatic: If no machines are configured on boot and `/fluidtouch_settings.json` exists on Display SD, settings are automatically imported
+- Manual: Copy settings file to Display SD root, Clear All Settings, restart to trigger import
 
 ### Jog Settings
 

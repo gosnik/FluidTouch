@@ -160,6 +160,71 @@ Configure power management and display brightness:
 
 ---
 
+## Backup & Restore
+
+### Exporting Settings
+
+**Settings → General → Export Settings**
+
+Creates a backup file on the Display SD card:
+
+**Export File:**
+- Location: `/fluidtouch_settings.json` (root of Display SD card)
+- Format: JSON (human-readable, editable)
+- Version: 1.0
+
+**Exported Data:**
+- Machine configurations (name, connection type, hostname/IP, port, SSID)
+- Jog settings (XY feed rate, Z feed rate)
+- Probe settings (feed rate, max distance, retract distance, thickness)
+- Macros (up to 8 per machine)
+- Power management settings (enabled, timeouts, brightness levels, deep sleep)
+- UI preferences (folders on top)
+
+**Security:**
+- WiFi passwords are NOT included in the export
+- Empty password fields are exported instead
+- You must manually re-enter WiFi passwords after importing
+
+### Importing Settings
+
+**Automatic Import:**
+1. Copy `fluidtouch_settings.json` to Display SD card root
+2. Clear all settings (or start with fresh install)
+3. Restart device
+4. If no machines are configured, settings are automatically imported
+5. Device restarts again after successful import
+
+**Manual Import:**
+1. Go to **Settings → General**
+2. Tap **Clear All Settings**
+3. Confirm warning dialog
+4. Device restarts and auto-imports if settings file exists
+5. Configure WiFi passwords for each machine
+
+### Clearing All Settings
+
+**Settings → General → Clear All Settings**
+
+Permanently deletes all stored data:
+- All machine configurations
+- All macros
+- Power management settings
+- UI preferences
+- System settings
+
+**Process:**
+1. Confirmation dialog warns of permanent deletion
+2. Lists all data that will be removed
+3. Suggests exporting settings first
+4. Two buttons: "Clear & Restart" (left), "Cancel" (right)
+5. Clearing triggers immediate device restart
+6. Returns to initial setup state
+
+⚠️ **Warning:** This action cannot be undone! Consider exporting settings before clearing.
+
+---
+
 ## Preferences Storage
 
 FluidTouch uses ESP32 NVS (Non-Volatile Storage) for persistent data:
@@ -187,13 +252,28 @@ FluidTouch uses ESP32 NVS (Non-Volatile Storage) for persistent data:
 - Normal brightness (0-100%)
 - Dim brightness (0-100%)
 
+**Macros:**
+- Up to 9 macros per machine
+- Macro names and G-code content
+
 **File Browser:**
 - Folders on top setting
 
+### Backup Options
+
+**Export Settings (Recommended):**
+- Creates JSON backup file on Display SD card
+- See [Backup & Restore](#backup--restore) section above
+
 ### Clearing Preferences
 
-To reset to factory defaults:
+**Option 1 - Clear All Settings (Settings Tab):**
+1. Go to **Settings → General**
+2. Tap **Clear All Settings**
+3. Confirm deletion
+4. Device restarts with factory defaults
 
+**Option 2 - Flash Erase:**
 1. Flash new firmware with "Erase Flash" option
 2. Or send erase command via esptool:
    ```bash
