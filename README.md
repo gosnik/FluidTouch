@@ -4,7 +4,7 @@
 
 FluidTouch provides an intuitive 800×480 touchscreen interface for controlling CNC machines running FluidNC firmware. Built on the Elecrow CrowPanel 7" ESP32-S3 HMI display with hardware-accelerated graphics and a responsive LVGL-based UI.
 
-![Version](https://img.shields.io/badge/version-0.9.6-blue)
+![Version](https://img.shields.io/badge/version-1.0.0-blue)
 ![Platform](https://img.shields.io/badge/platform-ESP32--S3-green)
 ![License](https://img.shields.io/badge/license-MIT-orange)
 
@@ -12,13 +12,16 @@ FluidTouch provides an intuitive 800×480 touchscreen interface for controlling 
 
 ## ✨ Key Features
 
-- **Real-time Machine Control** - Monitor position, state, feed/spindle rates with live updates
-- **Intuitive Jogging** - Button-based and analog joystick interfaces with configurable step sizes
-- **Touch Probe Operations** - Automated probing with customizable parameters
-- **Macro Support** - Configure and store up to 9 file-based macros
+- **Real-time Machine Control** - Monitor position, state, feed/spindle rates with live updates from FluidNC
 - **Multi-Machine Support** - Store and switch between up to 4 different CNC configurations
-- **Terminal** - For running custom commands and debugging
-- **WiFi Connectivity** - WebSocket connection to FluidNC
+- **Intuitive Jogging** - Button-based and analog joystick interfaces with configurable step sizes
+- **Touch Probe Operations** - Automated probing with customizable parameters for precise work coordinate setup
+- **Macro Support** - Configure and store up to 9 file-based macros per machine
+- **File Management** - Browse and manage files from FluidNC SD, FluidNC Flash, and Display SD card
+- **Settings Backup & Restore** - Export settings to JSON, auto-import on fresh install, Clear All Settings option
+- **Power Management** - Configurable display dimming, sleep, and deep sleep modes for battery operation
+- **Terminal** - Execute custom commands and view FluidNC messages
+- **WiFi Connectivity** - WebSocket connection to FluidNC with automatic status reporting
 
 ---
 
