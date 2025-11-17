@@ -500,7 +500,7 @@
             Web Installer
         </p>
         <div class="version-badge">
-            <span>Version 0.9.5</span>
+            <span>Version 0.9.6</span>
         </div>
         <p style="text-align: center; font-size: 1.2em; color: #c9d1d9; margin-bottom: 30px;">
             ESP32 Touchscreen CNC Controller for FluidNC
@@ -508,13 +508,14 @@
 
         <!-- Changelog -->
         <div class="changelog">
-            <h3>📋 What's New in Version 0.9.5</h3>
+            <h3>📋 What's New in Version 0.9.6</h3>
             <div class="changelog-content">
                 <div class="changelog-version">
                     <div class="changelog-date">November 2025</div>
                     <ul class="changelog-items">
-                        <li><strong>SD Card File Management:</strong> Read and upload G-code files directly from the display's SD card to FluidNC</li>
-                        <li><strong>File Browser:</strong> Browse, select, and manage files stored on the touchscreen's local SD card</li>
+                        <li><strong>Settings Backup & Restore:</strong> Export settings to JSON file, auto-import on fresh install, Clear All Settings with confirmation</li>
+                        <li><strong>SD Card File Management:</strong> More robust SD card checking</li>
+                        <li><strong>File Browser:</strong> Auto-switch to Status tab when running a file</li>
                     </ul>
                 </div>
             </div>
@@ -542,6 +543,11 @@
                         <div><span class="spec-highlight">8MB</span> PSRAM</div>
                         <div>ESP32-S3-WROOM-1-N16R8</div>
                         <div>Display: 800×480 <span class="spec-highlight">IPS LCD</span></div>
+                        <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.1);">
+                            <div style="color: #ffa726; font-weight: 600;">⚠️ Hardware Version 1.3 Only</div>
+                            <div style="font-size: 0.8em; margin-top: 5px;">DIP switches S0 and S1 → position 1</div>
+                            <div style="font-size: 0.8em;">Earlier versions? <a href="https://github.com/jeyeager65/FluidTouch/issues" target="_blank" style="color: #00bcd4;">Create an issue</a></div>
+                        </div>
                     </div>
                     <a href="https://www.elecrow.com/crowpanel-advance-7-0-hmi-esp32-ai-display-800x480-artificial-intelligent-ips-touch-screen-support-meshtastic-and-arduino-lvgl-micropython.html" 
                        target="_blank" class="product-link">View Product Page →</a>

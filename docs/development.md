@@ -26,9 +26,26 @@
 **Optional:**
 - Elecrow CrowPanel 7" ESP32-S3 HMI Display:
   - [Basic version](https://www.elecrow.com/esp32-display-7-inch-hmi-display-rgb-tft-lcd-touch-screen-support-lvgl.html) (4MB flash)
+    - 800×480 TN RGB TFT LCD
+    - PWM backlight control
+    - External battery connector
   - [Advance version](https://www.elecrow.com/crowpanel-advance-7-0-hmi-esp32-ai-display-800x480-artificial-intelligent-ips-touch-screen-support-meshtastic-and-arduino-lvgl-micropython.html) (16MB flash)
+    - 800×480 IPS RGB LCD (superior image quality vs Basic)
+    - I2C backlight control
+    - Internal battery connector with JST PH 2.0mm 2-pin connector
+    - Optional acrylic case includes space for battery (e.g., 1200mAh lithium polymer battery)
+    - ⚠️ **Advance Version Compatibility:** Currently only supports hardware Version 1.3
+    - **Version 1.3 Configuration:** DIP switches S0 and S1 must both be set to position 1
+    - If you have an earlier version (1.0, 1.1, 1.2), please [create a GitHub issue](https://github.com/jeyeager65/FluidTouch/issues) for assistance
 - Serial terminal (PlatformIO includes one)
 - Chrome/Edge browser (for ESP Web Tools testing)
+
+### Hardware Notes
+
+**Advance Display with Acrylic Case:**
+- Boot and reset buttons are accessible through holes in the acrylic case
+- ⚠️ **Important:** If placed on a flat surface, the device may press the reset button and restart
+- **Solution:** Install 6mm M3 screws in the mounting inserts on the bottom to create clearance
 
 ### Repository Setup
 

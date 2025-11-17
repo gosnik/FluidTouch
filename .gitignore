@@ -8,6 +8,9 @@
 # VS Code
 .vscode/
 
+# Visual Studio
+.vs/
+
 # Build artifacts
 *.bin
 *.elf

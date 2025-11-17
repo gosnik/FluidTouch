@@ -4,7 +4,7 @@
 
 FluidTouch provides an intuitive 800×480 touchscreen interface for controlling CNC machines running FluidNC firmware. Built on the Elecrow CrowPanel 7" ESP32-S3 HMI display with hardware-accelerated graphics and a responsive LVGL-based UI.
 
-![Version](https://img.shields.io/badge/version-0.9.5-blue)
+![Version](https://img.shields.io/badge/version-0.9.6-blue)
 ![Platform](https://img.shields.io/badge/platform-ESP32--S3-green)
 ![License](https://img.shields.io/badge/license-MIT-orange)
 
@@ -53,13 +53,20 @@ Refer to the **[Development Guide](./docs/development.md)** for additional instr
 - 800×480 TN RGB TFT LCD
 - GT911 Capacitive Touch
 - PWM Backlight Control
+- External battery connector
 - [Product Page](https://www.elecrow.com/esp32-display-7-inch-hmi-display-rgb-tft-lcd-touch-screen-support-lvgl.html)
 
 **Elecrow CrowPanel 7" Advance ESP32-S3 HMI Display**
 - ESP32-S3-WROOM-1-N16R8 (16MB Flash + 8MB PSRAM)
-- 800×480 IPS RGB LCD
+- 800×480 IPS RGB LCD (superior image quality)
 - GT911 Capacitive Touch
 - I2C Backlight Control (STC8H1K28)
+- Internal battery connector (JST PH 2.0mm 2-pin)
+- Optional acrylic case with battery compartment (supports ~1200mAh LiPo batteries)
+- ⚠️ **Hardware Version 1.3 Only** 
+  - DIP switches S0 and S1 must both be set to position 1
+  - If you have an earlier version (1.0, 1.1, 1.2), please [create a GitHub issue](https://github.com/jeyeager65/FluidTouch/issues)
+  - **Case Note:** When using acrylic case, install 6mm M3 screws in bottom mounting inserts to prevent accidental reset button presses
 - [Product Page](https://www.elecrow.com/crowpanel-advance-7-0-hmi-esp32-ai-display-800x480-artificial-intelligent-ips-touch-screen-support-meshtastic-and-arduino-lvgl-micropython.html)
 
 ---

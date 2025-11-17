@@ -1,5 +1,6 @@
 #include "ui/tabs/ui_tab_files.h"
 #include "ui/ui_theme.h"
+#include "ui/ui_tabs.h"
 #include "ui/upload_manager.h"
 #include "network/fluidnc_client.h"
 #include "config.h"
@@ -43,11 +44,21 @@ static UITabFiles::StorageCache* getCurrentCache() {
 
 // Check if Display SD card is available
 bool UITabFiles::isDisplaySDAvailable() {
+    // First check card type
     uint8_t cardType = SD.cardType();
     if (cardType == CARD_NONE) {
-        Serial.println("[Files] No SD card detected");
+        Serial.println("[Files] No SD card detected (cardType = NONE)");
         return false;
     }
+    
+    // Also verify we can actually access the card by checking card size
+    // If card was removed, this should fail
+    uint64_t cardSize = SD.cardSize();
+    if (cardSize == 0) {
+        Serial.println("[Files] SD card not accessible (cardSize = 0)");
+        return false;
+    }
+    
     return true;
 }
 
@@ -288,6 +299,16 @@ void UITabFiles::refresh_button_event_cb(lv_event_t *e) {
         fluidnc_flash_cache.is_cached = false;
     } else if (current_storage == StorageSource::DISPLAY_SD) {
         display_sd_cache.is_cached = false;
+        
+        // For Display SD, if card is not available, try to initialize it
+        if (!isDisplaySDAvailable()) {
+            Serial.println("[Files] SD card not available, attempting to initialize...");
+            if (UploadManager::init()) {
+                Serial.println("[Files] SD card initialized successfully");
+            } else {
+                Serial.println("[Files] SD card initialization failed");
+            }
+        }
     }
     
     // Use appropriate refresh function based on storage type
@@ -516,6 +537,12 @@ static void play_button_event_cb(lv_event_t *e) {
         char cmd[256];
         snprintf(cmd, sizeof(cmd), "%s%s\n", cmd_prefix, filename);
         FluidNCClient::sendCommand(cmd);
+        
+        // Switch to Status tab (index 0) to monitor progress
+        lv_obj_t *tabview = UITabs::getTabview();
+        if (tabview) {
+            lv_tabview_set_active(tabview, 0, LV_ANIM_OFF);
+        }
     }
 }
 
@@ -804,7 +831,7 @@ void UITabFiles::updateFileListUI() {
     }
     
     // Static storage for filenames/paths (persistent across callbacks)
-    static char filenames_storage[100][256];  // Increased size for full paths
+    static char filenames_storage[100][256];
     size_t max_files = std::min(cache->file_list.size(), (size_t)100);
     
     // Create file/directory entries
@@ -969,9 +996,20 @@ void UITabFiles::listDisplaySDFiles(const std::string &path) {
     
     File root = SD.open(path.c_str());
     if (!root || !root.isDirectory()) {
-        Serial.println("[Files] Failed to open Display SD directory");
-        lv_label_set_text(status_label, "Failed to open directory");
-        lv_obj_set_style_text_color(status_label, UITheme::UI_WARNING, 0);
+        Serial.println("[Files] Failed to open Display SD directory (card may have been removed)");
+        display_sd_cache.is_cached = false;
+        display_sd_cache.file_list.clear();
+        if (status_label) {
+            lv_label_set_text(status_label, "SD card not available");
+            lv_obj_set_style_text_color(status_label, UITheme::UI_WARNING, 0);
+        }
+        if (path_label) {
+            lv_label_set_text(path_label, "/");
+        }
+        // Clear file list UI
+        if (file_list_container) {
+            lv_obj_clean(file_list_container);
+        }
         return;
     }
     
