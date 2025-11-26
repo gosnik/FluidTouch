@@ -252,33 +252,21 @@ void PowerManager::enterDeepSleep() {
     prefs.putBool("clean_shutdown", true);
     prefs.end();
     
-    // Power down display and peripherals (Elecrow-specific)
+    // Power down display (backlight only - see display_driver.cpp for details)
     display_driver->powerDown();
     delay(100);
     
-    // Disconnect WiFi and WebSocket
+    // Shutdown network and radios for power savings
     FluidNCClient::disconnect();
     WiFi.disconnect(true);
     WiFi.mode(WIFI_OFF);
-    delay(100);
-    
-    // Disable Bluetooth (reduces power even if not used)
     btStop();
     
     // Disable all wakeup sources except reset button
     esp_sleep_disable_wakeup_source(ESP_SLEEP_WAKEUP_ALL);
     
-    // Disable RTC peripherals to save power
-    esp_sleep_pd_config(ESP_PD_DOMAIN_RTC_PERIPH, ESP_PD_OPTION_OFF);
-    esp_sleep_pd_config(ESP_PD_DOMAIN_RTC_SLOW_MEM, ESP_PD_OPTION_OFF);
-    esp_sleep_pd_config(ESP_PD_DOMAIN_RTC_FAST_MEM, ESP_PD_OPTION_OFF);
-    
-    // Disable unused GPIO power domains
-    esp_sleep_pd_config(ESP_PD_DOMAIN_XTAL, ESP_PD_OPTION_OFF);
-    
-    // Isolate GPIO pins to prevent current leakage
-    // This prevents the display and other peripherals from drawing current
-    gpio_deep_sleep_hold_en();
+    // Use default RTC power domain settings for maximum compatibility
+    // (No esp_sleep_pd_config calls needed - defaults work fine)
     
     // Enter deep sleep (only reset button can wake)
     Serial.println("Entering deep sleep with maximum power savings...");

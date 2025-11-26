@@ -141,7 +141,7 @@ LGFX::LGFX(void) {
         cfg.i2c_addr   = 0x5D;
         cfg.pin_sda    = TOUCH_SDA;  // GPIO 19
         cfg.pin_scl    = TOUCH_SCL;  // GPIO 20
-        cfg.pin_rst    = 38;  // GPIO 38 for reset
+        cfg.pin_rst    = -1;  // No reset pin defined in Elecrow schematic
         cfg.freq       = 400000;
 #endif
 
@@ -167,6 +167,7 @@ bool DisplayDriver::init() {
     ledcAttachPin(2, 1);
     ledcWrite(1, 255);
     Serial.println("Backlight ON (PWM)");
+    
 #elif defined(BACKLIGHT_I2C)
     // Advance: I2C backlight controller (STC8H1K28 at address 0x30)
     // No GPIO manipulation - backlight controlled purely via I2C
@@ -180,7 +181,7 @@ bool DisplayDriver::init() {
     #error "No backlight type defined! Use -DBACKLIGHT_PWM or -DBACKLIGHT_I2C"
 #endif
     
-    // Initialize LovyanGFX (this will initialize I2C for touch panel on Advance)
+    // Initialize LovyanGFX (this will initialize I2C for touch panel)
     lcd.init();
     lcd.setColorDepth(16);
     lcd.setBrightness(255);
@@ -334,80 +335,13 @@ void DisplayDriver::setBacklightOff() {
 void DisplayDriver::powerDown() {
     Serial.println("DisplayDriver: Powering down display for deep sleep...");
     
-    // Turn off backlight - this is the most important for power savings
+    // Only turn off backlight - do NOT send GT911 sleep command or reconfigure GPIOs
+    // The GT911 touch controller on Basic hardware has no reset pin, so if we put it
+    // to sleep (register 0x8040 = 0x05), it cannot be woken after ESP32 deep sleep.
+    // Leaving GT911 in normal mode allows it to wake naturally when ESP32 wakes.
+    // (Advance hardware works either way because STC8H1K28 handles GT911 reset independently)
     setBacklightOff();
-    delay(100);  // Give backlight time to fully turn off
     
-    // Power down GT911 touch controller to prevent touch-induced current draw
-    Serial.println("  Powering down GT911 touch controller...");
-    // I2C already initialized, just set appropriate clock speed
-    Wire.setClock(400000);
-    
-    // GT911 sleep command: write 0x05 to register 0x8040
-    Wire.beginTransmission(0x5D);
-    Wire.write(0x80);  // Register high byte
-    Wire.write(0x40);  // Register low byte
-    Wire.write(0x05);  // Sleep command
-    uint8_t result = Wire.endTransmission();
-    Serial.printf("  GT911 sleep command result: %d\n", result);
-    delay(10);
-    
-#ifdef BACKLIGHT_I2C
-    // Ensure STC8H1K28 buzzer is off (Advance hardware only)
-    Serial.println("  Disabling STC8H1K28 buzzer...");
-    Wire.beginTransmission(0x30);
-    Wire.write(0xF7);  // Buzzer off command
-    uint8_t stc_result = Wire.endTransmission();
-    Serial.printf("  STC8H1K28 buzzer off result: %d\n", stc_result);
-    delay(10);
-#endif
-    
-    // Shut down I2C peripheral to save power
-    Serial.println("  Shutting down I2C bus...");
-    Wire.end();
-    
-    // Set I2C pins to INPUT with pull-down to prevent floating
-    pinMode(TOUCH_SDA, INPUT);
-    pinMode(TOUCH_SCL, INPUT);
-    digitalWrite(TOUCH_SDA, LOW);
-    digitalWrite(TOUCH_SCL, LOW);
-    
-    // Disable RGB parallel interface by setting all data pins low
-    Serial.println("  Disabling RGB parallel interface...");
-#ifdef HARDWARE_ADVANCE
-    // Advance pin mappings - set as INPUT to reduce power
-    pinMode(GPIO_NUM_21, INPUT); pinMode(GPIO_NUM_47, INPUT);
-    pinMode(GPIO_NUM_48, INPUT); pinMode(GPIO_NUM_45, INPUT);
-    pinMode(GPIO_NUM_38, INPUT); pinMode(GPIO_NUM_9, INPUT);
-    pinMode(GPIO_NUM_10, INPUT); pinMode(GPIO_NUM_11, INPUT);
-    pinMode(GPIO_NUM_12, INPUT); pinMode(GPIO_NUM_13, INPUT);
-    pinMode(GPIO_NUM_14, INPUT); pinMode(GPIO_NUM_7, INPUT);
-    pinMode(GPIO_NUM_17, INPUT); pinMode(GPIO_NUM_18, INPUT);
-    pinMode(GPIO_NUM_3, INPUT);  pinMode(GPIO_NUM_46, INPUT);
-    // Sync pins
-    pinMode(GPIO_NUM_42, INPUT); pinMode(GPIO_NUM_41, INPUT);
-    pinMode(GPIO_NUM_40, INPUT); pinMode(GPIO_NUM_39, INPUT);
-    
-    // For Advance: also set backlight I2C pins to input
-    // (These are different from touch I2C on Advance)
-#else
-    // Basic pin mappings - set as INPUT to reduce power
-    pinMode(GPIO_NUM_15, INPUT); pinMode(GPIO_NUM_7, INPUT);
-    pinMode(GPIO_NUM_6, INPUT);  pinMode(GPIO_NUM_5, INPUT);
-    pinMode(GPIO_NUM_4, INPUT);  pinMode(GPIO_NUM_9, INPUT);
-    pinMode(GPIO_NUM_46, INPUT); pinMode(GPIO_NUM_3, INPUT);
-    pinMode(GPIO_NUM_8, INPUT);  pinMode(GPIO_NUM_16, INPUT);
-    pinMode(GPIO_NUM_1, INPUT);  pinMode(GPIO_NUM_14, INPUT);
-    pinMode(GPIO_NUM_21, INPUT); pinMode(GPIO_NUM_47, INPUT);
-    pinMode(GPIO_NUM_48, INPUT); pinMode(GPIO_NUM_45, INPUT);
-    // Sync pins
-    pinMode(GPIO_NUM_41, INPUT); pinMode(GPIO_NUM_40, INPUT);
-    pinMode(GPIO_NUM_39, INPUT); pinMode(GPIO_NUM_0, INPUT);
-    
-    // For Basic: also disable PWM backlight pin
-    pinMode(2, INPUT);
-#endif
-    
-    Serial.println("  Display powered down");
+    Serial.println("  Display powered down (backlight off only)");
 }
 
