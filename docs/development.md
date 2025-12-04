@@ -25,11 +25,11 @@
 
 **Optional:**
 - Elecrow CrowPanel 7" ESP32-S3 HMI Display:
-  - [Basic version](https://www.elecrow.com/esp32-display-7-inch-hmi-display-rgb-tft-lcd-touch-screen-support-lvgl.html) (4MB flash)
+  - [Basic version](https://www.awin1.com/cread.php?awinmid=82721&awinaffid=2663106&ued=https%3A%2F%2Fwww.elecrow.com%2Fesp32-display-7-inch-hmi-display-rgb-tft-lcd-touch-screen-support-lvgl.html) (4MB flash) *(affiliate link)*
     - 800×480 TN RGB TFT LCD
     - PWM backlight control
     - External battery connector
-  - [Advance version](https://www.elecrow.com/crowpanel-advance-7-0-hmi-esp32-ai-display-800x480-artificial-intelligent-ips-touch-screen-support-meshtastic-and-arduino-lvgl-micropython.html) (16MB flash)
+  - [Advance version](https://www.awin1.com/cread.php?awinmid=82721&awinaffid=2663106&ued=https%3A%2F%2Fwww.elecrow.com%2Fcrowpanel-advance-7-0-hmi-esp32-ai-display-800x480-artificial-intelligent-ips-touch-screen-support-meshtastic-and-arduino-lvgl-micropython.html) (16MB flash) *(affiliate link)*
     - 800×480 IPS RGB LCD (superior image quality vs Basic)
     - I2C backlight control
     - Internal battery connector with JST PH 2.0mm 2-pin connector
@@ -403,7 +403,8 @@ Serial.printf("LVGL used: %d KB\n", mon.total_size - mon.free_size);
 - [ESP32-S3 Technical Reference](https://www.espressif.com/sites/default/files/documentation/esp32-s3_technical_reference_manual_en.pdf)
 
 **Hardware:**
-- [Elecrow CrowPanel 7"](https://www.elecrow.com/esp32-display-7-inch-hmi-display-rgb-tft-lcd-touch-screen-support-lvgl.html)
+- [Elecrow CrowPanel 7" Basic](https://www.awin1.com/cread.php?awinmid=82721&awinaffid=2663106&ued=https%3A%2F%2Fwww.elecrow.com%2Fesp32-display-7-inch-hmi-display-rgb-tft-lcd-touch-screen-support-lvgl.html) *(affiliate link)*
+- [Elecrow CrowPanel 7" Advance](https://www.awin1.com/cread.php?awinmid=82721&awinaffid=2663106&ued=https%3A%2F%2Fwww.elecrow.com%2Fcrowpanel-advance-7-0-hmi-esp32-ai-display-800x480-artificial-intelligent-ips-touch-screen-support-meshtastic-and-arduino-lvgl-micropython.html) *(affiliate link)*
 - [ESP32-S3 Datasheet](https://www.espressif.com/sites/default/files/documentation/esp32-s3_datasheet_en.pdf)
 
 ---

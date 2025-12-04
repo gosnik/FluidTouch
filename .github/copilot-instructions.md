@@ -6,14 +6,14 @@ FluidTouch is an ESP32-S3 embedded touchscreen CNC controller for FluidNC machin
 **Supported Hardware**: Elecrow CrowPanel ESP32 7" HMI Display (Basic and Advance variants)
 
 ### Basic Version
-- Product: https://www.elecrow.com/esp32-display-7-inch-hmi-display-rgb-tft-lcd-touch-screen-support-lvgl.html
+- Product: https://www.awin1.com/cread.php?awinmid=82721&awinaffid=2663106&ued=https%3A%2F%2Fwww.elecrow.com%2Fesp32-display-7-inch-hmi-display-rgb-tft-lcd-touch-screen-support-lvgl.html
 - Display: 800x480 TN RGB TFT LCD with GT911 capacitive touch
 - MCU: ESP32-S3-WROOM-1-N4R8 (4MB Flash + 8MB Octal PSRAM)
 - Backlight: PWM on GPIO2
 - Touch I2C: SDA=19, SCL=20, RST=38
 
 ### Advance Version  
-- Product: https://www.elecrow.com/crowpanel-advance-7-0-hmi-esp32-ai-display-800x480-artificial-intelligent-ips-touch-screen-support-meshtastic-and-arduino-lvgl-micropython.html
+- Product: https://www.awin1.com/cread.php?awinmid=82721&awinaffid=2663106&ued=https%3A%2F%2Fwww.elecrow.com%2Fcrowpanel-advance-7-0-hmi-esp32-ai-display-800x480-artificial-intelligent-ips-touch-screen-support-meshtastic-and-arduino-lvgl-micropython.html
 - Display: 800x480 IPS RGB LCD with GT911 capacitive touch
 - MCU: ESP32-S3-WROOM-1-N16R8 (16MB Flash + 8MB Octal PSRAM)
 - Backlight: I2C controlled via STC8H1K28 microcontroller (address 0x30)

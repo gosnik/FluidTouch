@@ -57,9 +57,9 @@ Refer to the **[Development Guide](./docs/development.md)** for additional instr
 - GT911 Capacitive Touch
 - PWM Backlight Control
 - External battery connector
-- [Product Page](https://www.elecrow.com/esp32-display-7-inch-hmi-display-rgb-tft-lcd-touch-screen-support-lvgl.html)
+- [Buy on Elecrow ↗](https://www.awin1.com/cread.php?awinmid=82721&awinaffid=2663106&ued=https%3A%2F%2Fwww.elecrow.com%2Fesp32-display-7-inch-hmi-display-rgb-tft-lcd-touch-screen-support-lvgl.html) *(affiliate link)*
 
-**Elecrow CrowPanel 7" Advance ESP32-S3 HMI Display**
+**Elecrow CrowPanel 7" Advance ESP32-S3 HMI Display** ⭐ *Recommended*
 - ESP32-S3-WROOM-1-N16R8 (16MB Flash + 8MB PSRAM)
 - 800×480 IPS RGB LCD (superior image quality)
 - GT911 Capacitive Touch
@@ -70,7 +70,7 @@ Refer to the **[Development Guide](./docs/development.md)** for additional instr
   - DIP switches S0 and S1 must both be set to position 1
   - If you have an earlier version (1.0, 1.1, 1.2), please [create a GitHub issue](https://github.com/jeyeager65/FluidTouch/issues)
   - **Case Note:** When using acrylic case, install 6mm M3 screws in bottom mounting inserts to prevent accidental reset button presses
-- [Product Page](https://www.elecrow.com/crowpanel-advance-7-0-hmi-esp32-ai-display-800x480-artificial-intelligent-ips-touch-screen-support-meshtastic-and-arduino-lvgl-micropython.html)
+- [Buy on Elecrow ↗](https://www.awin1.com/cread.php?awinmid=82721&awinaffid=2663106&ued=https%3A%2F%2Fwww.elecrow.com%2Fcrowpanel-advance-7-0-hmi-esp32-ai-display-800x480-artificial-intelligent-ips-touch-screen-support-meshtastic-and-arduino-lvgl-micropython.html) *(affiliate link)*
 
 ---
 
@@ -108,6 +108,12 @@ Contributions are welcome! Please read our [Development Guide](./docs/developmen
 - Code architecture and design patterns
 - Building and testing
 - Submitting pull requests
+
+---
+
+## 💙 Support Development
+
+This project is provided free and open-source. Product links use affiliate codes that help offset development costs at no extra cost to you. Your support is appreciated but never required.
 
 ---
 
