@@ -3,7 +3,6 @@
 #include <WiFi.h>
 #include <Preferences.h>
 #include "core/display_driver.h"     // Display driver module
-#include "core/touch_driver.h"       // Touch driver module
 #include "core/power_manager.h"      // Power management module
 #include "network/screenshot_server.h"  // Screenshot web server
 #include "network/fluidnc_client.h"     // FluidNC WebSocket client
@@ -39,15 +38,6 @@ void setup()
         while (1) delay(1000);
     }
     Serial.println("Display driver initialized successfully");
-
-    // Initialize Touch Driver
-    Serial.println("Initializing touch driver...");
-    static TouchDriver touchDriver;
-    if (!touchDriver.init(displayDriver.getLCD())) {
-        Serial.println("ERROR: Failed to initialize touch!");
-        while (1) delay(1000);
-    }
-    Serial.println("Touch driver initialized successfully");
 
     // Initialize Power Manager
     Serial.println("Initializing power manager...");

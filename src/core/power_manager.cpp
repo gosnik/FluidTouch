@@ -260,7 +260,7 @@ void PowerManager::enterDeepSleep() {
     FluidNCClient::disconnect();
     WiFi.disconnect(true);
     WiFi.mode(WIFI_OFF);
-    btStop();
+    //FIXME? btStop();
     
     // Disable all wakeup sources except reset button
     esp_sleep_disable_wakeup_source(ESP_SLEEP_WAKEUP_ALL);

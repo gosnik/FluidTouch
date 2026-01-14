@@ -62,8 +62,8 @@ static void handleScreenshot() {
     Serial.println("Reading screen buffer...");
     
     // Read the entire screen directly from LovyanGFX frame buffer
-    LGFX* lcd = display_driver_instance->getLCD();
-    lcd->readRect(0, 0, width, height, screenshot_buffer);
+    //LGFX* lcd = display_driver_instance->getLCD();
+    //lcd->readRect(0, 0, width, height, screenshot_buffer);
     
     Serial.println("Converting to BMP...");
     

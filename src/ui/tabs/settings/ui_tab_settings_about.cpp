@@ -63,20 +63,6 @@ void UITabSettingsAbout::create(lv_obj_t *tab) {
     lv_obj_set_style_text_font(github_title, &lv_font_montserrat_20, 0);
     lv_obj_set_style_text_color(github_title, UITheme::ACCENT_SECONDARY, 0);
     
-    // GitHub link
-    lv_obj_t *github_link = lv_label_create(github_column);
-    lv_label_set_text(github_link, "https://github.com/jeyeager65/FluidTouch");
-    lv_obj_set_style_text_font(github_link, &lv_font_montserrat_16, 0);
-    lv_obj_set_style_text_color(github_link, UITheme::UI_INFO, 0);
-    lv_obj_set_style_text_align(github_link, LV_TEXT_ALIGN_CENTER, 0);
-    
-    // GitHub QR code
-    lv_obj_t *github_qr = lv_qrcode_create(github_column);
-    lv_qrcode_set_size(github_qr, 150);
-    lv_qrcode_set_dark_color(github_qr, lv_color_white());
-    lv_qrcode_set_light_color(github_qr, UITheme::BG_MEDIUM);
-    lv_qrcode_update(github_qr, "https://github.com/jeyeager65/FluidTouch", strlen("https://github.com/jeyeager65/FluidTouch"));
-    
     // Right column: Screenshot Server
     lv_obj_t *screenshot_column = lv_obj_create(columns_container);
     lv_obj_set_size(screenshot_column, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
@@ -98,12 +84,6 @@ void UITabSettingsAbout::create(lv_obj_t *tab) {
     lv_obj_set_style_text_font(screenshot_link_label, &lv_font_montserrat_16, 0);
     lv_obj_set_style_text_align(screenshot_link_label, LV_TEXT_ALIGN_CENTER, 0);
     
-    // Screenshot QR code
-    screenshot_qr = lv_qrcode_create(screenshot_column);
-    lv_qrcode_set_size(screenshot_qr, 150);
-    lv_qrcode_set_dark_color(screenshot_qr, lv_color_white());
-    lv_qrcode_set_light_color(screenshot_qr, UITheme::BG_MEDIUM);
-    
     update();  // Set initial text and QR code
 }
 
@@ -118,16 +98,9 @@ void UITabSettingsAbout::update() {
         lv_label_set_text(screenshot_link_label, url.c_str());
         lv_obj_set_style_text_color(screenshot_link_label, UITheme::UI_INFO, 0);
         
-        // Update QR code with URL
-        lv_qrcode_update(screenshot_qr, url.c_str(), url.length());
-        lv_obj_clear_flag(screenshot_qr, LV_OBJ_FLAG_HIDDEN);
-        
         wifi_url_set = true;  // Mark as set, don't update again
     } else {
         lv_label_set_text(screenshot_link_label, "WiFi not\nconnected");
         lv_obj_set_style_text_color(screenshot_link_label, UITheme::TEXT_DISABLED, 0);
-        
-        // Hide QR code when not connected
-        lv_obj_add_flag(screenshot_qr, LV_OBJ_FLAG_HIDDEN);
     }
 }
