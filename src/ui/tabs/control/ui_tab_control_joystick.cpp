@@ -2,6 +2,7 @@
 #include "ui/tabs/settings/ui_tab_settings_jog.h"
 #include "ui/ui_theme.h"
 #include "network/fluidnc_client.h"
+#include "config.h"
 #include <lvgl.h>
 #include <math.h>
 
@@ -530,7 +531,7 @@ static void rebuildJoystick() {
     if (current_axis_mode == MODE_XY) {
         // Create circular XY joystick (220x220, centered)
         xy_bg = lv_obj_create(xy_joystick_container);
-        lv_obj_set_size(xy_bg, 220, 220);
+        lv_obj_set_size(xy_bg, UI_SCALE_X(220), UI_SCALE_Y(220));
         lv_obj_set_style_radius(xy_bg, LV_RADIUS_CIRCLE, 0);
         lv_obj_set_style_bg_color(xy_bg, UITheme::JOYSTICK_BG, 0);
         lv_obj_set_style_border_width(xy_bg, 2, 0);
@@ -540,21 +541,21 @@ static void rebuildJoystick() {
         
         // Horizontal crosshair
         lv_obj_t *xy_h_line = lv_obj_create(xy_bg);
-        lv_obj_set_size(xy_h_line, 200, 2);
+        lv_obj_set_size(xy_h_line, UI_SCALE_X(200), UI_SCALE_Y(2));
         lv_obj_set_style_bg_color(xy_h_line, UITheme::JOYSTICK_LINE, 0);
         lv_obj_set_style_border_width(xy_h_line, 0, 0);
         lv_obj_center(xy_h_line);
         
         // Vertical crosshair
         lv_obj_t *xy_v_line = lv_obj_create(xy_bg);
-        lv_obj_set_size(xy_v_line, 2, 200);
+        lv_obj_set_size(xy_v_line, UI_SCALE_X(2), UI_SCALE_Y(200));
         lv_obj_set_style_bg_color(xy_v_line, UITheme::JOYSTICK_LINE, 0);
         lv_obj_set_style_border_width(xy_v_line, 0, 0);
         lv_obj_center(xy_v_line);
         
         // Draggable knob
         xy_knob = lv_obj_create(xy_bg);
-        lv_obj_set_size(xy_knob, 90, 90);
+        lv_obj_set_size(xy_knob, UI_SCALE_X(90), UI_SCALE_Y(90));
         lv_obj_set_style_radius(xy_knob, LV_RADIUS_CIRCLE, 0);
         lv_obj_set_style_bg_color(xy_knob, UITheme::JOYSTICK_XY, 0);
         lv_obj_set_style_border_width(xy_knob, 3, 0);
@@ -573,8 +574,8 @@ static void rebuildJoystick() {
     else if (current_axis_mode == MODE_X) {
         // Create horizontal X slider (220x80, centered vertically to align knob with Z knob)
         xy_bg = lv_obj_create(xy_joystick_container);
-        lv_obj_set_size(xy_bg, 220, 80);
-        lv_obj_set_style_radius(xy_bg, 15, 0);
+        lv_obj_set_size(xy_bg, UI_SCALE_X(220), UI_SCALE_Y(80));
+        lv_obj_set_style_radius(xy_bg, UI_SCALE_Y(15), 0);
         lv_obj_set_style_bg_color(xy_bg, UITheme::JOYSTICK_BG, 0);
         lv_obj_set_style_border_width(xy_bg, 2, 0);
         lv_obj_set_style_border_color(xy_bg, UITheme::JOYSTICK_BORDER, 0);
@@ -583,15 +584,15 @@ static void rebuildJoystick() {
         
         // Center line
         lv_obj_t *x_line = lv_obj_create(xy_bg);
-        lv_obj_set_size(x_line, 2, LV_PCT(100));
+        lv_obj_set_size(x_line, UI_SCALE_X(2), LV_PCT(100));
         lv_obj_set_style_bg_color(x_line, UITheme::JOYSTICK_LINE, 0);
         lv_obj_set_style_border_width(x_line, 0, 0);
         lv_obj_center(x_line);
         
         // Draggable knob
         xy_knob = lv_obj_create(xy_bg);
-        lv_obj_set_size(xy_knob, 70, 70);
-        lv_obj_set_style_radius(xy_knob, 15, 0);
+        lv_obj_set_size(xy_knob, UI_SCALE_X(70), UI_SCALE_Y(70));
+        lv_obj_set_style_radius(xy_knob, UI_SCALE_Y(15), 0);
         lv_obj_set_style_bg_color(xy_knob, UITheme::AXIS_X, 0);
         lv_obj_set_style_border_width(xy_knob, 3, 0);
         lv_obj_set_style_border_color(xy_knob, lv_color_white(), 0);
@@ -609,8 +610,8 @@ static void rebuildJoystick() {
     else if (current_axis_mode == MODE_Y) {
         // Create vertical Y slider (80x220, centered horizontally to align knob with XY center)
         xy_bg = lv_obj_create(xy_joystick_container);
-        lv_obj_set_size(xy_bg, 80, 220);
-        lv_obj_set_style_radius(xy_bg, 15, 0);
+        lv_obj_set_size(xy_bg, UI_SCALE_X(80), UI_SCALE_Y(220));
+        lv_obj_set_style_radius(xy_bg, UI_SCALE_Y(15), 0);
         lv_obj_set_style_bg_color(xy_bg, UITheme::JOYSTICK_BG, 0);
         lv_obj_set_style_border_width(xy_bg, 2, 0);
         lv_obj_set_style_border_color(xy_bg, UITheme::JOYSTICK_BORDER, 0);
@@ -619,15 +620,15 @@ static void rebuildJoystick() {
         
         // Center line
         lv_obj_t *y_line = lv_obj_create(xy_bg);
-        lv_obj_set_size(y_line, LV_PCT(100), 2);
+        lv_obj_set_size(y_line, LV_PCT(100), UI_SCALE_Y(2));
         lv_obj_set_style_bg_color(y_line, UITheme::JOYSTICK_LINE, 0);
         lv_obj_set_style_border_width(y_line, 0, 0);
         lv_obj_center(y_line);
         
         // Draggable knob
         xy_knob = lv_obj_create(xy_bg);
-        lv_obj_set_size(xy_knob, 70, 70);
-        lv_obj_set_style_radius(xy_knob, 15, 0);
+        lv_obj_set_size(xy_knob, UI_SCALE_X(70), UI_SCALE_Y(70));
+        lv_obj_set_style_radius(xy_knob, UI_SCALE_Y(15), 0);
         lv_obj_set_style_bg_color(xy_knob, UITheme::AXIS_Y, 0);
         lv_obj_set_style_border_width(xy_knob, 3, 0);
         lv_obj_set_style_border_color(xy_knob, lv_color_white(), 0);
@@ -725,16 +726,16 @@ void UITabControlJoystick::create(lv_obj_t *parent) {
     // Set parent to use horizontal flex layout (XY joystick on left, info in center, Z slider on right)
     lv_obj_set_flex_flow(parent, LV_FLEX_FLOW_ROW);
     lv_obj_set_flex_align(parent, LV_FLEX_ALIGN_SPACE_EVENLY, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER);  // Align to top
-    lv_obj_set_style_pad_left(parent, 15, 0);  // Shift everything right by 5px (10px default + 5px offset)
-    lv_obj_set_style_pad_right(parent, 10, 0);
-    lv_obj_set_style_pad_top(parent, 20, 0);  // Move everything down 10px (was 10px, now 20px)
-    lv_obj_set_style_pad_bottom(parent, 10, 0);
-    lv_obj_set_style_pad_gap(parent, 20, 0);
+    lv_obj_set_style_pad_left(parent, UI_SCALE_X(15), 0);  // Shift everything right by 5px (10px default + 5px offset)
+    lv_obj_set_style_pad_right(parent, UI_SCALE_X(10), 0);
+    lv_obj_set_style_pad_top(parent, UI_SCALE_Y(20), 0);  // Move everything down 10px (was 10px, now 20px)
+    lv_obj_set_style_pad_bottom(parent, UI_SCALE_Y(10), 0);
+    lv_obj_set_style_pad_gap(parent, UI_SCALE_X(20), 0);
 
     // ========== XY Joystick (Circular) ==========
     lv_obj_t *xy_outer_container = lv_obj_create(parent);
     lv_obj_set_size(xy_outer_container, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
-    lv_obj_set_style_pad_all(xy_outer_container, 5, 0);
+    lv_obj_set_style_pad_all(xy_outer_container, UI_SCALE_Y(5), 0);
     lv_obj_set_flex_flow(xy_outer_container, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_flex_align(xy_outer_container, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
     lv_obj_clear_flag(xy_outer_container, LV_OBJ_FLAG_SCROLLABLE);
@@ -749,7 +750,7 @@ void UITabControlJoystick::create(lv_obj_t *parent) {
 
     // Joystick container (will be rebuilt based on mode)
     xy_joystick_container = lv_obj_create(xy_outer_container);
-    lv_obj_set_size(xy_joystick_container, 220, 220);
+    lv_obj_set_size(xy_joystick_container, UI_SCALE_X(220), UI_SCALE_Y(220));
     lv_obj_set_style_pad_all(xy_joystick_container, 0, 0);
     lv_obj_clear_flag(xy_joystick_container, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_style_bg_opa(xy_joystick_container, LV_OPA_TRANSP, 0);
@@ -761,17 +762,17 @@ void UITabControlJoystick::create(lv_obj_t *parent) {
     // Axis selection buttons (XY, X, Y)
     lv_obj_t *axis_button_container = lv_obj_create(xy_outer_container);
     lv_obj_set_size(axis_button_container, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
-    lv_obj_set_style_pad_all(axis_button_container, 5, 0);
+    lv_obj_set_style_pad_all(axis_button_container, UI_SCALE_Y(5), 0);
     lv_obj_set_flex_flow(axis_button_container, LV_FLEX_FLOW_ROW);
     lv_obj_set_flex_align(axis_button_container, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    lv_obj_set_style_pad_gap(axis_button_container, 5, 0);
+    lv_obj_set_style_pad_gap(axis_button_container, UI_SCALE_X(5), 0);
     lv_obj_clear_flag(axis_button_container, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_style_bg_opa(axis_button_container, LV_OPA_TRANSP, 0);
     lv_obj_set_style_border_width(axis_button_container, 0, 0);
     
     // XY button (initially selected with white border)
     btn_xy = lv_button_create(axis_button_container);
-    lv_obj_set_size(btn_xy, 60, 40);
+    lv_obj_set_size(btn_xy, UI_SCALE_X(60), UI_SCALE_Y(40));
     lv_obj_set_style_bg_color(btn_xy, UITheme::JOYSTICK_XY, LV_PART_MAIN);
     lv_obj_set_style_border_width(btn_xy, 3, LV_PART_MAIN);  // Initial selection border
     lv_obj_set_style_border_color(btn_xy, lv_color_white(), LV_PART_MAIN);
@@ -783,7 +784,7 @@ void UITabControlJoystick::create(lv_obj_t *parent) {
     
     // X button
     btn_x = lv_button_create(axis_button_container);
-    lv_obj_set_size(btn_x, 60, 40);
+    lv_obj_set_size(btn_x, UI_SCALE_X(60), UI_SCALE_Y(40));
     lv_obj_set_style_bg_color(btn_x, UITheme::AXIS_X, LV_PART_MAIN);
     lv_obj_t *lbl_x = lv_label_create(btn_x);
     lv_label_set_text(lbl_x, "X");
@@ -793,7 +794,7 @@ void UITabControlJoystick::create(lv_obj_t *parent) {
     
     // Y button
     btn_y = lv_button_create(axis_button_container);
-    lv_obj_set_size(btn_y, 60, 40);
+    lv_obj_set_size(btn_y, UI_SCALE_X(60), UI_SCALE_Y(40));
     lv_obj_set_style_bg_color(btn_y, UITheme::AXIS_Y, LV_PART_MAIN);
     lv_obj_t *lbl_y = lv_label_create(btn_y);
     lv_label_set_text(lbl_y, "Y");
@@ -803,12 +804,12 @@ void UITabControlJoystick::create(lv_obj_t *parent) {
 
     // ========== Center Info Display (XY + Z values) ==========
     lv_obj_t *info_container = lv_obj_create(parent);
-    lv_obj_set_size(info_container, 160, LV_SIZE_CONTENT);
-    lv_obj_set_style_pad_all(info_container, 10, 0);
-    lv_obj_set_style_pad_top(info_container, 50, 0);  // Additional 30px down (20px from before + 30px = 50px total)
+    lv_obj_set_size(info_container, UI_SCALE_X(160), LV_SIZE_CONTENT);
+    lv_obj_set_style_pad_all(info_container, UI_SCALE_Y(10), 0);
+    lv_obj_set_style_pad_top(info_container, UI_SCALE_Y(50), 0);  // Additional 30px down (20px from before + 30px = 50px total)
     lv_obj_set_flex_flow(info_container, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_flex_align(info_container, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER);
-    lv_obj_set_style_pad_gap(info_container, 10, 0);
+    lv_obj_set_style_pad_gap(info_container, UI_SCALE_Y(10), 0);
     lv_obj_clear_flag(info_container, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_style_bg_opa(info_container, LV_OPA_TRANSP, 0);  // Transparent background
     lv_obj_set_style_border_width(info_container, 0, 0);  // No border
@@ -835,7 +836,7 @@ void UITabControlJoystick::create(lv_obj_t *parent) {
     
     // Spacer between XY and Z info
     lv_obj_t *spacer = lv_obj_create(info_container);
-    lv_obj_set_size(spacer, 1, 20);
+    lv_obj_set_size(spacer, UI_SCALE_X(1), UI_SCALE_Y(20));
     lv_obj_set_style_bg_opa(spacer, LV_OPA_TRANSP, 0);
     lv_obj_set_style_border_width(spacer, 0, 0);
     
@@ -862,7 +863,7 @@ void UITabControlJoystick::create(lv_obj_t *parent) {
     // ========== Z Slider (Vertical) ==========
     lv_obj_t *z_container = lv_obj_create(parent);
     lv_obj_set_size(z_container, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
-    lv_obj_set_style_pad_all(z_container, 5, 0);
+    lv_obj_set_style_pad_all(z_container, UI_SCALE_Y(5), 0);
     lv_obj_set_flex_flow(z_container, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_flex_align(z_container, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
     lv_obj_clear_flag(z_container, LV_OBJ_FLAG_SCROLLABLE);
@@ -877,8 +878,8 @@ void UITabControlJoystick::create(lv_obj_t *parent) {
 
     // Background slider (80x220 vertical)
     lv_obj_t *z_bg = lv_obj_create(z_container);
-    lv_obj_set_size(z_bg, 80, 220);
-    lv_obj_set_style_radius(z_bg, 15, 0);
+    lv_obj_set_size(z_bg, UI_SCALE_X(80), UI_SCALE_Y(220));
+    lv_obj_set_style_radius(z_bg, UI_SCALE_Y(15), 0);
     lv_obj_set_style_bg_color(z_bg, UITheme::JOYSTICK_BG, 0);
     lv_obj_set_style_border_width(z_bg, 2, 0);
     lv_obj_set_style_border_color(z_bg, UITheme::JOYSTICK_BORDER, 0);
@@ -886,15 +887,15 @@ void UITabControlJoystick::create(lv_obj_t *parent) {
 
     // Center line
     lv_obj_t *z_line = lv_obj_create(z_bg);
-    lv_obj_set_size(z_line, LV_PCT(100), 2);
+    lv_obj_set_size(z_line, LV_PCT(100), UI_SCALE_Y(2));
     lv_obj_set_style_bg_color(z_line, UITheme::JOYSTICK_LINE, 0);
     lv_obj_set_style_border_width(z_line, 0, 0);
     lv_obj_center(z_line);
 
     // Draggable knob (70x70, purple, centered initially)
     lv_obj_t *z_knob = lv_obj_create(z_bg);
-    lv_obj_set_size(z_knob, 70, 70);
-    lv_obj_set_style_radius(z_knob, 15, 0);
+    lv_obj_set_size(z_knob, UI_SCALE_X(70), UI_SCALE_Y(70));
+    lv_obj_set_style_radius(z_knob, UI_SCALE_Y(15), 0);
     lv_obj_set_style_bg_color(z_knob, UITheme::JOYSTICK_Z, 0);
     lv_obj_set_style_border_width(z_knob, 3, 0);
     lv_obj_set_style_border_color(z_knob, lv_color_white(), 0);

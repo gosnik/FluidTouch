@@ -43,11 +43,11 @@ void UITabSettingsJog::create(lv_obj_t *tab) {
     // Load preferences
     loadPreferences();
     
-    int y_pos = 20;
-    int col1_label_x = 20;
-    int col1_field_x = 215;  // Shifted 50px right (was 165)
-    int col2_label_x = 360;  // Moved 20px left (was 380)
-    int col2_field_x = 555;  // Moved 20px left (was 575)
+    int y_pos = UI_SCALE_Y(20);
+    int col1_label_x = UI_SCALE_X(20);
+    int col1_field_x = UI_SCALE_X(215);  // Shifted 50px right (was 165)
+    int col2_label_x = UI_SCALE_X(360);  // Moved 20px left (was 380)
+    int col2_field_x = UI_SCALE_X(555);  // Moved 20px left (was 575)
     
     // Title - Column 1
     lv_obj_t *title = lv_label_create(tab);
@@ -63,17 +63,17 @@ void UITabSettingsJog::create(lv_obj_t *tab) {
     lv_obj_set_style_text_color(title2, UITheme::TEXT_DISABLED, 0);  // Gray color
     lv_obj_set_pos(title2, col2_label_x, y_pos);
     
-    y_pos += 40;
+    y_pos += UI_SCALE_Y(40);
     
     // === XY Step Size ===
     lv_obj_t *lbl_xy_step = lv_label_create(tab);
     lv_label_set_text(lbl_xy_step, "XY Step (mm):");
     lv_obj_set_style_text_font(lbl_xy_step, &lv_font_montserrat_18, 0);
     lv_obj_set_style_text_color(lbl_xy_step, UITheme::TEXT_LIGHT, 0);
-    lv_obj_set_pos(lbl_xy_step, col1_label_x, y_pos + 12);  // Align with text area content
+    lv_obj_set_pos(lbl_xy_step, col1_label_x, y_pos + UI_SCALE_Y(12));  // Align with text area content
     
     ta_xy_step = lv_textarea_create(tab);
-    lv_obj_set_size(ta_xy_step, 100, 40);
+    lv_obj_set_size(ta_xy_step, UI_SCALE_X(100), UI_SCALE_Y(40));
     lv_obj_set_pos(ta_xy_step, col1_field_x, y_pos);
     lv_textarea_set_one_line(ta_xy_step, true);
     lv_textarea_set_max_length(ta_xy_step, 6);
@@ -89,10 +89,10 @@ void UITabSettingsJog::create(lv_obj_t *tab) {
     lv_label_set_text(lbl_max_xy_feed, "Max XY (mm/min):");
     lv_obj_set_style_text_font(lbl_max_xy_feed, &lv_font_montserrat_18, 0);
     lv_obj_set_style_text_color(lbl_max_xy_feed, UITheme::TEXT_LIGHT, 0);
-    lv_obj_set_pos(lbl_max_xy_feed, col2_label_x, y_pos + 12);  // Align with text area content
+    lv_obj_set_pos(lbl_max_xy_feed, col2_label_x, y_pos + UI_SCALE_Y(12));  // Align with text area content
     
     ta_max_xy_feed = lv_textarea_create(tab);
-    lv_obj_set_size(ta_max_xy_feed, 100, 40);
+    lv_obj_set_size(ta_max_xy_feed, UI_SCALE_X(100), UI_SCALE_Y(40));
     lv_obj_set_pos(ta_max_xy_feed, col2_field_x, y_pos);
     lv_textarea_set_one_line(ta_max_xy_feed, true);
     lv_textarea_set_max_length(ta_max_xy_feed, 6);
@@ -101,17 +101,17 @@ void UITabSettingsJog::create(lv_obj_t *tab) {
     lv_obj_add_event_cb(ta_max_xy_feed, textarea_focused_event_handler, LV_EVENT_FOCUSED, nullptr);
     snprintf(buf, sizeof(buf), "%d", max_xy_feed);
     lv_textarea_set_text(ta_max_xy_feed, buf);
-    y_pos += 50;
+    y_pos += UI_SCALE_Y(50);
     
     // === Z Step Size ===
     lv_obj_t *lbl_z_step = lv_label_create(tab);
     lv_label_set_text(lbl_z_step, "Z Step (mm):");
     lv_obj_set_style_text_font(lbl_z_step, &lv_font_montserrat_18, 0);
     lv_obj_set_style_text_color(lbl_z_step, UITheme::TEXT_LIGHT, 0);
-    lv_obj_set_pos(lbl_z_step, col1_label_x, y_pos + 12);  // Align with text area content
+    lv_obj_set_pos(lbl_z_step, col1_label_x, y_pos + UI_SCALE_Y(12));  // Align with text area content
     
     ta_z_step = lv_textarea_create(tab);
-    lv_obj_set_size(ta_z_step, 100, 40);
+    lv_obj_set_size(ta_z_step, UI_SCALE_X(100), UI_SCALE_Y(40));
     lv_obj_set_pos(ta_z_step, col1_field_x, y_pos);
     lv_textarea_set_one_line(ta_z_step, true);
     lv_textarea_set_max_length(ta_z_step, 6);
@@ -126,10 +126,10 @@ void UITabSettingsJog::create(lv_obj_t *tab) {
     lv_label_set_text(lbl_max_z_feed, "Max Z (mm/min):");
     lv_obj_set_style_text_font(lbl_max_z_feed, &lv_font_montserrat_18, 0);
     lv_obj_set_style_text_color(lbl_max_z_feed, UITheme::TEXT_LIGHT, 0);
-    lv_obj_set_pos(lbl_max_z_feed, col2_label_x, y_pos + 12);  // Align with text area content
+    lv_obj_set_pos(lbl_max_z_feed, col2_label_x, y_pos + UI_SCALE_Y(12));  // Align with text area content
     
     ta_max_z_feed = lv_textarea_create(tab);
-    lv_obj_set_size(ta_max_z_feed, 100, 40);
+    lv_obj_set_size(ta_max_z_feed, UI_SCALE_X(100), UI_SCALE_Y(40));
     lv_obj_set_pos(ta_max_z_feed, col2_field_x, y_pos);
     lv_textarea_set_one_line(ta_max_z_feed, true);
     lv_textarea_set_max_length(ta_max_z_feed, 6);
@@ -138,17 +138,17 @@ void UITabSettingsJog::create(lv_obj_t *tab) {
     lv_obj_add_event_cb(ta_max_z_feed, textarea_focused_event_handler, LV_EVENT_FOCUSED, nullptr);
     snprintf(buf, sizeof(buf), "%d", max_z_feed);
     lv_textarea_set_text(ta_max_z_feed, buf);
-    y_pos += 50;
+    y_pos += UI_SCALE_Y(50);
     
     // === XY Feed Rate ===
     lv_obj_t *lbl_xy_feed = lv_label_create(tab);
     lv_label_set_text(lbl_xy_feed, "XY Feed (mm/min):");
     lv_obj_set_style_text_font(lbl_xy_feed, &lv_font_montserrat_18, 0);
     lv_obj_set_style_text_color(lbl_xy_feed, UITheme::TEXT_LIGHT, 0);
-    lv_obj_set_pos(lbl_xy_feed, col1_label_x, y_pos + 12);  // Align with text area content
+    lv_obj_set_pos(lbl_xy_feed, col1_label_x, y_pos + UI_SCALE_Y(12));  // Align with text area content
     
     ta_xy_feed = lv_textarea_create(tab);
-    lv_obj_set_size(ta_xy_feed, 100, 40);
+    lv_obj_set_size(ta_xy_feed, UI_SCALE_X(100), UI_SCALE_Y(40));
     lv_obj_set_pos(ta_xy_feed, col1_field_x, y_pos);
     lv_textarea_set_one_line(ta_xy_feed, true);
     lv_textarea_set_max_length(ta_xy_feed, 6);
@@ -157,17 +157,17 @@ void UITabSettingsJog::create(lv_obj_t *tab) {
     lv_obj_add_event_cb(ta_xy_feed, textarea_focused_event_handler, LV_EVENT_FOCUSED, nullptr);
     snprintf(buf, sizeof(buf), "%d", default_xy_feed);
     lv_textarea_set_text(ta_xy_feed, buf);
-    y_pos += 50;
+    y_pos += UI_SCALE_Y(50);
     
     // === Z Feed Rate ===
     lv_obj_t *lbl_z_feed = lv_label_create(tab);
     lv_label_set_text(lbl_z_feed, "Z Feed (mm/min):");
     lv_obj_set_style_text_font(lbl_z_feed, &lv_font_montserrat_18, 0);
     lv_obj_set_style_text_color(lbl_z_feed, UITheme::TEXT_LIGHT, 0);
-    lv_obj_set_pos(lbl_z_feed, col1_label_x, y_pos + 12);  // Align with text area content
+    lv_obj_set_pos(lbl_z_feed, col1_label_x, y_pos + UI_SCALE_Y(12));  // Align with text area content
     
     ta_z_feed = lv_textarea_create(tab);
-    lv_obj_set_size(ta_z_feed, 100, 40);
+    lv_obj_set_size(ta_z_feed, UI_SCALE_X(100), UI_SCALE_Y(40));
     lv_obj_set_pos(ta_z_feed, col1_field_x, y_pos);
     lv_textarea_set_one_line(ta_z_feed, true);
     lv_textarea_set_max_length(ta_z_feed, 6);
@@ -176,13 +176,13 @@ void UITabSettingsJog::create(lv_obj_t *tab) {
     lv_obj_add_event_cb(ta_z_feed, textarea_focused_event_handler, LV_EVENT_FOCUSED, nullptr);
     snprintf(buf, sizeof(buf), "%d", default_z_feed);
     lv_textarea_set_text(ta_z_feed, buf);
-    y_pos += 60;
+    y_pos += UI_SCALE_Y(60);
     
     // === Action Buttons (positioned at bottom with 20px margins) ===
     // Save button
     lv_obj_t *btn_save = lv_button_create(tab);
-    lv_obj_set_size(btn_save, 180, 50);
-    lv_obj_set_pos(btn_save, 20, 280);  // 360px (tab height) - 50px (button) - 30px (margin) = 280px
+    lv_obj_set_size(btn_save, UI_SCALE_X(180), UI_SCALE_Y(50));
+    lv_obj_set_pos(btn_save, UI_SCALE_X(20), UI_SCALE_Y(280));  // 360px (tab height) - 50px (button) - 30px (margin) = 280px
     lv_obj_set_style_bg_color(btn_save, UITheme::BTN_PLAY, LV_PART_MAIN);
     lv_obj_t *lbl_save = lv_label_create(btn_save);
     lv_label_set_text(lbl_save, "Save Settings");
@@ -192,8 +192,8 @@ void UITabSettingsJog::create(lv_obj_t *tab) {
     
     // Reset to defaults button
     lv_obj_t *btn_reset = lv_button_create(tab);
-    lv_obj_set_size(btn_reset, 180, 50);
-    lv_obj_set_pos(btn_reset, 220, 280);  // Same vertical position, 200px gap from Save button
+    lv_obj_set_size(btn_reset, UI_SCALE_X(180), UI_SCALE_Y(50));
+    lv_obj_set_pos(btn_reset, UI_SCALE_X(220), UI_SCALE_Y(280));  // Same vertical position, 200px gap from Save button
     lv_obj_set_style_bg_color(btn_reset, UITheme::BG_BUTTON, LV_PART_MAIN);
     lv_obj_t *lbl_reset = lv_label_create(btn_reset);
     lv_label_set_text(lbl_reset, "Reset Defaults");
@@ -206,7 +206,7 @@ void UITabSettingsJog::create(lv_obj_t *tab) {
     lv_label_set_text(status_label, "");
     lv_obj_set_style_text_font(status_label, &lv_font_montserrat_14, 0);
     lv_obj_set_style_text_color(status_label, UITheme::UI_INFO, 0);
-    lv_obj_set_pos(status_label, 20, 335);
+    lv_obj_set_pos(status_label, UI_SCALE_X(20), UI_SCALE_Y(335));
 }
 
 // Load preferences from current machine configuration
@@ -280,7 +280,7 @@ static void textarea_focused_event_handler(lv_event_t *e) {
 void UITabSettingsJog::showKeyboard(lv_obj_t *ta) {
     if (!keyboard) {
         keyboard = lv_keyboard_create(lv_scr_act());
-        lv_obj_set_size(keyboard, SCREEN_WIDTH, 220);
+        lv_obj_set_size(keyboard, SCREEN_WIDTH, UI_SCALE_Y(220));
         lv_obj_align(keyboard, LV_ALIGN_BOTTOM_MID, 0, 0);
         lv_obj_set_style_text_font(keyboard, &lv_font_montserrat_20, 0);  // Larger font for better visibility
         lv_keyboard_set_mode(keyboard, LV_KEYBOARD_MODE_NUMBER);  // All jog settings are numeric
@@ -294,7 +294,7 @@ void UITabSettingsJog::showKeyboard(lv_obj_t *ta) {
     // Enable scrolling on parent tab and add extra padding at bottom for keyboard (every time keyboard is shown)
     if (parent_tab) {
         lv_obj_add_flag(parent_tab, LV_OBJ_FLAG_SCROLLABLE);
-        lv_obj_set_style_pad_bottom(parent_tab, 240, 0); // Extra space for scrolling (keyboard height + margin)
+        lv_obj_set_style_pad_bottom(parent_tab, UI_SCALE_Y(240), 0); // Extra space for scrolling (keyboard height + margin)
     }
     
     lv_keyboard_set_textarea(keyboard, ta);
@@ -314,9 +314,9 @@ void UITabSettingsJog::showKeyboard(lv_obj_t *ta) {
         
         // Calculate scroll position to place textarea just above keyboard
         // Status bar is 60px, keyboard is 220px, so visible area is 200px (480 - 60 - 220)
-        lv_coord_t visible_height = 200; // Height above keyboard and below status bar
+        lv_coord_t visible_height = UI_SCALE_Y(200); // Height above keyboard and below status bar
         lv_coord_t ta_height = lv_obj_get_height(ta);
-        lv_coord_t target_position = visible_height - ta_height - 10; // 10px margin above keyboard
+        lv_coord_t target_position = visible_height - ta_height - UI_SCALE_Y(10); // 10px margin above keyboard
         
         // Scroll amount = (textarea Y position) - (where we want it)
         lv_coord_t scroll_y = ta_y - target_position;
@@ -334,7 +334,7 @@ void UITabSettingsJog::hideKeyboard() {
         // Restore parent tab to non-scrollable and remove extra padding
         if (parent_tab) {
             lv_obj_clear_flag(parent_tab, LV_OBJ_FLAG_SCROLLABLE);
-            lv_obj_set_style_pad_bottom(parent_tab, 10, 0); // Back to original padding
+            lv_obj_set_style_pad_bottom(parent_tab, UI_SCALE_Y(10), 0); // Back to original padding
             lv_obj_scroll_to_y(parent_tab, 0, LV_ANIM_ON); // Reset scroll position
         }
     }

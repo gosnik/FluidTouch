@@ -36,17 +36,17 @@ void UITabSettingsGeneral::create(lv_obj_t *tab) {
     lv_label_set_text(section_title, "MACHINE SELECTION");
     lv_obj_set_style_text_font(section_title, &lv_font_montserrat_18, 0);
     lv_obj_set_style_text_color(section_title, UITheme::TEXT_DISABLED, 0);
-    lv_obj_set_pos(section_title, 20, 20);
+    lv_obj_set_pos(section_title, UI_SCALE_X(20), UI_SCALE_Y(20));
     
     // Show label and switch on same line
     lv_obj_t *machine_sel_label = lv_label_create(tab);
     lv_label_set_text(machine_sel_label, "Show:");
     lv_obj_set_style_text_font(machine_sel_label, &lv_font_montserrat_18, 0);
     lv_obj_set_style_text_color(machine_sel_label, UITheme::TEXT_LIGHT, 0);
-    lv_obj_set_pos(machine_sel_label, 20, 70);  // 20 + 40 (title spacing) + 12 (vertical alignment)
+    lv_obj_set_pos(machine_sel_label, UI_SCALE_X(20), UI_SCALE_Y(70));  // 20 + 40 (title spacing) + 12 (vertical alignment)
     
     show_machine_select_switch = lv_switch_create(tab);
-    lv_obj_set_pos(show_machine_select_switch, 140, 65);  // 20 + 40 (title spacing) + 7 (switch alignment)
+    lv_obj_set_pos(show_machine_select_switch, UI_SCALE_X(140), UI_SCALE_Y(65));  // 20 + 40 (title spacing) + 7 (switch alignment)
     if (show_machine_select) {
         lv_obj_add_state(show_machine_select_switch, LV_STATE_CHECKED);
     }
@@ -56,24 +56,24 @@ void UITabSettingsGeneral::create(lv_obj_t *tab) {
     lv_label_set_text(desc_label, "When disabled, the first configured machine\nwill be loaded automatically at startup.");
     lv_obj_set_style_text_font(desc_label, &lv_font_montserrat_14, 0);
     lv_obj_set_style_text_color(desc_label, UITheme::TEXT_DISABLED, 0);
-    lv_obj_set_pos(desc_label, 20, 107);  // 20 + 40 (title) + 40 (switch row) + 7 (spacing)
+    lv_obj_set_pos(desc_label, UI_SCALE_X(20), UI_SCALE_Y(107));  // 20 + 40 (title) + 40 (switch row) + 7 (spacing)
     
     // === Files Section (First column, below Machine Selection) ===
     lv_obj_t *files_section_title = lv_label_create(tab);
     lv_label_set_text(files_section_title, "FILES");
     lv_obj_set_style_text_font(files_section_title, &lv_font_montserrat_18, 0);
     lv_obj_set_style_text_color(files_section_title, UITheme::TEXT_DISABLED, 0);
-    lv_obj_set_pos(files_section_title, 20, 155);  // First column, below Machine Selection
+    lv_obj_set_pos(files_section_title, UI_SCALE_X(20), UI_SCALE_Y(155));  // First column, below Machine Selection
     
     // Folders on top label and switch
     lv_obj_t *folders_label = lv_label_create(tab);
     lv_label_set_text(folders_label, "Folders on Top:");
     lv_obj_set_style_text_font(folders_label, &lv_font_montserrat_18, 0);
     lv_obj_set_style_text_color(folders_label, UITheme::TEXT_LIGHT, 0);
-    lv_obj_set_pos(folders_label, 20, 205);  // First column
+    lv_obj_set_pos(folders_label, UI_SCALE_X(20), UI_SCALE_Y(205));  // First column
     
     folders_on_top_switch = lv_switch_create(tab);
-    lv_obj_set_pos(folders_on_top_switch, 200, 200);  // Aligned with label
+    lv_obj_set_pos(folders_on_top_switch, UI_SCALE_X(200), UI_SCALE_Y(200));  // Aligned with label
     if (folders_on_top) {
         lv_obj_add_state(folders_on_top_switch, LV_STATE_CHECKED);
     }
@@ -83,19 +83,19 @@ void UITabSettingsGeneral::create(lv_obj_t *tab) {
     lv_label_set_text(folders_desc_label, "When enabled, folders appear at the top\nof the file list instead of the bottom.");
     lv_obj_set_style_text_font(folders_desc_label, &lv_font_montserrat_14, 0);
     lv_obj_set_style_text_color(folders_desc_label, UITheme::TEXT_DISABLED, 0);
-    lv_obj_set_pos(folders_desc_label, 20, 242);  // First column
+    lv_obj_set_pos(folders_desc_label, UI_SCALE_X(20), UI_SCALE_Y(242));  // First column
     
     // === Backup & Restore Section (Second column) ===
     lv_obj_t *backup_section_title = lv_label_create(tab);
     lv_label_set_text(backup_section_title, "BACKUP & RESTORE");
     lv_obj_set_style_text_font(backup_section_title, &lv_font_montserrat_18, 0);
     lv_obj_set_style_text_color(backup_section_title, UITheme::TEXT_DISABLED, 0);
-    lv_obj_set_pos(backup_section_title, 400, 20);  // Second column
+    lv_obj_set_pos(backup_section_title, UI_SCALE_X(400), UI_SCALE_Y(20));  // Second column
     
     // Export settings button
     lv_obj_t *btn_export = lv_button_create(tab);
-    lv_obj_set_size(btn_export, 180, 50);
-    lv_obj_set_pos(btn_export, 400, 60);  // Second column
+    lv_obj_set_size(btn_export, UI_SCALE_X(180), UI_SCALE_Y(50));
+    lv_obj_set_pos(btn_export, UI_SCALE_X(400), UI_SCALE_Y(60));  // Second column
     lv_obj_set_style_bg_color(btn_export, UITheme::ACCENT_SECONDARY, LV_PART_MAIN);
     lv_obj_t *lbl_export = lv_label_create(btn_export);
     lv_label_set_text(lbl_export, LV_SYMBOL_DOWNLOAD " Export");
@@ -105,8 +105,8 @@ void UITabSettingsGeneral::create(lv_obj_t *tab) {
     
     // Clear settings button
     lv_obj_t *btn_clear = lv_button_create(tab);
-    lv_obj_set_size(btn_clear, 180, 50);
-    lv_obj_set_pos(btn_clear, 400, 120);  // Second column, below Export
+    lv_obj_set_size(btn_clear, UI_SCALE_X(180), UI_SCALE_Y(50));
+    lv_obj_set_pos(btn_clear, UI_SCALE_X(400), UI_SCALE_Y(120));  // Second column, below Export
     lv_obj_set_style_bg_color(btn_clear, UITheme::STATE_ALARM, LV_PART_MAIN);
     lv_obj_t *lbl_clear = lv_label_create(btn_clear);
     lv_label_set_text(lbl_clear, LV_SYMBOL_TRASH " Clear All");
@@ -119,13 +119,13 @@ void UITabSettingsGeneral::create(lv_obj_t *tab) {
     lv_label_set_text(backup_desc_label, "Export saves backup to Display SD.\nClear erases all settings and restarts.");
     lv_obj_set_style_text_font(backup_desc_label, &lv_font_montserrat_14, 0);
     lv_obj_set_style_text_color(backup_desc_label, UITheme::TEXT_DISABLED, 0);
-    lv_obj_set_pos(backup_desc_label, 400, 180);  // Second column, below buttons
+    lv_obj_set_pos(backup_desc_label, UI_SCALE_X(400), UI_SCALE_Y(180));  // Second column, below buttons
     
     // === Action Buttons (positioned at bottom with 20px margins) ===
     // Save button
     lv_obj_t *btn_save = lv_button_create(tab);
-    lv_obj_set_size(btn_save, 180, 50);
-    lv_obj_set_pos(btn_save, 20, 280);  // 360px (tab height) - 50px (button) - 30px (margin) = 280px
+    lv_obj_set_size(btn_save, UI_SCALE_X(180), UI_SCALE_Y(50));
+    lv_obj_set_pos(btn_save, UI_SCALE_X(20), UI_SCALE_Y(280));  // 360px (tab height) - 50px (button) - 30px (margin) = 280px
     lv_obj_set_style_bg_color(btn_save, UITheme::BTN_PLAY, LV_PART_MAIN);
     lv_obj_t *lbl_save = lv_label_create(btn_save);
     lv_label_set_text(lbl_save, "Save Settings");
@@ -135,8 +135,8 @@ void UITabSettingsGeneral::create(lv_obj_t *tab) {
     
     // Reset to defaults button
     lv_obj_t *btn_reset = lv_button_create(tab);
-    lv_obj_set_size(btn_reset, 180, 50);
-    lv_obj_set_pos(btn_reset, 220, 280);  // Same vertical position, 200px gap from Save button
+    lv_obj_set_size(btn_reset, UI_SCALE_X(180), UI_SCALE_Y(50));
+    lv_obj_set_pos(btn_reset, UI_SCALE_X(220), UI_SCALE_Y(280));  // Same vertical position, 200px gap from Save button
     lv_obj_set_style_bg_color(btn_reset, UITheme::BG_BUTTON, LV_PART_MAIN);
     lv_obj_t *lbl_reset = lv_label_create(btn_reset);
     lv_label_set_text(lbl_reset, "Reset Defaults");
@@ -149,7 +149,7 @@ void UITabSettingsGeneral::create(lv_obj_t *tab) {
     lv_label_set_text(status_label, "");
     lv_obj_set_style_text_font(status_label, &lv_font_montserrat_14, 0);
     lv_obj_set_style_text_color(status_label, UITheme::UI_INFO, 0);
-    lv_obj_set_pos(status_label, 20, 335);
+    lv_obj_set_pos(status_label, UI_SCALE_X(20), UI_SCALE_Y(335));
 }
 
 // Save button event handler
@@ -236,12 +236,12 @@ static void btn_export_event_handler(lv_event_t *e) {
             
             // Show success dialog with important information
             lv_obj_t *dialog = lv_obj_create(backdrop);
-            lv_obj_set_size(dialog, 650, 300);
+            lv_obj_set_size(dialog, UI_SCALE_X(650), UI_SCALE_Y(300));
             lv_obj_center(dialog);
             lv_obj_set_style_bg_color(dialog, UITheme::BG_MEDIUM, 0);
             lv_obj_set_style_border_width(dialog, 3, 0);
             lv_obj_set_style_border_color(dialog, UITheme::UI_SUCCESS, 0);
-            lv_obj_set_style_pad_all(dialog, 20, 0);
+            lv_obj_set_style_pad_all(dialog, UI_SCALE_Y(20), 0);
             lv_obj_clear_flag(dialog, LV_OBJ_FLAG_SCROLLABLE);
             
             // Title
@@ -263,12 +263,12 @@ static void btn_export_event_handler(lv_event_t *e) {
             lv_obj_set_style_text_color(message, UITheme::TEXT_LIGHT, 0);
             lv_obj_set_style_text_align(message, LV_TEXT_ALIGN_CENTER, 0);
             lv_label_set_long_mode(message, LV_LABEL_LONG_WRAP);
-            lv_obj_set_width(message, 610);
-            lv_obj_align(message, LV_ALIGN_TOP_MID, 0, 50);
+            lv_obj_set_width(message, UI_SCALE_X(610));
+            lv_obj_align(message, LV_ALIGN_TOP_MID, 0, UI_SCALE_Y(50));
             
             // Button container
             lv_obj_t *btn_container = lv_obj_create(dialog);
-            lv_obj_set_size(btn_container, 610, 60);
+            lv_obj_set_size(btn_container, UI_SCALE_X(610), UI_SCALE_Y(60));
             lv_obj_set_style_bg_opa(btn_container, LV_OPA_TRANSP, 0);
             lv_obj_set_style_border_width(btn_container, 0, 0);
             lv_obj_set_style_pad_all(btn_container, 0, 0);
@@ -277,7 +277,7 @@ static void btn_export_event_handler(lv_event_t *e) {
             
             // OK button
             lv_obj_t *btn_ok = lv_button_create(btn_container);
-            lv_obj_set_size(btn_ok, 160, 50);
+            lv_obj_set_size(btn_ok, UI_SCALE_X(160), UI_SCALE_Y(50));
             lv_obj_center(btn_ok);
             lv_obj_set_style_bg_color(btn_ok, UITheme::BTN_PLAY, 0);
             lv_obj_t *lbl_ok = lv_label_create(btn_ok);
@@ -320,12 +320,12 @@ static void btn_clear_event_handler(lv_event_t *e) {
         
         // Show confirmation dialog
         lv_obj_t *dialog = lv_obj_create(backdrop);
-        lv_obj_set_size(dialog, 600, 350);
+        lv_obj_set_size(dialog, UI_SCALE_X(600), UI_SCALE_Y(350));
         lv_obj_center(dialog);
         lv_obj_set_style_bg_color(dialog, UITheme::BG_MEDIUM, 0);
         lv_obj_set_style_border_width(dialog, 3, 0);
         lv_obj_set_style_border_color(dialog, UITheme::STATE_ALARM, 0);
-        lv_obj_set_style_pad_all(dialog, 20, 0);
+        lv_obj_set_style_pad_all(dialog, UI_SCALE_Y(20), 0);
         lv_obj_clear_flag(dialog, LV_OBJ_FLAG_SCROLLABLE);
         
         // Warning title
@@ -341,16 +341,16 @@ static void btn_clear_event_handler(lv_event_t *e) {
         lv_obj_set_style_text_font(intro, &lv_font_montserrat_16, 0);
         lv_obj_set_style_text_color(intro, UITheme::TEXT_LIGHT, 0);
         lv_obj_set_style_text_align(intro, LV_TEXT_ALIGN_CENTER, 0);
-        lv_obj_set_width(intro, 560);
-        lv_obj_align(intro, LV_ALIGN_TOP_MID, 0, 40);
+        lv_obj_set_width(intro, UI_SCALE_X(560));
+        lv_obj_align(intro, LV_ALIGN_TOP_MID, 0, UI_SCALE_Y(40));
         
         // Bullet list container (centered, with left-aligned content)
         lv_obj_t *list_container = lv_obj_create(dialog);
         lv_obj_set_size(list_container, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
         lv_obj_set_style_bg_opa(list_container, LV_OPA_TRANSP, 0);
         lv_obj_set_style_border_width(list_container, 0, 0);
-        lv_obj_set_style_pad_all(list_container, 5, 0);
-        lv_obj_align(list_container, LV_ALIGN_TOP_MID, 0, 60);
+        lv_obj_set_style_pad_all(list_container, UI_SCALE_Y(5), 0);
+        lv_obj_align(list_container, LV_ALIGN_TOP_MID, 0, UI_SCALE_Y(60));
         lv_obj_clear_flag(list_container, LV_OBJ_FLAG_SCROLLABLE);
         
         lv_obj_t *bullets = lv_label_create(list_container);
@@ -371,12 +371,12 @@ static void btn_clear_event_handler(lv_event_t *e) {
         lv_obj_set_style_text_font(footer, &lv_font_montserrat_16, 0);
         lv_obj_set_style_text_color(footer, UITheme::TEXT_LIGHT, 0);
         lv_obj_set_style_text_align(footer, LV_TEXT_ALIGN_CENTER, 0);
-        lv_obj_set_width(footer, 560);
-        lv_obj_align(footer, LV_ALIGN_TOP_MID, 0, 155);
+        lv_obj_set_width(footer, UI_SCALE_X(560));
+        lv_obj_align(footer, LV_ALIGN_TOP_MID, 0, UI_SCALE_Y(155));
         
         // Button container
         lv_obj_t *btn_container = lv_obj_create(dialog);
-        lv_obj_set_size(btn_container, 560, 60);
+        lv_obj_set_size(btn_container, UI_SCALE_X(560), UI_SCALE_Y(60));
         lv_obj_set_style_bg_opa(btn_container, LV_OPA_TRANSP, 0);
         lv_obj_set_style_border_width(btn_container, 0, 0);
         lv_obj_set_style_pad_all(btn_container, 0, 0);
@@ -387,7 +387,7 @@ static void btn_clear_event_handler(lv_event_t *e) {
         
         // Confirm button (left)
         lv_obj_t *btn_confirm = lv_button_create(btn_container);
-        lv_obj_set_size(btn_confirm, 200, 50);
+        lv_obj_set_size(btn_confirm, UI_SCALE_X(200), UI_SCALE_Y(50));
         lv_obj_set_style_bg_color(btn_confirm, UITheme::STATE_ALARM, 0);
         lv_obj_t *lbl_confirm = lv_label_create(btn_confirm);
         lv_label_set_text(lbl_confirm, LV_SYMBOL_TRASH " Clear & Restart");
@@ -422,7 +422,7 @@ static void btn_clear_event_handler(lv_event_t *e) {
         
         // Cancel button (right)
         lv_obj_t *btn_cancel = lv_button_create(btn_container);
-        lv_obj_set_size(btn_cancel, 180, 50);
+        lv_obj_set_size(btn_cancel, UI_SCALE_X(180), UI_SCALE_Y(50));
         lv_obj_set_style_bg_color(btn_cancel, UITheme::BG_BUTTON, 0);
         lv_obj_t *lbl_cancel = lv_label_create(btn_cancel);
         lv_label_set_text(lbl_cancel, "Cancel");

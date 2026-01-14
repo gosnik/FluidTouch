@@ -7,8 +7,14 @@
 #define FLUIDTOUCH_VERSION "1.0.1"
 
 // Display settings
-#define SCREEN_WIDTH  800
-#define SCREEN_HEIGHT 480
+#define SCREEN_WIDTH  1024
+#define SCREEN_HEIGHT 600
+
+// UI scaling helpers (base layout was 800x480)
+#define UI_BASE_WIDTH  800
+#define UI_BASE_HEIGHT 480
+#define UI_SCALE_X(px) ((px) * SCREEN_WIDTH / UI_BASE_WIDTH)
+#define UI_SCALE_Y(px) ((px) * SCREEN_HEIGHT / UI_BASE_HEIGHT)
 
 // Hardware-specific pin configurations
 #ifdef HARDWARE_ADVANCE
@@ -36,11 +42,11 @@
 #define GT911_PRODUCT_ID  0x8140
 
 // UI Layout constants
-#define STATUS_BAR_HEIGHT 60
-#define TAB_BUTTON_HEIGHT 60
+#define STATUS_BAR_HEIGHT UI_SCALE_Y(60)
+#define TAB_BUTTON_HEIGHT UI_SCALE_Y(60)
 
 // Display buffer configuration
-#define BUFFER_LINES 480  // Full screen buffer for smooth rendering (with 8MB PSRAM available)
+#define BUFFER_LINES SCREEN_HEIGHT  // Full screen buffer for smooth rendering (with 8MB PSRAM available)
 
 // Timing constants
 #define SPLASH_DURATION_MS 2500

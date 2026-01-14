@@ -129,7 +129,7 @@ lv_obj_t* UITabControlOverride::create(lv_obj_t* parent) {
     
     // === COLUMN 1: FEED OVERRIDE ===
     lv_obj_t* feed_col = lv_obj_create(cont);
-    lv_obj_set_size(feed_col, 255, lv_pct(100));
+    lv_obj_set_size(feed_col, UI_SCALE_X(255), lv_pct(100));
     lv_obj_set_flex_flow(feed_col, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_flex_align(feed_col, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
     lv_obj_set_style_pad_all(feed_col, 5, 0);
@@ -149,7 +149,7 @@ lv_obj_t* UITabControlOverride::create(lv_obj_t* parent) {
     
     // Reset button (distinctive color)
     lv_obj_t* feed_reset_btn = lv_button_create(feed_col);
-    lv_obj_set_size(feed_reset_btn, 150, 45);
+    lv_obj_set_size(feed_reset_btn, UI_SCALE_X(150), UI_SCALE_Y(45));
     lv_obj_set_style_bg_color(feed_reset_btn, UITheme::BTN_CONNECT, 0);
     lv_obj_add_event_cb(feed_reset_btn, feed_reset_handler, LV_EVENT_CLICKED, NULL);
     lv_obj_t* feed_reset_lbl = lv_label_create(feed_reset_btn);
@@ -159,7 +159,7 @@ lv_obj_t* UITabControlOverride::create(lv_obj_t* parent) {
     
     // +10% button
     lv_obj_t* feed_plus10_btn = lv_button_create(feed_col);
-    lv_obj_set_size(feed_plus10_btn, 150, 45);
+    lv_obj_set_size(feed_plus10_btn, UI_SCALE_X(150), UI_SCALE_Y(45));
     lv_obj_set_style_bg_color(feed_plus10_btn, UITheme::TEXT_DARK, 0);
     lv_obj_add_event_cb(feed_plus10_btn, feed_coarse_plus_handler, LV_EVENT_CLICKED, NULL);
     lv_obj_t* feed_plus10_lbl = lv_label_create(feed_plus10_btn);
@@ -169,7 +169,7 @@ lv_obj_t* UITabControlOverride::create(lv_obj_t* parent) {
     
     // +1% button
     lv_obj_t* feed_plus1_btn = lv_button_create(feed_col);
-    lv_obj_set_size(feed_plus1_btn, 150, 45);
+    lv_obj_set_size(feed_plus1_btn, UI_SCALE_X(150), UI_SCALE_Y(45));
     lv_obj_set_style_bg_color(feed_plus1_btn, UITheme::TEXT_DARK, 0);
     lv_obj_add_event_cb(feed_plus1_btn, feed_fine_plus_handler, LV_EVENT_CLICKED, NULL);
     lv_obj_t* feed_plus1_lbl = lv_label_create(feed_plus1_btn);
@@ -179,7 +179,7 @@ lv_obj_t* UITabControlOverride::create(lv_obj_t* parent) {
     
     // -1% button
     lv_obj_t* feed_minus1_btn = lv_button_create(feed_col);
-    lv_obj_set_size(feed_minus1_btn, 150, 45);
+    lv_obj_set_size(feed_minus1_btn, UI_SCALE_X(150), UI_SCALE_Y(45));
     lv_obj_set_style_bg_color(feed_minus1_btn, UITheme::TEXT_DARK, 0);
     lv_obj_add_event_cb(feed_minus1_btn, feed_fine_minus_handler, LV_EVENT_CLICKED, NULL);
     lv_obj_t* feed_minus1_lbl = lv_label_create(feed_minus1_btn);
@@ -189,7 +189,7 @@ lv_obj_t* UITabControlOverride::create(lv_obj_t* parent) {
     
     // -10% button
     lv_obj_t* feed_minus10_btn = lv_button_create(feed_col);
-    lv_obj_set_size(feed_minus10_btn, 150, 45);
+    lv_obj_set_size(feed_minus10_btn, UI_SCALE_X(150), UI_SCALE_Y(45));
     lv_obj_set_style_bg_color(feed_minus10_btn, UITheme::TEXT_DARK, 0);
     lv_obj_add_event_cb(feed_minus10_btn, feed_coarse_minus_handler, LV_EVENT_CLICKED, NULL);
     lv_obj_t* feed_minus10_lbl = lv_label_create(feed_minus10_btn);
@@ -199,7 +199,7 @@ lv_obj_t* UITabControlOverride::create(lv_obj_t* parent) {
     
     // === COLUMN 2: RAPID OVERRIDE ===
     lv_obj_t* rapid_col = lv_obj_create(cont);
-    lv_obj_set_size(rapid_col, 255, lv_pct(100));
+    lv_obj_set_size(rapid_col, UI_SCALE_X(255), lv_pct(100));
     lv_obj_set_flex_flow(rapid_col, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_flex_align(rapid_col, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
     lv_obj_set_style_pad_all(rapid_col, 5, 0);
@@ -219,7 +219,7 @@ lv_obj_t* UITabControlOverride::create(lv_obj_t* parent) {
     
     // 100% button
     lv_obj_t* rapid_100_btn = lv_button_create(rapid_col);
-    lv_obj_set_size(rapid_100_btn, 150, 45);
+    lv_obj_set_size(rapid_100_btn, UI_SCALE_X(150), UI_SCALE_Y(45));
     lv_obj_set_style_bg_color(rapid_100_btn, UITheme::BTN_CONNECT, 0);
     lv_obj_add_event_cb(rapid_100_btn, rapid_100_handler, LV_EVENT_CLICKED, NULL);
     lv_obj_t* rapid_100_lbl = lv_label_create(rapid_100_btn);
@@ -229,7 +229,7 @@ lv_obj_t* UITabControlOverride::create(lv_obj_t* parent) {
     
     // 50% button
     lv_obj_t* rapid_50_btn = lv_button_create(rapid_col);
-    lv_obj_set_size(rapid_50_btn, 150, 45);
+    lv_obj_set_size(rapid_50_btn, UI_SCALE_X(150), UI_SCALE_Y(45));
     lv_obj_set_style_bg_color(rapid_50_btn, UITheme::TEXT_DARK, 0);
     lv_obj_add_event_cb(rapid_50_btn, rapid_50_handler, LV_EVENT_CLICKED, NULL);
     lv_obj_t* rapid_50_lbl = lv_label_create(rapid_50_btn);
@@ -239,7 +239,7 @@ lv_obj_t* UITabControlOverride::create(lv_obj_t* parent) {
     
     // 25% button
     lv_obj_t* rapid_25_btn = lv_button_create(rapid_col);
-    lv_obj_set_size(rapid_25_btn, 150, 45);
+    lv_obj_set_size(rapid_25_btn, UI_SCALE_X(150), UI_SCALE_Y(45));
     lv_obj_set_style_bg_color(rapid_25_btn, UITheme::TEXT_DARK, 0);
     lv_obj_add_event_cb(rapid_25_btn, rapid_25_handler, LV_EVENT_CLICKED, NULL);
     lv_obj_t* rapid_25_lbl = lv_label_create(rapid_25_btn);
@@ -249,7 +249,7 @@ lv_obj_t* UITabControlOverride::create(lv_obj_t* parent) {
     
     // === COLUMN 3: SPINDLE OVERRIDE ===
     lv_obj_t* spindle_col = lv_obj_create(cont);
-    lv_obj_set_size(spindle_col, 255, lv_pct(100));
+    lv_obj_set_size(spindle_col, UI_SCALE_X(255), lv_pct(100));
     lv_obj_set_flex_flow(spindle_col, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_flex_align(spindle_col, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
     lv_obj_set_style_pad_all(spindle_col, 5, 0);
@@ -269,7 +269,7 @@ lv_obj_t* UITabControlOverride::create(lv_obj_t* parent) {
     
     // Reset button (distinctive color)
     lv_obj_t* spindle_reset_btn = lv_button_create(spindle_col);
-    lv_obj_set_size(spindle_reset_btn, 150, 45);
+    lv_obj_set_size(spindle_reset_btn, UI_SCALE_X(150), UI_SCALE_Y(45));
     lv_obj_set_style_bg_color(spindle_reset_btn, UITheme::BTN_CONNECT, 0);
     lv_obj_add_event_cb(spindle_reset_btn, spindle_reset_handler, LV_EVENT_CLICKED, NULL);
     lv_obj_t* spindle_reset_lbl = lv_label_create(spindle_reset_btn);
@@ -279,7 +279,7 @@ lv_obj_t* UITabControlOverride::create(lv_obj_t* parent) {
     
     // +10% button
     lv_obj_t* spindle_plus10_btn = lv_button_create(spindle_col);
-    lv_obj_set_size(spindle_plus10_btn, 150, 45);
+    lv_obj_set_size(spindle_plus10_btn, UI_SCALE_X(150), UI_SCALE_Y(45));
     lv_obj_set_style_bg_color(spindle_plus10_btn, UITheme::TEXT_DARK, 0);
     lv_obj_add_event_cb(spindle_plus10_btn, spindle_coarse_plus_handler, LV_EVENT_CLICKED, NULL);
     lv_obj_t* spindle_plus10_lbl = lv_label_create(spindle_plus10_btn);
@@ -289,7 +289,7 @@ lv_obj_t* UITabControlOverride::create(lv_obj_t* parent) {
     
     // +1% button
     lv_obj_t* spindle_plus1_btn = lv_button_create(spindle_col);
-    lv_obj_set_size(spindle_plus1_btn, 150, 45);
+    lv_obj_set_size(spindle_plus1_btn, UI_SCALE_X(150), UI_SCALE_Y(45));
     lv_obj_set_style_bg_color(spindle_plus1_btn, UITheme::TEXT_DARK, 0);
     lv_obj_add_event_cb(spindle_plus1_btn, spindle_fine_plus_handler, LV_EVENT_CLICKED, NULL);
     lv_obj_t* spindle_plus1_lbl = lv_label_create(spindle_plus1_btn);
@@ -299,7 +299,7 @@ lv_obj_t* UITabControlOverride::create(lv_obj_t* parent) {
     
     // -1% button
     lv_obj_t* spindle_minus1_btn = lv_button_create(spindle_col);
-    lv_obj_set_size(spindle_minus1_btn, 150, 45);
+    lv_obj_set_size(spindle_minus1_btn, UI_SCALE_X(150), UI_SCALE_Y(45));
     lv_obj_set_style_bg_color(spindle_minus1_btn, UITheme::TEXT_DARK, 0);
     lv_obj_add_event_cb(spindle_minus1_btn, spindle_fine_minus_handler, LV_EVENT_CLICKED, NULL);
     lv_obj_t* spindle_minus1_lbl = lv_label_create(spindle_minus1_btn);
@@ -309,7 +309,7 @@ lv_obj_t* UITabControlOverride::create(lv_obj_t* parent) {
     
     // -10% button
     lv_obj_t* spindle_minus10_btn = lv_button_create(spindle_col);
-    lv_obj_set_size(spindle_minus10_btn, 150, 45);
+    lv_obj_set_size(spindle_minus10_btn, UI_SCALE_X(150), UI_SCALE_Y(45));
     lv_obj_set_style_bg_color(spindle_minus10_btn, UITheme::TEXT_DARK, 0);
     lv_obj_add_event_cb(spindle_minus10_btn, spindle_coarse_minus_handler, LV_EVENT_CLICKED, NULL);
     lv_obj_t* spindle_minus10_lbl = lv_label_create(spindle_minus10_btn);

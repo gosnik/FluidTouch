@@ -51,22 +51,22 @@ void UIMachineSelect::show(lv_display_t *disp) {
     lv_label_set_text(title, "Select Machine");
     lv_obj_set_style_text_font(title, &lv_font_montserrat_32, 0);  // Larger font
     lv_obj_set_style_text_color(title, UITheme::TEXT_LIGHT, 0);
-    lv_obj_align(title, LV_ALIGN_TOP_LEFT, 20, 15);
+    lv_obj_align(title, LV_ALIGN_TOP_LEFT, UI_SCALE_X(20), UI_SCALE_Y(15));
     
     // Button container for right-aligned buttons
     lv_obj_t *btn_container = lv_obj_create(screen);
-    lv_obj_set_size(btn_container, LV_SIZE_CONTENT, 45);
-    lv_obj_align(btn_container, LV_ALIGN_TOP_RIGHT, -20, 11);
+    lv_obj_set_size(btn_container, LV_SIZE_CONTENT, UI_SCALE_Y(45));
+    lv_obj_align(btn_container, LV_ALIGN_TOP_RIGHT, -UI_SCALE_X(20), UI_SCALE_Y(11));
     lv_obj_set_flex_flow(btn_container, LV_FLEX_FLOW_ROW);
     lv_obj_set_flex_align(btn_container, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);  // Start = left-to-right within container
     lv_obj_set_style_pad_all(btn_container, 0, 0);
-    lv_obj_set_style_pad_column(btn_container, 5, 0);  // 5px gap between buttons
+    lv_obj_set_style_pad_column(btn_container, UI_SCALE_X(5), 0);  // 5px gap between buttons
     lv_obj_set_style_bg_opa(btn_container, LV_OPA_TRANSP, 0);
     lv_obj_set_style_border_width(btn_container, 0, 0);
     
     // Add Machine button (initially hidden, in edit mode)
     add_button = lv_btn_create(btn_container);
-    lv_obj_set_size(add_button, 120, 45);
+    lv_obj_set_size(add_button, UI_SCALE_X(120), UI_SCALE_Y(45));
     lv_obj_set_style_bg_color(add_button, UITheme::BTN_PLAY, 0);
     lv_obj_add_event_cb(add_button, onAddMachine, LV_EVENT_CLICKED, nullptr);
     lv_obj_add_flag(add_button, LV_OBJ_FLAG_HIDDEN);  // Hidden by default
@@ -79,7 +79,7 @@ void UIMachineSelect::show(lv_display_t *disp) {
     
     // Edit Mode toggle button
     edit_mode_button = lv_btn_create(btn_container);
-    lv_obj_set_size(edit_mode_button, 120, 45);
+    lv_obj_set_size(edit_mode_button, UI_SCALE_X(120), UI_SCALE_Y(45));
     lv_obj_set_style_bg_color(edit_mode_button, UITheme::ACCENT_SECONDARY, 0);
     lv_obj_add_event_cb(edit_mode_button, onEditModeToggle, LV_EVENT_CLICKED, nullptr);
     
@@ -91,7 +91,7 @@ void UIMachineSelect::show(lv_display_t *disp) {
     // Power Off button - only show if power management is enabled
     if (PowerManager::isEnabled()) {
         lv_obj_t *power_off_btn = lv_btn_create(btn_container);
-        lv_obj_set_size(power_off_btn, 120, 45);
+        lv_obj_set_size(power_off_btn, UI_SCALE_X(120), UI_SCALE_Y(45));
         lv_obj_set_style_bg_color(power_off_btn, lv_color_hex(0xB43000), 0);  // Orange
         lv_obj_add_event_cb(power_off_btn, [](lv_event_t *e) {
             UICommon::showPowerOffConfirmDialog();
@@ -105,12 +105,12 @@ void UIMachineSelect::show(lv_display_t *disp) {
     
     // Machine list container (760px width x 395px height with 20px padding = 720x355 usable)
     list_container = lv_obj_create(screen);
-    lv_obj_set_size(list_container, 760, 395);  // Taller since no subtitle
+    lv_obj_set_size(list_container, UI_SCALE_X(760), UI_SCALE_Y(395));  // Taller since no subtitle
     lv_obj_set_style_bg_color(list_container, UITheme::BG_MEDIUM, 0);
     lv_obj_set_style_border_width(list_container, 1, 0);
     lv_obj_set_style_border_color(list_container, UITheme::BORDER_MEDIUM, 0);
-    lv_obj_set_style_pad_all(list_container, 20, 0);  // Doubled padding (was 10, now 20)
-    lv_obj_align(list_container, LV_ALIGN_BOTTOM_MID, 0, -20);  // Moved up 10px (was -10, now -20)
+    lv_obj_set_style_pad_all(list_container, UI_SCALE_Y(20), 0);  // Doubled padding (was 10, now 20)
+    lv_obj_align(list_container, LV_ALIGN_BOTTOM_MID, 0, -UI_SCALE_Y(20));  // Moved up 10px (was -10, now -20)
     lv_obj_clear_flag(list_container, LV_OBJ_FLAG_SCROLLABLE);
     
     refreshMachineList();
@@ -175,11 +175,11 @@ void UIMachineSelect::refreshMachineList() {
         int displayed_index = 0;
         for (int i = 0; i < MAX_MACHINES; i++) {
             if (machines[i].is_configured) {
-                int y_pos = (displayed_index * 65); // 60px button + 5px gap (matches macro list)
+                int y_pos = (displayed_index * UI_SCALE_Y(65)); // 60px button + 5px gap (matches macro list)
                 
                 // Machine button - 30px shorter to accommodate control buttons
                 machine_buttons[i] = lv_btn_create(list_container);
-                lv_obj_set_size(machine_buttons[i], 458, 60);  // Reduced from 488 to 458 (-30px)
+                lv_obj_set_size(machine_buttons[i], UI_SCALE_X(458), UI_SCALE_Y(60));  // Reduced from 488 to 458 (-30px)
                 lv_obj_set_pos(machine_buttons[i], 0, y_pos);
                 lv_obj_set_style_bg_color(machine_buttons[i], UITheme::ACCENT_PRIMARY, 0);
                 lv_obj_set_style_bg_color(machine_buttons[i], UITheme::ACCENT_SECONDARY, LV_STATE_PRESSED);
@@ -191,12 +191,12 @@ void UIMachineSelect::refreshMachineList() {
                 String text = String(symbol) + " " + String(machines[i].name);
                 lv_label_set_text(label, text.c_str());
                 lv_obj_set_style_text_font(label, &lv_font_montserrat_22, 0);
-                lv_obj_align(label, LV_ALIGN_LEFT_MID, 10, 0);
+                lv_obj_align(label, LV_ALIGN_LEFT_MID, UI_SCALE_X(10), 0);
                 
                 // Move Up button (5px gap from machine button)
                 move_up_buttons[i] = lv_btn_create(list_container);
-                lv_obj_set_size(move_up_buttons[i], 60, 60);  // Match macro list: 60×60
-                lv_obj_set_pos(move_up_buttons[i], 463, y_pos);  // 458 + 5px gap
+                lv_obj_set_size(move_up_buttons[i], UI_SCALE_X(60), UI_SCALE_Y(60));  // Match macro list: 60×60
+                lv_obj_set_pos(move_up_buttons[i], UI_SCALE_X(463), y_pos);  // 458 + 5px gap
                 lv_obj_set_style_bg_color(move_up_buttons[i], UITheme::BG_BUTTON, 0);
                 lv_obj_add_event_cb(move_up_buttons[i], onMoveUpMachine, LV_EVENT_CLICKED, (void*)(intptr_t)i);
                 
@@ -212,8 +212,8 @@ void UIMachineSelect::refreshMachineList() {
                 
                 // Move Down button (5px gap from up button)
                 move_down_buttons[i] = lv_btn_create(list_container);
-                lv_obj_set_size(move_down_buttons[i], 60, 60);  // Match macro list: 60×60
-                lv_obj_set_pos(move_down_buttons[i], 528, y_pos);  // 463 + 60 + 5px gap
+                lv_obj_set_size(move_down_buttons[i], UI_SCALE_X(60), UI_SCALE_Y(60));  // Match macro list: 60×60
+                lv_obj_set_pos(move_down_buttons[i], UI_SCALE_X(528), y_pos);  // 463 + 60 + 5px gap
                 lv_obj_set_style_bg_color(move_down_buttons[i], UITheme::BG_BUTTON, 0);
                 lv_obj_add_event_cb(move_down_buttons[i], onMoveDownMachine, LV_EVENT_CLICKED, (void*)(intptr_t)i);
                 
@@ -229,8 +229,8 @@ void UIMachineSelect::refreshMachineList() {
                 
                 // Edit button (5px gap from down button)
                 edit_buttons[i] = lv_btn_create(list_container);
-                lv_obj_set_size(edit_buttons[i], 60, 60);  // Match macro list: 60×60
-                lv_obj_set_pos(edit_buttons[i], 593, y_pos);  // 528 + 60 + 5px gap
+                lv_obj_set_size(edit_buttons[i], UI_SCALE_X(60), UI_SCALE_Y(60));  // Match macro list: 60×60
+                lv_obj_set_pos(edit_buttons[i], UI_SCALE_X(593), y_pos);  // 528 + 60 + 5px gap
                 lv_obj_set_style_bg_color(edit_buttons[i], UITheme::ACCENT_SECONDARY, 0);
                 lv_obj_add_event_cb(edit_buttons[i], onEditMachine, LV_EVENT_CLICKED, (void*)(intptr_t)i);
                 
@@ -241,8 +241,8 @@ void UIMachineSelect::refreshMachineList() {
                 
                 // Delete button (5px gap from edit button)
                 delete_buttons[i] = lv_btn_create(list_container);
-                lv_obj_set_size(delete_buttons[i], 60, 60);  // Match macro list: 60×60
-                lv_obj_set_pos(delete_buttons[i], 658, y_pos);  // 593 + 60 + 5px gap
+                lv_obj_set_size(delete_buttons[i], UI_SCALE_X(60), UI_SCALE_Y(60));  // Match macro list: 60×60
+                lv_obj_set_pos(delete_buttons[i], UI_SCALE_X(658), y_pos);  // 593 + 60 + 5px gap
                 lv_obj_set_style_bg_color(delete_buttons[i], UITheme::STATE_ALARM, 0);
                 lv_obj_add_event_cb(delete_buttons[i], onDeleteMachine, LV_EVENT_CLICKED, (void*)(intptr_t)i);
                 
@@ -261,7 +261,7 @@ void UIMachineSelect::refreshMachineList() {
         // Set list container to use flex layout
         lv_obj_set_flex_flow(list_container, LV_FLEX_FLOW_ROW_WRAP);
         lv_obj_set_flex_align(list_container, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
-        lv_obj_set_style_pad_gap(list_container, 20, 0);  // Doubled gap between buttons (was 10, now 20)
+        lv_obj_set_style_pad_gap(list_container, UI_SCALE_X(20), 0);  // Doubled gap between buttons (was 10, now 20)
         
         // Display configured machines with flex layout
         for (int i = 0; i < MAX_MACHINES; i++) {
@@ -271,11 +271,11 @@ void UIMachineSelect::refreshMachineList() {
                 // Machine button - sized for 2 rows of 2 buttons (4 machines total)
                 // Container: 720px usable (760 - 40 padding), with 20px gap = 340px per button (conservative)
                 machine_buttons[i] = lv_btn_create(list_container);
-                lv_obj_set_size(machine_buttons[i], 349, 167);  // Width: 349px (+1), Height: 167px
+                lv_obj_set_size(machine_buttons[i], UI_SCALE_X(349), UI_SCALE_Y(167));  // Width: 349px (+1), Height: 167px
                 lv_obj_set_style_bg_color(machine_buttons[i], UITheme::ACCENT_PRIMARY, 0);
                 lv_obj_set_style_bg_color(machine_buttons[i], UITheme::ACCENT_SECONDARY, LV_STATE_PRESSED);
                 lv_obj_add_event_cb(machine_buttons[i], onMachineSelected, LV_EVENT_CLICKED, (void*)(intptr_t)i);
-                lv_obj_set_style_pad_all(machine_buttons[i], 20, 0);  // Double padding (was 10, now 20)
+                lv_obj_set_style_pad_all(machine_buttons[i], UI_SCALE_Y(20), 0);  // Double padding (was 10, now 20)
                 
                 // Line 1: Machine Name (centered, supports 2 lines)
                 lv_obj_t *name_label = lv_label_create(machine_buttons[i]);
@@ -283,7 +283,7 @@ void UIMachineSelect::refreshMachineList() {
                 lv_obj_set_style_text_font(name_label, &lv_font_montserrat_32, 0);  // Large font
                 lv_obj_set_style_text_color(name_label, UITheme::TEXT_LIGHT, 0);
                 lv_label_set_long_mode(name_label, LV_LABEL_LONG_WRAP);  // Enable text wrapping
-                lv_obj_set_width(name_label, 309);  // Set width for wrapping (349 - 40px padding)
+                lv_obj_set_width(name_label, UI_SCALE_X(309));  // Set width for wrapping (349 - 40px padding)
                 lv_obj_align(name_label, LV_ALIGN_TOP_MID, 0, 0);  // Centered horizontally
                 
                 // Line 2: Connection type symbol + SSID/Wired (bottom area)
@@ -297,7 +297,7 @@ void UIMachineSelect::refreshMachineList() {
                 lv_label_set_text(connection_label, connection_text.c_str());
                 lv_obj_set_style_text_font(connection_label, &lv_font_montserrat_26, 0);  // Larger font
                 lv_obj_set_style_text_color(connection_label, UITheme::UI_INFO, 0);
-                lv_obj_align(connection_label, LV_ALIGN_BOTTOM_LEFT, 0, -30);  // 30px from bottom
+                lv_obj_align(connection_label, LV_ALIGN_BOTTOM_LEFT, 0, -UI_SCALE_Y(30));  // 30px from bottom
                 
                 // Line 3: FluidNC URL:Port (bottom area)
                 lv_obj_t *url_label = lv_label_create(machine_buttons[i]);
@@ -432,12 +432,12 @@ void UIMachineSelect::onMachineSelected(lv_event_t *e) {
         
         // Show warning dialog (consistent with System Options popup style)
         lv_obj_t *dialog = lv_obj_create(backdrop);
-        lv_obj_set_size(dialog, 600, 300);
+        lv_obj_set_size(dialog, UI_SCALE_X(600), UI_SCALE_Y(300));
         lv_obj_center(dialog);
         lv_obj_set_style_bg_color(dialog, UITheme::BG_MEDIUM, 0);
         lv_obj_set_style_border_width(dialog, 3, 0);
         lv_obj_set_style_border_color(dialog, UITheme::STATE_ALARM, 0);
-        lv_obj_set_style_pad_all(dialog, 20, 0);
+        lv_obj_set_style_pad_all(dialog, UI_SCALE_Y(20), 0);
         lv_obj_clear_flag(dialog, LV_OBJ_FLAG_SCROLLABLE);
         
         // Title (positioned near top)
@@ -462,12 +462,12 @@ void UIMachineSelect::onMachineSelected(lv_event_t *e) {
         lv_obj_set_style_text_color(message, UITheme::TEXT_LIGHT, 0);
         lv_obj_set_style_text_align(message, LV_TEXT_ALIGN_CENTER, 0);
         lv_label_set_long_mode(message, LV_LABEL_LONG_WRAP);
-        lv_obj_set_width(message, 560);
-        lv_obj_align(message, LV_ALIGN_TOP_MID, 0, 50);
+        lv_obj_set_width(message, UI_SCALE_X(560));
+        lv_obj_align(message, LV_ALIGN_TOP_MID, 0, UI_SCALE_Y(50));
         
         // Button container (positioned at bottom)
         lv_obj_t *btn_container = lv_obj_create(dialog);
-        lv_obj_set_size(btn_container, 560, 60);
+        lv_obj_set_size(btn_container, UI_SCALE_X(560), UI_SCALE_Y(60));
         lv_obj_set_style_bg_opa(btn_container, LV_OPA_TRANSP, 0);
         lv_obj_set_style_border_width(btn_container, 0, 0);
         lv_obj_set_style_pad_all(btn_container, 0, 0);
@@ -476,7 +476,7 @@ void UIMachineSelect::onMachineSelected(lv_event_t *e) {
         
         // OK button (centered in button container)
         lv_obj_t *btn_ok = lv_button_create(btn_container);
-        lv_obj_set_size(btn_ok, 160, 50);
+        lv_obj_set_size(btn_ok, UI_SCALE_X(160), UI_SCALE_Y(50));
         lv_obj_center(btn_ok);
         lv_obj_set_style_bg_color(btn_ok, UITheme::BTN_PLAY, 0);
         lv_obj_t *lbl_ok = lv_label_create(btn_ok);
@@ -620,13 +620,13 @@ void UIMachineSelect::showConfigDialog(int index) {
     
     // Scrollable dialog content container (780x460 to fit on screen with margin)
     dialog_content = lv_obj_create(config_dialog);
-    lv_obj_set_size(dialog_content, 780, 460);
+    lv_obj_set_size(dialog_content, UI_SCALE_X(780), UI_SCALE_Y(460));
     lv_obj_center(dialog_content);
     lv_obj_set_style_bg_color(dialog_content, UITheme::BG_MEDIUM, 0);
     lv_obj_set_style_border_color(dialog_content, UITheme::BORDER_MEDIUM, 0);
     lv_obj_set_style_border_width(dialog_content, 2, 0);
     lv_obj_set_layout(dialog_content, LV_LAYOUT_NONE);  // Use absolute positioning instead of flex
-    lv_obj_set_style_pad_all(dialog_content, 20, 0);
+    lv_obj_set_style_pad_all(dialog_content, UI_SCALE_Y(20), 0);
     lv_obj_clear_flag(dialog_content, LV_OBJ_FLAG_SCROLLABLE);  // Disable scrolling
     
     // Title (uppercase, gray like settings section titles)
@@ -635,12 +635,12 @@ void UIMachineSelect::showConfigDialog(int index) {
     lv_obj_set_style_text_font(dlg_title, &lv_font_montserrat_18, 0);
     lv_obj_set_style_text_color(dlg_title, UITheme::TEXT_DISABLED, 0);  // Gray color
     lv_obj_set_pos(dlg_title, 0, 0);
-    lv_obj_set_width(dlg_title, 740);  // 780 - 40px padding
+    lv_obj_set_width(dlg_title, UI_SCALE_X(740));  // 780 - 40px padding
     
     // Main 2-column container for fields
     lv_obj_t *fields_container = lv_obj_create(dialog_content);
-    lv_obj_set_size(fields_container, 740, LV_SIZE_CONTENT);  // 780 - 40px padding
-    lv_obj_set_pos(fields_container, 0, 35);  // Below title
+    lv_obj_set_size(fields_container, UI_SCALE_X(740), LV_SIZE_CONTENT);  // 780 - 40px padding
+    lv_obj_set_pos(fields_container, 0, UI_SCALE_Y(35));  // Below title
     lv_obj_set_flex_flow(fields_container, LV_FLEX_FLOW_ROW);
     lv_obj_set_flex_align(fields_container, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
     lv_obj_set_style_pad_all(fields_container, 0, 0);
@@ -653,7 +653,7 @@ void UIMachineSelect::showConfigDialog(int index) {
     lv_obj_set_flex_flow(left_col, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_flex_align(left_col, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
     lv_obj_set_style_pad_all(left_col, 0, 0);
-    lv_obj_set_style_pad_gap(left_col, 10, 0);
+    lv_obj_set_style_pad_gap(left_col, UI_SCALE_Y(10), 0);
     lv_obj_set_style_border_width(left_col, 0, 0);
     lv_obj_set_style_bg_opa(left_col, LV_OPA_TRANSP, 0);
     
@@ -664,7 +664,7 @@ void UIMachineSelect::showConfigDialog(int index) {
     
     ta_name = lv_textarea_create(left_col);
     lv_obj_set_width(ta_name, LV_PCT(100));
-    lv_obj_set_height(ta_name, 40);
+    lv_obj_set_height(ta_name, UI_SCALE_Y(40));
     lv_textarea_set_one_line(ta_name, true);
     lv_textarea_set_max_length(ta_name, 31);
     lv_obj_set_style_text_font(ta_name, &lv_font_montserrat_18, 0);
@@ -678,7 +678,7 @@ void UIMachineSelect::showConfigDialog(int index) {
     
     ta_ssid = lv_textarea_create(left_col);
     lv_obj_set_width(ta_ssid, LV_PCT(100));
-    lv_obj_set_height(ta_ssid, 40);
+    lv_obj_set_height(ta_ssid, UI_SCALE_Y(40));
     lv_textarea_set_one_line(ta_ssid, true);
     lv_textarea_set_max_length(ta_ssid, 32);
     lv_obj_set_style_text_font(ta_ssid, &lv_font_montserrat_18, 0);
@@ -692,7 +692,7 @@ void UIMachineSelect::showConfigDialog(int index) {
     
     ta_url = lv_textarea_create(left_col);
     lv_obj_set_width(ta_url, LV_PCT(100));
-    lv_obj_set_height(ta_url, 40);
+    lv_obj_set_height(ta_url, UI_SCALE_Y(40));
     lv_textarea_set_one_line(ta_url, true);
     lv_textarea_set_max_length(ta_url, 127);
     lv_obj_set_style_text_font(ta_url, &lv_font_montserrat_18, 0);
@@ -709,7 +709,7 @@ void UIMachineSelect::showConfigDialog(int index) {
     lv_obj_set_flex_flow(right_col, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_flex_align(right_col, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
     lv_obj_set_style_pad_all(right_col, 0, 0);
-    lv_obj_set_style_pad_gap(right_col, 10, 0);
+    lv_obj_set_style_pad_gap(right_col, UI_SCALE_Y(10), 0);
     lv_obj_set_style_border_width(right_col, 0, 0);
     lv_obj_set_style_bg_opa(right_col, LV_OPA_TRANSP, 0);
     
@@ -720,9 +720,9 @@ void UIMachineSelect::showConfigDialog(int index) {
     
     dd_connection_type = lv_dropdown_create(right_col);
     lv_obj_set_width(dd_connection_type, LV_PCT(100));
-    lv_obj_set_height(dd_connection_type, 48);
+    lv_obj_set_height(dd_connection_type, UI_SCALE_Y(48));
     lv_obj_set_style_text_font(dd_connection_type, &lv_font_montserrat_18, 0);
-    lv_obj_set_style_pad_top(dd_connection_type, 12, LV_PART_MAIN);  // Adjust top padding to vertically center text
+    lv_obj_set_style_pad_top(dd_connection_type, UI_SCALE_Y(12), LV_PART_MAIN);  // Adjust top padding to vertically center text
     lv_dropdown_set_options(dd_connection_type, "Wireless");  // Wired option hidden for now, reserved for future
     if (!is_new) lv_dropdown_set_selected(dd_connection_type, machines[index].connection_type);
     lv_obj_add_event_cb(dd_connection_type, onConnectionTypeChanged, LV_EVENT_VALUE_CHANGED, nullptr);
@@ -734,7 +734,7 @@ void UIMachineSelect::showConfigDialog(int index) {
     
     ta_password = lv_textarea_create(right_col);
     lv_obj_set_width(ta_password, LV_PCT(100));
-    lv_obj_set_height(ta_password, 40);
+    lv_obj_set_height(ta_password, UI_SCALE_Y(40));
     lv_textarea_set_one_line(ta_password, true);
     lv_textarea_set_max_length(ta_password, 63);
     lv_textarea_set_password_mode(ta_password, true);
@@ -749,7 +749,7 @@ void UIMachineSelect::showConfigDialog(int index) {
     
     ta_port = lv_textarea_create(right_col);
     lv_obj_set_width(ta_port, LV_PCT(100));
-    lv_obj_set_height(ta_port, 40);
+    lv_obj_set_height(ta_port, UI_SCALE_Y(40));
     lv_textarea_set_one_line(ta_port, true);
     lv_textarea_set_max_length(ta_port, 5);
     lv_textarea_set_accepted_chars(ta_port, "0123456789");
@@ -765,8 +765,8 @@ void UIMachineSelect::showConfigDialog(int index) {
     
     // Button container at bottom with absolute positioning
     lv_obj_t *btn_container = lv_obj_create(dialog_content);
-    lv_obj_set_size(btn_container, 740, 50);  // 780 - 40px padding
-    lv_obj_set_pos(btn_container, 0, 370);  // 460 - 20 padding - 50 height - 20 gap = 370
+    lv_obj_set_size(btn_container, UI_SCALE_X(740), UI_SCALE_Y(50));  // 780 - 40px padding
+    lv_obj_set_pos(btn_container, 0, UI_SCALE_Y(370));  // 460 - 20 padding - 50 height - 20 gap = 370
     lv_obj_set_flex_flow(btn_container, LV_FLEX_FLOW_ROW);
     lv_obj_set_flex_align(btn_container, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
     lv_obj_set_style_pad_all(btn_container, 0, 0);
@@ -774,7 +774,7 @@ void UIMachineSelect::showConfigDialog(int index) {
     lv_obj_set_style_bg_opa(btn_container, LV_OPA_TRANSP, 0);
     
     lv_obj_t *btn_save = lv_btn_create(btn_container);
-    lv_obj_set_size(btn_save, LV_PCT(48), 50);
+    lv_obj_set_size(btn_save, LV_PCT(48), UI_SCALE_Y(50));
     lv_obj_set_style_bg_color(btn_save, UITheme::BTN_PLAY, 0);
     lv_obj_add_event_cb(btn_save, onConfigSave, LV_EVENT_CLICKED, nullptr);
     
@@ -784,7 +784,7 @@ void UIMachineSelect::showConfigDialog(int index) {
     lv_obj_center(lbl_save);
     
     lv_obj_t *btn_cancel = lv_btn_create(btn_container);
-    lv_obj_set_size(btn_cancel, LV_PCT(48), 50);
+    lv_obj_set_size(btn_cancel, LV_PCT(48), UI_SCALE_Y(50));
     lv_obj_set_style_bg_color(btn_cancel, UITheme::BG_BUTTON, 0);
     lv_obj_add_event_cb(btn_cancel, onConfigCancel, LV_EVENT_CLICKED, nullptr);
     
@@ -820,15 +820,15 @@ void UIMachineSelect::showDeleteConfirmDialog(int index) {
     
     // Dialog content box
     lv_obj_t *content = lv_obj_create(delete_dialog);
-    lv_obj_set_size(content, 500, 200);
+    lv_obj_set_size(content, UI_SCALE_X(500), UI_SCALE_Y(200));
     lv_obj_center(content);
     lv_obj_set_style_bg_color(content, UITheme::BG_MEDIUM, 0);
     lv_obj_set_style_border_color(content, UITheme::STATE_ALARM, 0);
     lv_obj_set_style_border_width(content, 3, 0);
     lv_obj_set_flex_flow(content, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_flex_align(content, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    lv_obj_set_style_pad_all(content, 20, 0);
-    lv_obj_set_style_pad_gap(content, 15, 0);
+    lv_obj_set_style_pad_all(content, UI_SCALE_Y(20), 0);
+    lv_obj_set_style_pad_gap(content, UI_SCALE_Y(15), 0);
     lv_obj_clear_flag(content, LV_OBJ_FLAG_SCROLLABLE);
     
     // Warning icon and title
@@ -861,7 +861,7 @@ void UIMachineSelect::showDeleteConfirmDialog(int index) {
     
     // Cancel button
     lv_obj_t *cancel_btn = lv_btn_create(btn_container);
-    lv_obj_set_size(cancel_btn, 180, 50);
+    lv_obj_set_size(cancel_btn, UI_SCALE_X(180), UI_SCALE_Y(50));
     lv_obj_set_style_bg_color(cancel_btn, UITheme::BG_BUTTON, 0);
     lv_obj_add_event_cb(cancel_btn, onDeleteCancel, LV_EVENT_CLICKED, nullptr);
     
@@ -872,7 +872,7 @@ void UIMachineSelect::showDeleteConfirmDialog(int index) {
     
     // Delete button
     lv_obj_t *delete_btn = lv_btn_create(btn_container);
-    lv_obj_set_size(delete_btn, 180, 50);
+    lv_obj_set_size(delete_btn, UI_SCALE_X(180), UI_SCALE_Y(50));
     lv_obj_set_style_bg_color(delete_btn, UITheme::STATE_ALARM, 0);
     lv_obj_add_event_cb(delete_btn, onDeleteConfirm, LV_EVENT_CLICKED, nullptr);
     
@@ -899,7 +899,7 @@ void UIMachineSelect::showKeyboard(lv_obj_t *ta) {
     if (!keyboard) {
         // Create keyboard at screen level (not inside dialog) so it stays fixed at bottom
         keyboard = lv_keyboard_create(lv_scr_act());
-        lv_obj_set_size(keyboard, SCREEN_WIDTH, 220);
+        lv_obj_set_size(keyboard, SCREEN_WIDTH, UI_SCALE_Y(220));
         lv_obj_align(keyboard, LV_ALIGN_BOTTOM_MID, 0, 0);
         lv_obj_set_style_text_font(keyboard, &lv_font_montserrat_20, 0);  // Larger font for better visibility
         
@@ -928,7 +928,7 @@ void UIMachineSelect::showKeyboard(lv_obj_t *ta) {
         
         // Make dialog_content scrollable and add extra padding at bottom for keyboard
         lv_obj_add_flag(dialog_content, LV_OBJ_FLAG_SCROLLABLE);
-        lv_obj_set_style_pad_bottom(dialog_content, 240, 0); // Extra space for scrolling (keyboard height + margin)
+        lv_obj_set_style_pad_bottom(dialog_content, UI_SCALE_Y(240), 0); // Extra space for scrolling (keyboard height + margin)
     }
     
     lv_keyboard_set_textarea(keyboard, ta);
@@ -956,9 +956,9 @@ void UIMachineSelect::showKeyboard(lv_obj_t *ta) {
         // Dialog is 460px tall, keyboard is 220px, so visible area is 240px
         // Position textarea at bottom of visible area (240px from dialog top) minus field height and margin
         lv_coord_t dialog_height = lv_obj_get_height(dialog_content);
-        lv_coord_t visible_height = 240; // Height above keyboard
+        lv_coord_t visible_height = UI_SCALE_Y(240); // Height above keyboard
         lv_coord_t ta_height = lv_obj_get_height(ta);
-        lv_coord_t target_position = visible_height - ta_height - 15; // 15px margin above keyboard (5px gap + 10px padding)
+        lv_coord_t target_position = visible_height - ta_height - UI_SCALE_Y(15); // 15px margin above keyboard (5px gap + 10px padding)
         
         // Scroll amount = (textarea Y position) - (where we want it)
         lv_coord_t scroll_y = ta_y - target_position;
@@ -976,7 +976,7 @@ void UIMachineSelect::hideKeyboard() {
         // Restore dialog_content to non-scrollable and remove extra padding
         if (dialog_content) {
             lv_obj_clear_flag(dialog_content, LV_OBJ_FLAG_SCROLLABLE);
-            lv_obj_set_style_pad_bottom(dialog_content, 20, 0); // Back to original padding
+            lv_obj_set_style_pad_bottom(dialog_content, UI_SCALE_Y(20), 0); // Back to original padding
             lv_obj_scroll_to_y(dialog_content, 0, LV_ANIM_ON); // Reset scroll position
         }
         

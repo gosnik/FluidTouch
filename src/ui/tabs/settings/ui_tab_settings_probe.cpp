@@ -39,9 +39,9 @@ void UITabSettingsProbe::create(lv_obj_t *tab) {
     // Load preferences
     loadPreferences();
     
-    int y_pos = 20;
-    int label_x = 20;
-    int field_x = 250;  // Shifted 50px right (was 200)
+    int y_pos = UI_SCALE_Y(20);
+    int label_x = UI_SCALE_X(20);
+    int field_x = UI_SCALE_X(250);  // Shifted 50px right (was 200)
     
     // Title
     lv_obj_t *title = lv_label_create(tab);
@@ -50,17 +50,17 @@ void UITabSettingsProbe::create(lv_obj_t *tab) {
     lv_obj_set_style_text_color(title, UITheme::TEXT_DISABLED, 0);  // Gray color
     lv_obj_set_pos(title, label_x, y_pos);
     
-    y_pos += 40;
+    y_pos += UI_SCALE_Y(40);
     
     // === Feed Rate ===
     lv_obj_t *lbl_feed = lv_label_create(tab);
     lv_label_set_text(lbl_feed, "Feed Rate (mm/min):");
     lv_obj_set_style_text_font(lbl_feed, &lv_font_montserrat_18, 0);
     lv_obj_set_style_text_color(lbl_feed, UITheme::TEXT_LIGHT, 0);
-    lv_obj_set_pos(lbl_feed, label_x, y_pos + 12);  // Align with text area content
+    lv_obj_set_pos(lbl_feed, label_x, y_pos + UI_SCALE_Y(12));  // Align with text area content
     
     ta_feed = lv_textarea_create(tab);
-    lv_obj_set_size(ta_feed, 100, 40);
+    lv_obj_set_size(ta_feed, UI_SCALE_X(100), UI_SCALE_Y(40));
     lv_obj_set_pos(ta_feed, field_x, y_pos);
     lv_textarea_set_one_line(ta_feed, true);
     lv_textarea_set_max_length(ta_feed, 6);
@@ -70,17 +70,17 @@ void UITabSettingsProbe::create(lv_obj_t *tab) {
     char buf[16];
     snprintf(buf, sizeof(buf), "%d", default_feed_rate);
     lv_textarea_set_text(ta_feed, buf);
-    y_pos += 50;
+    y_pos += UI_SCALE_Y(50);
     
     // === Max Distance ===
     lv_obj_t *lbl_dist = lv_label_create(tab);
     lv_label_set_text(lbl_dist, "Max Distance (mm):");
     lv_obj_set_style_text_font(lbl_dist, &lv_font_montserrat_18, 0);
     lv_obj_set_style_text_color(lbl_dist, UITheme::TEXT_LIGHT, 0);
-    lv_obj_set_pos(lbl_dist, label_x, y_pos + 12);  // Align with text area content
+    lv_obj_set_pos(lbl_dist, label_x, y_pos + UI_SCALE_Y(12));  // Align with text area content
     
     ta_dist = lv_textarea_create(tab);
-    lv_obj_set_size(ta_dist, 100, 40);
+    lv_obj_set_size(ta_dist, UI_SCALE_X(100), UI_SCALE_Y(40));
     lv_obj_set_pos(ta_dist, field_x, y_pos);
     lv_textarea_set_one_line(ta_dist, true);
     lv_textarea_set_max_length(ta_dist, 6);
@@ -89,17 +89,17 @@ void UITabSettingsProbe::create(lv_obj_t *tab) {
     lv_obj_add_event_cb(ta_dist, textarea_focused_event_handler, LV_EVENT_FOCUSED, nullptr);
     snprintf(buf, sizeof(buf), "%d", default_max_distance);
     lv_textarea_set_text(ta_dist, buf);
-    y_pos += 50;
+    y_pos += UI_SCALE_Y(50);
     
     // === Retract Distance ===
     lv_obj_t *lbl_retract = lv_label_create(tab);
     lv_label_set_text(lbl_retract, "Retract (mm):");
     lv_obj_set_style_text_font(lbl_retract, &lv_font_montserrat_18, 0);
     lv_obj_set_style_text_color(lbl_retract, UITheme::TEXT_LIGHT, 0);
-    lv_obj_set_pos(lbl_retract, label_x, y_pos + 12);  // Align with text area content
+    lv_obj_set_pos(lbl_retract, label_x, y_pos + UI_SCALE_Y(12));  // Align with text area content
     
     ta_retract = lv_textarea_create(tab);
-    lv_obj_set_size(ta_retract, 100, 40);
+    lv_obj_set_size(ta_retract, UI_SCALE_X(100), UI_SCALE_Y(40));
     lv_obj_set_pos(ta_retract, field_x, y_pos);
     lv_textarea_set_one_line(ta_retract, true);
     lv_textarea_set_max_length(ta_retract, 6);
@@ -108,17 +108,17 @@ void UITabSettingsProbe::create(lv_obj_t *tab) {
     lv_obj_add_event_cb(ta_retract, textarea_focused_event_handler, LV_EVENT_FOCUSED, nullptr);
     snprintf(buf, sizeof(buf), "%d", default_retract);
     lv_textarea_set_text(ta_retract, buf);
-    y_pos += 50;
+    y_pos += UI_SCALE_Y(50);
     
     // === Probe Thickness ===
     lv_obj_t *lbl_thickness = lv_label_create(tab);
     lv_label_set_text(lbl_thickness, "Probe Thickness (mm):");
     lv_obj_set_style_text_font(lbl_thickness, &lv_font_montserrat_18, 0);
     lv_obj_set_style_text_color(lbl_thickness, UITheme::TEXT_LIGHT, 0);
-    lv_obj_set_pos(lbl_thickness, label_x, y_pos + 12);  // Align with text area content
+    lv_obj_set_pos(lbl_thickness, label_x, y_pos + UI_SCALE_Y(12));  // Align with text area content
     
     ta_thickness = lv_textarea_create(tab);
-    lv_obj_set_size(ta_thickness, 100, 40);
+    lv_obj_set_size(ta_thickness, UI_SCALE_X(100), UI_SCALE_Y(40));
     lv_obj_set_pos(ta_thickness, field_x, y_pos);
     lv_textarea_set_one_line(ta_thickness, true);
     lv_textarea_set_max_length(ta_thickness, 8);
@@ -132,8 +132,8 @@ void UITabSettingsProbe::create(lv_obj_t *tab) {
     // === Action Buttons (positioned at bottom with 20px margins) ===
     // Save button
     lv_obj_t *btn_save = lv_button_create(tab);
-    lv_obj_set_size(btn_save, 180, 50);
-    lv_obj_set_pos(btn_save, 20, 280);  // 360px (tab height) - 50px (button) - 30px (margin) = 280px
+    lv_obj_set_size(btn_save, UI_SCALE_X(180), UI_SCALE_Y(50));
+    lv_obj_set_pos(btn_save, UI_SCALE_X(20), UI_SCALE_Y(280));  // 360px (tab height) - 50px (button) - 30px (margin) = 280px
     lv_obj_set_style_bg_color(btn_save, UITheme::BTN_PLAY, LV_PART_MAIN);
     lv_obj_t *lbl_save = lv_label_create(btn_save);
     lv_label_set_text(lbl_save, "Save Settings");
@@ -143,8 +143,8 @@ void UITabSettingsProbe::create(lv_obj_t *tab) {
     
     // Reset to defaults button
     lv_obj_t *btn_reset = lv_button_create(tab);
-    lv_obj_set_size(btn_reset, 180, 50);
-    lv_obj_set_pos(btn_reset, 220, 280);  // Same vertical position, 200px gap from Save button
+    lv_obj_set_size(btn_reset, UI_SCALE_X(180), UI_SCALE_Y(50));
+    lv_obj_set_pos(btn_reset, UI_SCALE_X(220), UI_SCALE_Y(280));  // Same vertical position, 200px gap from Save button
     lv_obj_set_style_bg_color(btn_reset, UITheme::BG_BUTTON, LV_PART_MAIN);
     lv_obj_t *lbl_reset = lv_label_create(btn_reset);
     lv_label_set_text(lbl_reset, "Reset Defaults");
@@ -157,7 +157,7 @@ void UITabSettingsProbe::create(lv_obj_t *tab) {
     lv_label_set_text(status_label, "");
     lv_obj_set_style_text_font(status_label, &lv_font_montserrat_14, 0);
     lv_obj_set_style_text_color(status_label, UITheme::UI_INFO, 0);
-    lv_obj_set_pos(status_label, 20, 335);  // 280 (button y) + 50 (button height) + 5 (gap)
+    lv_obj_set_pos(status_label, UI_SCALE_X(20), UI_SCALE_Y(335));  // 280 (button y) + 50 (button height) + 5 (gap)
 }
 
 // Load preferences from current machine configuration
@@ -221,7 +221,7 @@ static void textarea_focused_event_handler(lv_event_t *e) {
 void UITabSettingsProbe::showKeyboard(lv_obj_t *ta) {
     if (!keyboard) {
         keyboard = lv_keyboard_create(lv_scr_act());
-        lv_obj_set_size(keyboard, SCREEN_WIDTH, 220);
+        lv_obj_set_size(keyboard, SCREEN_WIDTH, UI_SCALE_Y(220));
         lv_obj_align(keyboard, LV_ALIGN_BOTTOM_MID, 0, 0);
         lv_obj_set_style_text_font(keyboard, &lv_font_montserrat_20, 0);  // Larger font for better visibility
         lv_keyboard_set_mode(keyboard, LV_KEYBOARD_MODE_NUMBER);  // All probe settings are numeric

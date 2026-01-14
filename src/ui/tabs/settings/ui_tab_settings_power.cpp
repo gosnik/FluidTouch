@@ -29,7 +29,7 @@ void UITabSettingsPower::create(lv_obj_t *tab) {
     lv_label_set_text(section_title, "POWER MANAGEMENT");
     lv_obj_set_style_text_font(section_title, &lv_font_montserrat_18, 0);
     lv_obj_set_style_text_color(section_title, UITheme::TEXT_DISABLED, 0);
-    lv_obj_set_pos(section_title, 20, 20);
+    lv_obj_set_pos(section_title, UI_SCALE_X(20), UI_SCALE_Y(20));
     
     // Column 1: Left side (x=20)
     // Enable power management switch
@@ -37,10 +37,10 @@ void UITabSettingsPower::create(lv_obj_t *tab) {
     lv_label_set_text(pm_label, "Enabled:");
     lv_obj_set_style_text_font(pm_label, &lv_font_montserrat_18, 0);
     lv_obj_set_style_text_color(pm_label, UITheme::TEXT_LIGHT, 0);
-    lv_obj_set_pos(pm_label, 20, 70);
+    lv_obj_set_pos(pm_label, UI_SCALE_X(20), UI_SCALE_Y(70));
     
     power_mgmt_switch = lv_switch_create(tab);
-    lv_obj_set_pos(power_mgmt_switch, 140, 65);
+    lv_obj_set_pos(power_mgmt_switch, UI_SCALE_X(140), UI_SCALE_Y(65));
     if (PowerManager::isEnabled()) {
         lv_obj_add_state(power_mgmt_switch, LV_STATE_CHECKED);
     }
@@ -51,13 +51,13 @@ void UITabSettingsPower::create(lv_obj_t *tab) {
     lv_label_set_text(dim_label, "Dim After:");
     lv_obj_set_style_text_font(dim_label, &lv_font_montserrat_18, 0);
     lv_obj_set_style_text_color(dim_label, UITheme::TEXT_LIGHT, 0);
-    lv_obj_set_pos(dim_label, 20, 120);
+    lv_obj_set_pos(dim_label, UI_SCALE_X(20), UI_SCALE_Y(120));
     
     dim_timeout_dropdown = lv_dropdown_create(tab);
     lv_dropdown_set_options(dim_timeout_dropdown, "Disabled\n15 sec\n30 sec\n45 sec\n60 sec\n90 sec\n2 min\n5 min");
-    lv_obj_set_size(dim_timeout_dropdown, 130, 48);
-    lv_obj_set_style_pad_top(dim_timeout_dropdown, 12, LV_PART_MAIN);  // Adjust top padding to vertically center text
-    lv_obj_set_pos(dim_timeout_dropdown, 140, 107);
+    lv_obj_set_size(dim_timeout_dropdown, UI_SCALE_X(130), UI_SCALE_Y(48));
+    lv_obj_set_style_pad_top(dim_timeout_dropdown, UI_SCALE_Y(12), LV_PART_MAIN);  // Adjust top padding to vertically center text
+    lv_obj_set_pos(dim_timeout_dropdown, UI_SCALE_X(140), UI_SCALE_Y(107));
     lv_obj_set_style_text_font(dim_timeout_dropdown, &lv_font_montserrat_18, 0);
     
     // Set current dim timeout selection
@@ -78,13 +78,13 @@ void UITabSettingsPower::create(lv_obj_t *tab) {
     lv_label_set_text(sleep_label, "Sleep After:");
     lv_obj_set_style_text_font(sleep_label, &lv_font_montserrat_18, 0);
     lv_obj_set_style_text_color(sleep_label, UITheme::TEXT_LIGHT, 0);
-    lv_obj_set_pos(sleep_label, 20, 172);
+    lv_obj_set_pos(sleep_label, UI_SCALE_X(20), UI_SCALE_Y(172));
     
     sleep_timeout_dropdown = lv_dropdown_create(tab);
     lv_dropdown_set_options(sleep_timeout_dropdown, "Disabled\n1 min\n2 min\n5 min\n10 min\n15 min\n30 min\n60 min");
-    lv_obj_set_size(sleep_timeout_dropdown, 130, 48);
-    lv_obj_set_style_pad_top(sleep_timeout_dropdown, 12, LV_PART_MAIN);  // Adjust top padding to vertically center text
-    lv_obj_set_pos(sleep_timeout_dropdown, 140, 158);
+    lv_obj_set_size(sleep_timeout_dropdown, UI_SCALE_X(130), UI_SCALE_Y(48));
+    lv_obj_set_style_pad_top(sleep_timeout_dropdown, UI_SCALE_Y(12), LV_PART_MAIN);  // Adjust top padding to vertically center text
+    lv_obj_set_pos(sleep_timeout_dropdown, UI_SCALE_X(140), UI_SCALE_Y(158));
     lv_obj_set_style_text_font(sleep_timeout_dropdown, &lv_font_montserrat_18, 0);
     
     // Set current sleep timeout selection
@@ -106,13 +106,13 @@ void UITabSettingsPower::create(lv_obj_t *tab) {
     lv_label_set_text(normal_brightness_label, "Brightness:");
     lv_obj_set_style_text_font(normal_brightness_label, &lv_font_montserrat_18, 0);
     lv_obj_set_style_text_color(normal_brightness_label, UITheme::TEXT_LIGHT, 0);
-    lv_obj_set_pos(normal_brightness_label, 300, 70);
+    lv_obj_set_pos(normal_brightness_label, UI_SCALE_X(300), UI_SCALE_Y(70));
     
     normal_brightness_dropdown = lv_dropdown_create(tab);
     lv_dropdown_set_options(normal_brightness_dropdown, "25%\n50%\n75%\n100%");
-    lv_obj_set_size(normal_brightness_dropdown, 130, 48);
-    lv_obj_set_style_pad_top(normal_brightness_dropdown, 12, LV_PART_MAIN);  // Adjust top padding to vertically center text
-    lv_obj_set_pos(normal_brightness_dropdown, 420, 56);
+    lv_obj_set_size(normal_brightness_dropdown, UI_SCALE_X(130), UI_SCALE_Y(48));
+    lv_obj_set_style_pad_top(normal_brightness_dropdown, UI_SCALE_Y(12), LV_PART_MAIN);  // Adjust top padding to vertically center text
+    lv_obj_set_pos(normal_brightness_dropdown, UI_SCALE_X(420), UI_SCALE_Y(56));
     lv_obj_set_style_text_font(normal_brightness_dropdown, &lv_font_montserrat_18, 0);
     
     // Set current normal brightness selection (now uses percentages directly)
@@ -129,13 +129,13 @@ void UITabSettingsPower::create(lv_obj_t *tab) {
     lv_label_set_text(brightness_label, "Dim Level:");
     lv_obj_set_style_text_font(brightness_label, &lv_font_montserrat_18, 0);
     lv_obj_set_style_text_color(brightness_label, UITheme::TEXT_LIGHT, 0);
-    lv_obj_set_pos(brightness_label, 300, 120);
+    lv_obj_set_pos(brightness_label, UI_SCALE_X(300), UI_SCALE_Y(120));
     
     dim_brightness_dropdown = lv_dropdown_create(tab);
     lv_dropdown_set_options(dim_brightness_dropdown, "5%\n10%\n25%\n50%");
-    lv_obj_set_size(dim_brightness_dropdown, 130, 48);
-    lv_obj_set_style_pad_top(dim_brightness_dropdown, 12, LV_PART_MAIN);  // Adjust top padding to vertically center text
-    lv_obj_set_pos(dim_brightness_dropdown, 420, 107);
+    lv_obj_set_size(dim_brightness_dropdown, UI_SCALE_X(130), UI_SCALE_Y(48));
+    lv_obj_set_style_pad_top(dim_brightness_dropdown, UI_SCALE_Y(12), LV_PART_MAIN);  // Adjust top padding to vertically center text
+    lv_obj_set_pos(dim_brightness_dropdown, UI_SCALE_X(420), UI_SCALE_Y(107));
     lv_obj_set_style_text_font(dim_brightness_dropdown, &lv_font_montserrat_18, 0);
     
     // Set current dim brightness selection (now uses percentages directly)
@@ -152,14 +152,14 @@ void UITabSettingsPower::create(lv_obj_t *tab) {
     lv_label_set_text(deep_sleep_label, "Deep Sleep:");
     lv_obj_set_style_text_font(deep_sleep_label, &lv_font_montserrat_18, 0);
     lv_obj_set_style_text_color(deep_sleep_label, UITheme::TEXT_LIGHT, 0);
-    lv_obj_set_pos(deep_sleep_label, 300, 172);
+    lv_obj_set_pos(deep_sleep_label, UI_SCALE_X(300), UI_SCALE_Y(172));
     
     // Deep Sleep timeout dropdown
     deep_sleep_timeout_dropdown = lv_dropdown_create(tab);
     lv_dropdown_set_options(deep_sleep_timeout_dropdown, "Disabled\n5 min\n10 min\n15 min\n30 min\n60 min\n90 min");
-    lv_obj_set_size(deep_sleep_timeout_dropdown, 130, 48);
-    lv_obj_set_style_pad_top(deep_sleep_timeout_dropdown, 12, LV_PART_MAIN);  // Adjust top padding to vertically center text
-    lv_obj_set_pos(deep_sleep_timeout_dropdown, 420, 158);
+    lv_obj_set_size(deep_sleep_timeout_dropdown, UI_SCALE_X(130), UI_SCALE_Y(48));
+    lv_obj_set_style_pad_top(deep_sleep_timeout_dropdown, UI_SCALE_Y(12), LV_PART_MAIN);  // Adjust top padding to vertically center text
+    lv_obj_set_pos(deep_sleep_timeout_dropdown, UI_SCALE_X(420), UI_SCALE_Y(158));
     lv_obj_set_style_text_font(deep_sleep_timeout_dropdown, &lv_font_montserrat_18, 0);
     
     // Set current deep sleep timeout selection
@@ -177,10 +177,10 @@ void UITabSettingsPower::create(lv_obj_t *tab) {
     // Explanatory note about IDLE/DISCONNECTED only (moved to bottom)
     lv_obj_t *note_label = lv_label_create(tab);
     lv_label_set_text(note_label, "Note: Power management is only active during IDLE or OFFLINE states.");
-    lv_obj_set_pos(note_label, 20, 215);
+    lv_obj_set_pos(note_label, UI_SCALE_X(20), UI_SCALE_Y(215));
     lv_obj_set_style_text_font(note_label, &lv_font_montserrat_14, 0);
     lv_obj_set_style_text_color(note_label, UITheme::TEXT_DISABLED, 0);
-    lv_obj_set_width(note_label, 760);  // Full width
+    lv_obj_set_width(note_label, UI_SCALE_X(760));  // Full width
     
     // Enable/disable power management controls based on switch state
     if (!PowerManager::isEnabled()) {
@@ -194,8 +194,8 @@ void UITabSettingsPower::create(lv_obj_t *tab) {
     // === Action Buttons (positioned at bottom with 20px margins) ===
     // Save button
     lv_obj_t *btn_save = lv_button_create(tab);
-    lv_obj_set_size(btn_save, 180, 50);
-    lv_obj_set_pos(btn_save, 20, 280);
+    lv_obj_set_size(btn_save, UI_SCALE_X(180), UI_SCALE_Y(50));
+    lv_obj_set_pos(btn_save, UI_SCALE_X(20), UI_SCALE_Y(280));
     lv_obj_set_style_bg_color(btn_save, UITheme::BTN_PLAY, LV_PART_MAIN);
     lv_obj_t *lbl_save = lv_label_create(btn_save);
     lv_label_set_text(lbl_save, "Save Settings");
@@ -205,8 +205,8 @@ void UITabSettingsPower::create(lv_obj_t *tab) {
     
     // Reset to defaults button
     lv_obj_t *btn_reset = lv_button_create(tab);
-    lv_obj_set_size(btn_reset, 180, 50);
-    lv_obj_set_pos(btn_reset, 220, 280);
+    lv_obj_set_size(btn_reset, UI_SCALE_X(180), UI_SCALE_Y(50));
+    lv_obj_set_pos(btn_reset, UI_SCALE_X(220), UI_SCALE_Y(280));
     lv_obj_set_style_bg_color(btn_reset, UITheme::BG_BUTTON, LV_PART_MAIN);
     lv_obj_t *lbl_reset = lv_label_create(btn_reset);
     lv_label_set_text(lbl_reset, "Reset Defaults");
@@ -218,7 +218,7 @@ void UITabSettingsPower::create(lv_obj_t *tab) {
     status_label = lv_label_create(tab);
     lv_label_set_text(status_label, "");
     lv_obj_set_style_text_font(status_label, &lv_font_montserrat_16, 0);
-    lv_obj_set_pos(status_label, 20, 335);
+    lv_obj_set_pos(status_label, UI_SCALE_X(20), UI_SCALE_Y(335));
 }
 
 // Save button event handler

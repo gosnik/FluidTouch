@@ -19,18 +19,18 @@ int UITabTerminal::json_brace_count = 0;
 
 void UITabTerminal::create(lv_obj_t *tab) {
     // Set 5px margins by using padding
-    lv_obj_set_style_pad_all(tab, 15, 0);
+    lv_obj_set_style_pad_all(tab, UI_SCALE_X(15), 0);
 
     // Set dark background
     lv_obj_set_style_bg_color(tab, UITheme::BG_MEDIUM, LV_PART_MAIN);
 
     // Calculate available height for content
-    // Tab content height = SCREEN_HEIGHT (480) - STATUS_BAR_HEIGHT (60) - TAB_BUTTON_HEIGHT (50) = 370px
+    // Tab content height = SCREEN_HEIGHT - STATUS_BAR_HEIGHT - TAB_BUTTON_HEIGHT
     const int content_height = SCREEN_HEIGHT - STATUS_BAR_HEIGHT - TAB_BUTTON_HEIGHT;
-    const int input_height = 45;
-    const int button_width = 100;
-    const int margin = 10;
-    const int input_width = SCREEN_WIDTH - (margin * 5) - button_width - 120;
+    const int input_height = UI_SCALE_Y(45);
+    const int button_width = UI_SCALE_X(100);
+    const int margin = UI_SCALE_X(10);
+    const int input_width = SCREEN_WIDTH - (margin * 5) - button_width - UI_SCALE_X(120);
     const int terminal_height = content_height - input_height - (margin * 3);
 
     // Input text area
@@ -46,7 +46,7 @@ void UITabTerminal::create(lv_obj_t *tab) {
 
     // Send button (next to input field)
     lv_obj_t *send_btn = lv_button_create(tab);
-    lv_obj_set_size(send_btn, button_width - 10, input_height);
+    lv_obj_set_size(send_btn, button_width - UI_SCALE_X(10), input_height);
     lv_obj_set_pos(send_btn, input_width + margin, 0);
     lv_obj_set_style_bg_color(send_btn, UITheme::ACCENT_PRIMARY, LV_PART_MAIN);
     lv_obj_add_event_cb(send_btn, send_button_event_cb, LV_EVENT_CLICKED, nullptr);
@@ -60,22 +60,22 @@ void UITabTerminal::create(lv_obj_t *tab) {
     lv_obj_t *auto_scroll_label = lv_label_create(tab);
     lv_label_set_text(auto_scroll_label, "Auto Scroll");
     lv_obj_set_style_text_font(auto_scroll_label, &lv_font_montserrat_14, 0);
-    lv_obj_align(auto_scroll_label, LV_ALIGN_TOP_RIGHT, -5, 0);
+    lv_obj_align(auto_scroll_label, LV_ALIGN_TOP_RIGHT, -UI_SCALE_X(5), 0);
 
     auto_scroll_switch = lv_switch_create(tab);
-    lv_obj_set_size(auto_scroll_switch, 50, 25);
-    lv_obj_align(auto_scroll_switch, LV_ALIGN_TOP_RIGHT, -20, 18);
+    lv_obj_set_size(auto_scroll_switch, UI_SCALE_X(50), UI_SCALE_Y(25));
+    lv_obj_align(auto_scroll_switch, LV_ALIGN_TOP_RIGHT, -UI_SCALE_X(20), UI_SCALE_Y(18));
     lv_obj_add_state(auto_scroll_switch, LV_STATE_CHECKED);  // Start enabled
     lv_obj_add_event_cb(auto_scroll_switch, auto_scroll_event_cb, LV_EVENT_VALUE_CHANGED, nullptr);
 
     // Terminal output container
     terminal_cont = lv_obj_create(tab);
-    lv_obj_set_size(terminal_cont, 770, 270);
-    lv_obj_set_pos(terminal_cont, 0, 60);
+    lv_obj_set_size(terminal_cont, UI_SCALE_X(770), UI_SCALE_Y(270));
+    lv_obj_set_pos(terminal_cont, 0, UI_SCALE_Y(60));
     lv_obj_set_style_bg_color(terminal_cont, UITheme::BG_BLACK, LV_PART_MAIN);
     lv_obj_set_style_border_color(terminal_cont, UITheme::BORDER_LIGHT, LV_PART_MAIN);
     lv_obj_set_style_border_width(terminal_cont, 2, LV_PART_MAIN);
-    lv_obj_set_style_pad_all(terminal_cont, 5, LV_PART_MAIN);
+    lv_obj_set_style_pad_all(terminal_cont, UI_SCALE_Y(5), LV_PART_MAIN);
     // Enable scrolling for terminal output
     lv_obj_set_scroll_dir(terminal_cont, LV_DIR_VER);
 
@@ -84,7 +84,7 @@ void UITabTerminal::create(lv_obj_t *tab) {
     lv_obj_set_style_text_font(terminal_text, &jetbrains_mono_16, 0);
     lv_obj_set_style_text_color(terminal_text, UITheme::UI_SUCCESS, 0);
     lv_label_set_long_mode(terminal_text, LV_LABEL_LONG_WRAP);
-    lv_obj_set_width(terminal_text, 760);
+    lv_obj_set_width(terminal_text, UI_SCALE_X(760));
 
     // Initialize buffer (empty)
     terminal_buffer = "";
@@ -104,7 +104,7 @@ void UITabTerminal::input_field_event_cb(lv_event_t *e) {
         if (keyboard == nullptr) {
             keyboard = lv_keyboard_create(lv_screen_active());
             lv_keyboard_set_textarea(keyboard, input_field);
-            lv_obj_set_size(keyboard, SCREEN_WIDTH, 240);
+            lv_obj_set_size(keyboard, SCREEN_WIDTH, UI_SCALE_Y(240));
             lv_obj_align(keyboard, LV_ALIGN_BOTTOM_MID, 0, 0);
             lv_obj_set_style_text_font(keyboard, &lv_font_montserrat_20, 0);  // Larger font for better visibility
             lv_obj_add_event_cb(keyboard, keyboard_event_cb, LV_EVENT_READY, nullptr);

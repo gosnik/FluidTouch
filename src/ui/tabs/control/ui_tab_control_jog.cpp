@@ -2,6 +2,7 @@
 #include "ui/tabs/settings/ui_tab_settings_jog.h"
 #include "ui/ui_theme.h"
 #include "network/fluidnc_client.h"
+#include "config.h"
 #include <Arduino.h>
 
 // Static member initialization
@@ -53,19 +54,19 @@ void UITabControlJog::create(lv_obj_t *tab) {
     lv_label_set_text(xy_jog_header, "XY JOG");
     lv_obj_set_style_text_font(xy_jog_header, &lv_font_montserrat_18, 0);
     lv_obj_set_style_text_color(xy_jog_header, UITheme::AXIS_XY, 0);
-    lv_obj_set_pos(xy_jog_header, 167, 5);  // Centered above Y+ button, shifted 2px right
+    lv_obj_set_pos(xy_jog_header, UI_SCALE_X(167), UI_SCALE_Y(5));  // Centered above Y+ button, shifted 2px right
     
     // XY Step size selection - VERTICAL buttons on left
     lv_obj_t *xy_step_label = lv_label_create(tab);
     lv_label_set_text(xy_step_label, "XY Step");
     lv_obj_set_style_text_font(xy_step_label, &lv_font_montserrat_14, 0);
-    lv_obj_set_pos(xy_step_label, 5, 9);  // Moved down 4px total
+    lv_obj_set_pos(xy_step_label, UI_SCALE_X(5), UI_SCALE_Y(9));  // Moved down 4px total
     
     // XY Step size buttons - vertical (largest to smallest)
     for (int i = 0; i < UITheme::XY_STEP_COUNT; i++) {
         lv_obj_t *btn_step = lv_button_create(tab);
-        lv_obj_set_size(btn_step, 45, 45);
-        lv_obj_set_pos(btn_step, 10, 30 + i * 50);
+        lv_obj_set_size(btn_step, UI_SCALE_X(45), UI_SCALE_Y(45));
+        lv_obj_set_pos(btn_step, UI_SCALE_X(10), UI_SCALE_Y(30) + i * UI_SCALE_Y(50));
         lv_obj_add_event_cb(btn_step, xy_step_button_event_cb, LV_EVENT_CLICKED, (void*)(intptr_t)i);
         
         xy_step_buttons[i] = btn_step;
@@ -111,8 +112,8 @@ void UITabControlJog::create(lv_obj_t *tab) {
     
     for (int i = 0; i < 9; i++) {
         lv_obj_t *btn_xy = lv_button_create(tab);
-        lv_obj_set_size(btn_xy, 70, 70);
-        lv_obj_set_pos(btn_xy, 85 + (i % 3) * 80, 30 + (i / 3) * 80);
+        lv_obj_set_size(btn_xy, UI_SCALE_X(70), UI_SCALE_Y(70));
+        lv_obj_set_pos(btn_xy, UI_SCALE_X(85) + (i % 3) * UI_SCALE_X(80), UI_SCALE_Y(30) + (i / 3) * UI_SCALE_Y(80));
         
         // Apply axis-specific colors
         lv_obj_set_style_bg_color(btn_xy, xy_axis_colors[i], 0);
@@ -150,7 +151,7 @@ void UITabControlJog::create(lv_obj_t *tab) {
     lv_obj_t *xy_feed_label = lv_label_create(tab);
     lv_label_set_text(xy_feed_label, "XY Feed:");
     lv_obj_set_style_text_font(xy_feed_label, &lv_font_montserrat_14, 0);
-    lv_obj_set_pos(xy_feed_label, 85, 280);
+    lv_obj_set_pos(xy_feed_label, UI_SCALE_X(85), UI_SCALE_Y(280));
     
     // XY Feedrate value (plain text label) - load from settings
     xy_feedrate_label = lv_label_create(tab);
@@ -158,7 +159,7 @@ void UITabControlJog::create(lv_obj_t *tab) {
     snprintf(xy_feed_buf, sizeof(xy_feed_buf), "%d", xy_current_feed);
     lv_label_set_text(xy_feedrate_label, xy_feed_buf);
     lv_obj_set_style_text_font(xy_feedrate_label, &lv_font_montserrat_14, 0);
-    lv_obj_set_pos(xy_feedrate_label, 155, 280);
+    lv_obj_set_pos(xy_feedrate_label, UI_SCALE_X(155), UI_SCALE_Y(280));
     
     // Now update XY step display (after feedrate label exists)
     update_xy_step_display();
@@ -166,12 +167,12 @@ void UITabControlJog::create(lv_obj_t *tab) {
     lv_obj_t *xy_feed_unit = lv_label_create(tab);
     lv_label_set_text(xy_feed_unit, "mm/min");
     lv_obj_set_style_text_font(xy_feed_unit, &lv_font_montserrat_14, 0);
-    lv_obj_set_pos(xy_feed_unit, 205, 280);
+    lv_obj_set_pos(xy_feed_unit, UI_SCALE_X(205), UI_SCALE_Y(280));
     
     // XY Feedrate adjustment buttons - all on one line: -1000, -100, +100, +1000
     lv_obj_t *btn_xy_minus1000 = lv_button_create(tab);
-    lv_obj_set_size(btn_xy_minus1000, 55, 45);
-    lv_obj_set_pos(btn_xy_minus1000, 85, 300);
+    lv_obj_set_size(btn_xy_minus1000, UI_SCALE_X(55), UI_SCALE_Y(45));
+    lv_obj_set_pos(btn_xy_minus1000, UI_SCALE_X(85), UI_SCALE_Y(300));
     lv_obj_add_event_cb(btn_xy_minus1000, xy_feedrate_adj_event_cb, LV_EVENT_CLICKED, (void*)(intptr_t)-1000);
     lv_obj_t *lbl_xy_minus1000 = lv_label_create(btn_xy_minus1000);
     lv_label_set_text(lbl_xy_minus1000, "-1000");
@@ -179,8 +180,8 @@ void UITabControlJog::create(lv_obj_t *tab) {
     lv_obj_center(lbl_xy_minus1000);
     
     lv_obj_t *btn_xy_minus100 = lv_button_create(tab);
-    lv_obj_set_size(btn_xy_minus100, 55, 45);
-    lv_obj_set_pos(btn_xy_minus100, 145, 300);
+    lv_obj_set_size(btn_xy_minus100, UI_SCALE_X(55), UI_SCALE_Y(45));
+    lv_obj_set_pos(btn_xy_minus100, UI_SCALE_X(145), UI_SCALE_Y(300));
     lv_obj_add_event_cb(btn_xy_minus100, xy_feedrate_adj_event_cb, LV_EVENT_CLICKED, (void*)(intptr_t)-100);
     lv_obj_t *lbl_xy_minus100 = lv_label_create(btn_xy_minus100);
     lv_label_set_text(lbl_xy_minus100, "-100");
@@ -188,8 +189,8 @@ void UITabControlJog::create(lv_obj_t *tab) {
     lv_obj_center(lbl_xy_minus100);
     
     lv_obj_t *btn_xy_plus100 = lv_button_create(tab);
-    lv_obj_set_size(btn_xy_plus100, 55, 45);
-    lv_obj_set_pos(btn_xy_plus100, 205, 300);
+    lv_obj_set_size(btn_xy_plus100, UI_SCALE_X(55), UI_SCALE_Y(45));
+    lv_obj_set_pos(btn_xy_plus100, UI_SCALE_X(205), UI_SCALE_Y(300));
     lv_obj_add_event_cb(btn_xy_plus100, xy_feedrate_adj_event_cb, LV_EVENT_CLICKED, (void*)(intptr_t)100);
     lv_obj_t *lbl_xy_plus100 = lv_label_create(btn_xy_plus100);
     lv_label_set_text(lbl_xy_plus100, "+100");
@@ -197,8 +198,8 @@ void UITabControlJog::create(lv_obj_t *tab) {
     lv_obj_center(lbl_xy_plus100);
     
     lv_obj_t *btn_xy_plus1000 = lv_button_create(tab);
-    lv_obj_set_size(btn_xy_plus1000, 55, 45);
-    lv_obj_set_pos(btn_xy_plus1000, 265, 300);
+    lv_obj_set_size(btn_xy_plus1000, UI_SCALE_X(55), UI_SCALE_Y(45));
+    lv_obj_set_pos(btn_xy_plus1000, UI_SCALE_X(265), UI_SCALE_Y(300));
     lv_obj_add_event_cb(btn_xy_plus1000, xy_feedrate_adj_event_cb, LV_EVENT_CLICKED, (void*)(intptr_t)1000);
     lv_obj_t *lbl_xy_plus1000 = lv_label_create(btn_xy_plus1000);
     lv_label_set_text(lbl_xy_plus1000, "+1000");
@@ -212,19 +213,19 @@ void UITabControlJog::create(lv_obj_t *tab) {
     lv_label_set_text(z_jog_header, "Z JOG");
     lv_obj_set_style_text_font(z_jog_header, &lv_font_montserrat_18, 0);
     lv_obj_set_style_text_color(z_jog_header, UITheme::AXIS_Z, 0);
-    lv_obj_set_pos(z_jog_header, 467, 5);  // Centered above Z+ button at x=460
+    lv_obj_set_pos(z_jog_header, UI_SCALE_X(467), UI_SCALE_Y(5));  // Centered above Z+ button at x=460
     
     // Z Step size selection - VERTICAL buttons on left of Z controls
     lv_obj_t *z_step_label = lv_label_create(tab);
     lv_label_set_text(z_step_label, "Z Step");
     lv_obj_set_style_text_font(z_step_label, &lv_font_montserrat_14, 0);
-    lv_obj_set_pos(z_step_label, 395, 9);  // Moved down 4px total
+    lv_obj_set_pos(z_step_label, UI_SCALE_X(395), UI_SCALE_Y(9));  // Moved down 4px total
     
     // Z Step size buttons - vertical (largest to smallest)
     for (int i = 0; i < UITheme::Z_STEP_COUNT; i++) {
         lv_obj_t *btn_step = lv_button_create(tab);
-        lv_obj_set_size(btn_step, 45, 45);
-        lv_obj_set_pos(btn_step, 395, 30 + i * 50);
+        lv_obj_set_size(btn_step, UI_SCALE_X(45), UI_SCALE_Y(45));
+        lv_obj_set_pos(btn_step, UI_SCALE_X(395), UI_SCALE_Y(30) + i * UI_SCALE_Y(50));
         lv_obj_add_event_cb(btn_step, z_step_button_event_cb, LV_EVENT_CLICKED, (void*)(intptr_t)i);
         
         z_step_buttons[i] = btn_step;
@@ -238,8 +239,8 @@ void UITabControlJog::create(lv_obj_t *tab) {
     
     // Z+ button - same size as XY buttons (70x70)
     lv_obj_t *btn_z_up = lv_button_create(tab);
-    lv_obj_set_size(btn_z_up, 70, 70);
-    lv_obj_set_pos(btn_z_up, 460, 30);
+    lv_obj_set_size(btn_z_up, UI_SCALE_X(70), UI_SCALE_Y(70));
+    lv_obj_set_pos(btn_z_up, UI_SCALE_X(460), UI_SCALE_Y(30));
     lv_obj_set_style_bg_color(btn_z_up, UITheme::AXIS_Z, 0);
     lv_obj_add_event_cb(btn_z_up, z_jog_button_event_cb, LV_EVENT_CLICKED, (void*)(intptr_t)1);  // +Z
     lv_obj_t *lbl_z_up = lv_label_create(btn_z_up);
@@ -249,8 +250,8 @@ void UITabControlJog::create(lv_obj_t *tab) {
     
     // Z step display (between up/down buttons)
     lv_obj_t *z_step_display_bg = lv_obj_create(tab);
-    lv_obj_set_size(z_step_display_bg, 70, 70);
-    lv_obj_set_pos(z_step_display_bg, 460, 110);
+    lv_obj_set_size(z_step_display_bg, UI_SCALE_X(70), UI_SCALE_Y(70));
+    lv_obj_set_pos(z_step_display_bg, UI_SCALE_X(460), UI_SCALE_Y(110));
     lv_obj_set_style_bg_color(z_step_display_bg, UITheme::BG_DARKER, 0);
     lv_obj_set_style_border_width(z_step_display_bg, 0, 0);
     lv_obj_clear_flag(z_step_display_bg, LV_OBJ_FLAG_SCROLLABLE);
@@ -263,8 +264,8 @@ void UITabControlJog::create(lv_obj_t *tab) {
     
     // Z- button - same size as XY buttons (70x70)
     lv_obj_t *btn_z_down = lv_button_create(tab);
-    lv_obj_set_size(btn_z_down, 70, 70);
-    lv_obj_set_pos(btn_z_down, 460, 190);
+    lv_obj_set_size(btn_z_down, UI_SCALE_X(70), UI_SCALE_Y(70));
+    lv_obj_set_pos(btn_z_down, UI_SCALE_X(460), UI_SCALE_Y(190));
     lv_obj_set_style_bg_color(btn_z_down, UITheme::AXIS_Z, 0);
     lv_obj_add_event_cb(btn_z_down, z_jog_button_event_cb, LV_EVENT_CLICKED, (void*)(intptr_t)-1);  // -Z
     lv_obj_t *lbl_z_down = lv_label_create(btn_z_down);
@@ -276,7 +277,7 @@ void UITabControlJog::create(lv_obj_t *tab) {
     lv_obj_t *z_feed_label = lv_label_create(tab);
     lv_label_set_text(z_feed_label, "Z Feed:");
     lv_obj_set_style_text_font(z_feed_label, &lv_font_montserrat_14, 0);
-    lv_obj_set_pos(z_feed_label, 395, 280);
+    lv_obj_set_pos(z_feed_label, UI_SCALE_X(395), UI_SCALE_Y(280));
     
     // Z Feedrate value (plain text label) - load from settings
     z_feedrate_label = lv_label_create(tab);
@@ -284,7 +285,7 @@ void UITabControlJog::create(lv_obj_t *tab) {
     snprintf(z_feed_buf, sizeof(z_feed_buf), "%d", z_current_feed);
     lv_label_set_text(z_feedrate_label, z_feed_buf);
     lv_obj_set_style_text_font(z_feedrate_label, &lv_font_montserrat_14, 0);
-    lv_obj_set_pos(z_feedrate_label, 460, 280);
+    lv_obj_set_pos(z_feedrate_label, UI_SCALE_X(460), UI_SCALE_Y(280));
     
     // Now update Z step display (after feedrate label exists)
     update_z_step_display();
@@ -292,12 +293,12 @@ void UITabControlJog::create(lv_obj_t *tab) {
     lv_obj_t *z_feed_unit = lv_label_create(tab);
     lv_label_set_text(z_feed_unit, "mm/min");
     lv_obj_set_style_text_font(z_feed_unit, &lv_font_montserrat_14, 0);
-    lv_obj_set_pos(z_feed_unit, 505, 280);
+    lv_obj_set_pos(z_feed_unit, UI_SCALE_X(505), UI_SCALE_Y(280));
     
     // Z Feedrate adjustment buttons - all on one line: -1000, -100, +100, +1000
     lv_obj_t *btn_z_minus1000 = lv_button_create(tab);
-    lv_obj_set_size(btn_z_minus1000, 55, 45);
-    lv_obj_set_pos(btn_z_minus1000, 395, 300);
+    lv_obj_set_size(btn_z_minus1000, UI_SCALE_X(55), UI_SCALE_Y(45));
+    lv_obj_set_pos(btn_z_minus1000, UI_SCALE_X(395), UI_SCALE_Y(300));
     lv_obj_add_event_cb(btn_z_minus1000, z_feedrate_adj_event_cb, LV_EVENT_CLICKED, (void*)(intptr_t)-1000);
     lv_obj_t *lbl_z_minus1000 = lv_label_create(btn_z_minus1000);
     lv_label_set_text(lbl_z_minus1000, "-1000");
@@ -305,8 +306,8 @@ void UITabControlJog::create(lv_obj_t *tab) {
     lv_obj_center(lbl_z_minus1000);
     
     lv_obj_t *btn_z_minus100 = lv_button_create(tab);
-    lv_obj_set_size(btn_z_minus100, 55, 45);
-    lv_obj_set_pos(btn_z_minus100, 455, 300);
+    lv_obj_set_size(btn_z_minus100, UI_SCALE_X(55), UI_SCALE_Y(45));
+    lv_obj_set_pos(btn_z_minus100, UI_SCALE_X(455), UI_SCALE_Y(300));
     lv_obj_add_event_cb(btn_z_minus100, z_feedrate_adj_event_cb, LV_EVENT_CLICKED, (void*)(intptr_t)-100);
     lv_obj_t *lbl_z_minus100 = lv_label_create(btn_z_minus100);
     lv_label_set_text(lbl_z_minus100, "-100");
@@ -314,8 +315,8 @@ void UITabControlJog::create(lv_obj_t *tab) {
     lv_obj_center(lbl_z_minus100);
     
     lv_obj_t *btn_z_plus100 = lv_button_create(tab);
-    lv_obj_set_size(btn_z_plus100, 55, 45);
-    lv_obj_set_pos(btn_z_plus100, 515, 300);
+    lv_obj_set_size(btn_z_plus100, UI_SCALE_X(55), UI_SCALE_Y(45));
+    lv_obj_set_pos(btn_z_plus100, UI_SCALE_X(515), UI_SCALE_Y(300));
     lv_obj_add_event_cb(btn_z_plus100, z_feedrate_adj_event_cb, LV_EVENT_CLICKED, (void*)(intptr_t)100);
     lv_obj_t *lbl_z_plus100 = lv_label_create(btn_z_plus100);
     lv_label_set_text(lbl_z_plus100, "+100");
@@ -323,8 +324,8 @@ void UITabControlJog::create(lv_obj_t *tab) {
     lv_obj_center(lbl_z_plus100);
     
     lv_obj_t *btn_z_plus1000 = lv_button_create(tab);
-    lv_obj_set_size(btn_z_plus1000, 55, 45);
-    lv_obj_set_pos(btn_z_plus1000, 575, 300);
+    lv_obj_set_size(btn_z_plus1000, UI_SCALE_X(55), UI_SCALE_Y(45));
+    lv_obj_set_pos(btn_z_plus1000, UI_SCALE_X(575), UI_SCALE_Y(300));
     lv_obj_add_event_cb(btn_z_plus1000, z_feedrate_adj_event_cb, LV_EVENT_CLICKED, (void*)(intptr_t)1000);
     lv_obj_t *lbl_z_plus1000 = lv_label_create(btn_z_plus1000);
     lv_label_set_text(lbl_z_plus1000, "+1000");
@@ -334,8 +335,8 @@ void UITabControlJog::create(lv_obj_t *tab) {
     // ========== Cancel Jog Button (Upper Right) ==========
     // Create a container for the octagon stop button
     lv_obj_t *btn_cancel = lv_obj_create(tab);
-    lv_obj_set_size(btn_cancel, 70, 70);
-    lv_obj_set_pos(btn_cancel, 560, 110);  // Aligned with middle row (left/right buttons)
+    lv_obj_set_size(btn_cancel, UI_SCALE_X(70), UI_SCALE_Y(70));
+    lv_obj_set_pos(btn_cancel, UI_SCALE_X(560), UI_SCALE_Y(110));  // Aligned with middle row (left/right buttons)
     lv_obj_clear_flag(btn_cancel, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_style_bg_opa(btn_cancel, LV_OPA_TRANSP, 0);  // Transparent background
     lv_obj_set_style_border_width(btn_cancel, 0, 0);
@@ -581,11 +582,17 @@ void UITabControlJog::draw_octagon_event_cb(lv_event_t *e) {
     lv_area_t coords;
     lv_obj_get_coords(obj, &coords);
     
-    int size = 70;
-    int border_width = 3;
+    int size = lv_area_get_width(&coords);
+    if (size <= 0) {
+        return;
+    }
+    int border_width = size / 23;
+    if (border_width < 1) {
+        border_width = 1;
+    }
     
     // Draw outer white octagon (border)
-    int cut_outer = 20;
+    int cut_outer = (size * 2) / 7;
     lv_draw_line_dsc_t white_line_dsc;
     lv_draw_line_dsc_init(&white_line_dsc);
     white_line_dsc.color = lv_color_white();
