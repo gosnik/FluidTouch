@@ -11,6 +11,12 @@
 #include "lvgl.h"
 #include "bsp/esp-bsp.h"
 #include "bsp/display.h"
+#include "core/power_manager.h"
+
+static void indev_activity_event_cb(lv_event_t *e) {
+    LV_UNUSED(e);
+    PowerManager::onUserActivity();
+}
 
 // DisplayDriver constructor
 DisplayDriver::DisplayDriver() : disp(nullptr), disp_draw_buf(nullptr), disp_draw_buf2(nullptr) {
@@ -50,6 +56,13 @@ bool DisplayDriver::init() {
     bsp_display_start_with_config(&cfg);
     bsp_display_backlight_on();
 
+    lv_indev_t *indev = bsp_display_get_input_dev();
+    if (indev) {
+        lv_indev_add_event_cb(indev, indev_activity_event_cb, LV_EVENT_PRESSED, nullptr);
+        lv_indev_add_event_cb(indev, indev_activity_event_cb, LV_EVENT_PRESSING, nullptr);
+        lv_indev_add_event_cb(indev, indev_activity_event_cb, LV_EVENT_RELEASED, nullptr);
+    }
+
     bsp_display_lock(0);
     
     return true;
@@ -67,37 +80,16 @@ void DisplayDriver::setBacklight(uint8_t brightness_percent) {
     // Convert percentage (0-100) to hardware value (0-255)
     uint8_t hw_value = (brightness_percent * 255) / 100;
     
-#ifdef BACKLIGHT_PWM
-    // Basic: PWM backlight on GPIO2
-    ledcWrite(1, hw_value);
-#elif defined(BACKLIGHT_I2C)
-    // Advance: I2C backlight controller (STC8H1K28 at address 0x30)
-    // Brightness: 0 = brightest, 245 = off
-    uint8_t i2c_value = 245 - ((hw_value * 245) / 255);
-    Wire.beginTransmission(0x30);
-    Wire.write(i2c_value);
-    Wire.endTransmission();
-#endif
+    bsp_display_brightness_set(brightness_percent);
     Serial.printf("Backlight set to: %d%% (hw=%d)\n", brightness_percent, hw_value);
 }
 
 void DisplayDriver::setBacklightOn() {
-    setBacklight(255);
+    bsp_display_backlight_on();
 }
 
 void DisplayDriver::setBacklightOff() {
-#ifdef BACKLIGHT_PWM
-    // Basic: PWM backlight on GPIO2
-    ledcWrite(1, 0);
-    Serial.println("Backlight OFF (PWM)");
-#elif defined(BACKLIGHT_I2C)
-    // Advance: I2C backlight controller (STC8H1K28 at address 0x30)
-    // Send 0xF5 (245) for off
-    Wire.beginTransmission(0x30);
-    Wire.write(0xF5);
-    Wire.endTransmission();
-    Serial.println("Backlight OFF (I2C)");
-#endif
+    bsp_display_backlight_off();
 }
 
 void DisplayDriver::powerDown() {

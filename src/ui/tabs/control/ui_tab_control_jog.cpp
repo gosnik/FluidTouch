@@ -1,17 +1,22 @@
 #include "ui/tabs/control/ui_tab_control_jog.h"
 #include "ui/tabs/settings/ui_tab_settings_jog.h"
 #include "ui/ui_theme.h"
-#include "network/fluidnc_client.h"
+#include "core/comm_manager.h"
+#include "core/encoder.h"
+#include "core/power_manager.h"
 #include "config.h"
 #include <Arduino.h>
 
 // Static member initialization
+lv_obj_t *UITabControlJog::parent_tab = nullptr;
 lv_obj_t *UITabControlJog::xy_step_display_label = nullptr;
 lv_obj_t *UITabControlJog::z_step_display_label = nullptr;
 lv_obj_t *UITabControlJog::xy_step_buttons[5] = {nullptr, nullptr, nullptr, nullptr, nullptr};
 lv_obj_t *UITabControlJog::z_step_buttons[5] = {nullptr, nullptr, nullptr, nullptr, nullptr};
 lv_obj_t *UITabControlJog::xy_feedrate_label = nullptr;
 lv_obj_t *UITabControlJog::z_feedrate_label = nullptr;
+lv_timer_t *UITabControlJog::encoder_timer = nullptr;
+int16_t UITabControlJog::last_encoder_counts[3] = {0, 0, 0};
 float UITabControlJog::xy_current_step = 10.0f;     // Will be loaded from settings
 float UITabControlJog::z_current_step = 1.0f;       // Will be loaded from settings
 int UITabControlJog::xy_current_step_index = 2;     // Will be recalculated
@@ -20,6 +25,7 @@ int UITabControlJog::xy_current_feed = 3000;        // Will be loaded from setti
 int UITabControlJog::z_current_feed = 1000;         // Will be loaded from settings
 
 void UITabControlJog::create(lv_obj_t *tab) {
+    parent_tab = tab;
     // Load default values from settings
     UITabSettingsJog::loadPreferences();
     xy_current_step = UITabSettingsJog::getDefaultXYStep();
@@ -80,49 +86,21 @@ void UITabControlJog::create(lv_obj_t *tab) {
     
     // XY Jog pad (3x3 button grid) - next to step buttons
     static const char *xy_labels[] = {
-        LV_SYMBOL_UP,       // NW (up, rotated -45°)
-        LV_SYMBOL_UP,       // N (up)
-        LV_SYMBOL_UP,       // NE (up, rotated +45°)
-        LV_SYMBOL_LEFT,     // W (left)
-        "",                 // Center - will show step value
-        LV_SYMBOL_RIGHT,    // E (right)
-        LV_SYMBOL_DOWN,     // SW (down, rotated +45°)
-        LV_SYMBOL_DOWN,     // S (down)
-        LV_SYMBOL_DOWN      // SE (down, rotated -45°)
-    };
-    
-    static const int16_t xy_rotations[] = {
-        -450, 0, 450,  // Top row
-        0, 0, 0,       // Middle row
-        450, 0, -450   // Bottom row
-    };
-    
-    // Axis colors for direction buttons: 0=NW, 1=N, 2=NE, 3=W, 4=center, 5=E, 6=SW, 7=S, 8=SE
-    static const lv_color_t xy_axis_colors[] = {
-        UITheme::AXIS_XY,  // NW - diagonal
-        UITheme::AXIS_Y,   // N - Y axis
-        UITheme::AXIS_XY,  // NE - diagonal
-        UITheme::AXIS_X,   // W - X axis
-        UITheme::BG_DARKER,// Center - display only
-        UITheme::AXIS_X,   // E - X axis
-        UITheme::AXIS_XY,  // SW - diagonal
-        UITheme::AXIS_Y,   // S - Y axis
-        UITheme::AXIS_XY   // SE - diagonal
+        "NW", "N", "NE",
+        "W",  "",  "E",
+        "SW", "S", "SE"
     };
     
     for (int i = 0; i < 9; i++) {
         lv_obj_t *btn_xy = lv_button_create(tab);
         lv_obj_set_size(btn_xy, UI_SCALE_X(70), UI_SCALE_Y(70));
         lv_obj_set_pos(btn_xy, UI_SCALE_X(85) + (i % 3) * UI_SCALE_X(80), UI_SCALE_Y(30) + (i / 3) * UI_SCALE_Y(80));
+        lv_obj_set_style_bg_color(btn_xy, UITheme::AXIS_XY, 0);
         
-        // Apply axis-specific colors
-        lv_obj_set_style_bg_color(btn_xy, xy_axis_colors[i], 0);
-        
-        // Special styling for center button (step display)
         if (i == 4) {
             lv_obj_clear_flag(btn_xy, LV_OBJ_FLAG_CLICKABLE);
+            lv_obj_set_style_bg_color(btn_xy, UITheme::BG_DARKER, 0);
         } else {
-            // Add click event for jog buttons (all except center)
             lv_obj_add_event_cb(btn_xy, xy_jog_button_event_cb, LV_EVENT_CLICKED, (void*)(intptr_t)i);
         }
         
@@ -133,15 +111,8 @@ void UITabControlJog::create(lv_obj_t *tab) {
             xy_step_display_label = lbl;
             lv_obj_set_style_text_font(lbl, &lv_font_montserrat_14, 0);
             lv_obj_set_style_text_align(lbl, LV_TEXT_ALIGN_CENTER, 0);
-            // Don't update yet - xy_feedrate_label hasn't been created
         } else {
-            lv_obj_set_style_text_font(lbl, &lv_font_montserrat_32, 0);
-        }
-        
-        if (xy_rotations[i] != 0) {
-            lv_obj_set_style_transform_angle(lbl, xy_rotations[i], 0);
-            lv_obj_set_style_transform_pivot_x(lbl, lv_pct(50), 0);
-            lv_obj_set_style_transform_pivot_y(lbl, lv_pct(50), 0);
+            lv_obj_set_style_text_font(lbl, &lv_font_montserrat_24, 0);
         }
         
         lv_obj_center(lbl);
@@ -352,6 +323,14 @@ void UITabControlJog::create(lv_obj_t *tab) {
     lv_obj_set_style_text_font(lbl_cancel, &lv_font_montserrat_18, 0);
     lv_obj_set_style_text_color(lbl_cancel, lv_color_white(), 0);
     lv_obj_center(lbl_cancel);
+
+    if (!encoder_timer) {
+        encoder_timer = lv_timer_create(encoderTimerCb, 50, nullptr);
+    }
+
+    for (size_t i = 0; i < 3; ++i) {
+        last_encoder_counts[i] = get_encoder_value(i);
+    }
 }
 
 // XY Step button event handler
@@ -486,11 +465,11 @@ void UITabControlJog::z_feedrate_adj_event_cb(lv_event_t *e) {
 
 // XY Jog button event handler
 void UITabControlJog::xy_jog_button_event_cb(lv_event_t *e) {
-    if (!FluidNCClient::isConnected()) {
+    if (!CommManager::isConnected()) {
         Serial.println("[Jog] Not connected to FluidNC");
         return;
     }
-    
+
     int button_index = (int)(intptr_t)lv_event_get_user_data(e);
     
     // Get current feedrate
@@ -546,12 +525,12 @@ void UITabControlJog::xy_jog_button_event_cb(lv_event_t *e) {
     }
     
     Serial.printf("[Jog] XY Jog: %s", jog_cmd);
-    FluidNCClient::sendCommand(jog_cmd);
+    CommManager::sendCommand(jog_cmd);
 }
 
 // Z Jog button event handler
 void UITabControlJog::z_jog_button_event_cb(lv_event_t *e) {
-    if (!FluidNCClient::isConnected()) {
+    if (!CommManager::isConnected()) {
         Serial.println("[Jog] Not connected to FluidNC");
         return;
     }
@@ -570,7 +549,7 @@ void UITabControlJog::z_jog_button_event_cb(lv_event_t *e) {
     snprintf(jog_cmd, sizeof(jog_cmd), "$J=G91 Z%.3f F%d\n", z_move, feedrate);
     
     Serial.printf("[Jog] Z Jog: %s", jog_cmd);
-    FluidNCClient::sendCommand(jog_cmd);
+    CommManager::sendCommand(jog_cmd);
 }
 
 // Draw octagon shape for stop button
@@ -659,12 +638,63 @@ void UITabControlJog::draw_octagon_event_cb(lv_event_t *e) {
 
 // Cancel Jog event handler
 void UITabControlJog::cancel_jog_event_cb(lv_event_t *e) {
-    if (!FluidNCClient::isConnected()) {
+    if (!CommManager::isConnected()) {
         Serial.println("[Jog] Not connected to FluidNC");
         return;
     }
     
     // Send jog cancel command (0x85 or Ctrl-U)
-    FluidNCClient::sendCommand("\x85");
+    CommManager::sendCommand("\x85");
     Serial.println("[Jog] Cancel jog command sent");
+}
+
+void UITabControlJog::encoderTimerCb(lv_timer_t *timer) {
+    LV_UNUSED(timer);
+
+    if (parent_tab && lv_obj_has_flag(parent_tab, LV_OBJ_FLAG_HIDDEN)) {
+        for (size_t i = 0; i < 3; ++i) {
+            last_encoder_counts[i] = get_encoder_value(i);
+        }
+        return;
+    }
+
+    if (!CommManager::isConnected()) {
+        for (size_t i = 0; i < 3; ++i) {
+            last_encoder_counts[i] = get_encoder_value(i);
+        }
+        return;
+    }
+
+    const char *xy_feedrate_text = lv_label_get_text(xy_feedrate_label);
+    const char *z_feedrate_text = lv_label_get_text(z_feedrate_label);
+    int xy_feedrate = atoi(xy_feedrate_text);
+    int z_feedrate = atoi(z_feedrate_text);
+
+    struct AxisCmd {
+        char axis;
+        float step;
+        int feedrate;
+    };
+    const AxisCmd axes[3] = {
+        {'X', xy_current_step, xy_feedrate},
+        {'Y', xy_current_step, xy_feedrate},
+        {'Z', z_current_step, z_feedrate},
+    };
+
+    for (size_t i = 0; i < 3; ++i) {
+        int16_t count = get_encoder_value(i);
+        int16_t delta = count - last_encoder_counts[i];
+        last_encoder_counts[i] = count;
+        if (delta == 0) {
+            continue;
+        }
+
+        float move = axes[i].step * static_cast<float>(delta);
+        char jog_cmd[64];
+        snprintf(jog_cmd, sizeof(jog_cmd), "$J=G91 %c%.3f F%d\n",
+                 axes[i].axis, move, axes[i].feedrate);
+        Serial.printf("[Jog] Encoder %u jog: %s", static_cast<unsigned>(i + 1), jog_cmd);
+        CommManager::sendCommand(jog_cmd);
+        PowerManager::onUserActivity();
+    }
 }

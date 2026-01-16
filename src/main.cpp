@@ -1,11 +1,15 @@
 #include <Arduino.h>
 #include <lvgl.h>
-#include <WiFi.h>
+#include "config.h"
+#if FT_WIFI_ENABLED
+#include "network/wifi_manager.h"
+#endif
 #include <Preferences.h>
 #include "core/display_driver.h"     // Display driver module
+#include "core/encoder.h"
 #include "core/power_manager.h"      // Power management module
 #include "network/screenshot_server.h"  // Screenshot web server
-#include "network/fluidnc_client.h"     // FluidNC WebSocket client
+#include "core/comm_manager.h"     // Machine comms (WebSocket/UART)
 #include "ui/ui_theme.h"        // UI theme colors
 #include "ui/ui_splash.h"       // Splash screen module
 #include "ui/ui_machine_select.h" // Machine selection screen
@@ -44,15 +48,32 @@ void setup()
     PowerManager::init(&displayDriver);
     Serial.println("Power manager initialized successfully");
 
+    #if FT_WIFI_ENABLED
+    Serial.println("Initializing WiFi manager...");
+    WifiManager::init();
+    #endif
+
+    #if defined(CONFIG_IDF_TARGET_ESP32P4)
+    Serial.println("Initializing encoders...");
+    const EncoderPins encoder_pins[] = {
+        {ENCODER1_A_PIN, ENCODER1_B_PIN},
+        {ENCODER2_A_PIN, ENCODER2_B_PIN},
+        {ENCODER3_A_PIN, ENCODER3_B_PIN},
+    };
+    if (!init_encoders(encoder_pins, sizeof(encoder_pins) / sizeof(encoder_pins[0]))) {
+        Serial.println("Encoder init failed. Check encoder pin wiring.");
+    }
+    #endif
+
     // Store display driver reference for later use (screenshot server after WiFi connects)
     UICommon::setDisplayDriver(&displayDriver);
 
     // Initialize Screenshot Server (WiFi not connected yet, will initialize after machine selection)
     Serial.println("Screenshot server will initialize after WiFi connection...");
 
-    // Initialize FluidNC Client
-    Serial.println("Initializing FluidNC client...");
-    FluidNCClient::init();
+    // Initialize comms manager
+    Serial.println("Initializing CommManager...");
+    CommManager::init();
 
     // Check for auto-import (only if no machines configured)
     Serial.println("Checking for settings auto-import...");
@@ -113,8 +134,8 @@ void loop()
     // Handle screenshot server web requests
     ScreenshotServer::handleClient();
     
-    // Handle FluidNC client WebSocket events
-    FluidNCClient::loop();
+    // Handle machine comms events
+    CommManager::loop();
     
     // Check for connection timeout (non-blocking)
     UICommon::checkConnectionTimeout();
@@ -122,14 +143,26 @@ void loop()
     // Check for pending file list refresh (from Files tab delete callback)
     UITabFiles::checkPendingRefresh();
     
-    // Update UI from FluidNC status (every 250ms)
+    // Update UI from machine status (every 250ms)
     static uint32_t lastUIUpdate = 0;
     uint32_t currentMillis = millis();
     if (currentMillis - lastUIUpdate >= 250) {
         lastUIUpdate = currentMillis;
         
-        bool machine_connected = FluidNCClient::isConnected();
-        bool wifi_connected = (WiFi.status() == WL_CONNECTED);
+        bool machine_connected = CommManager::isConnected();
+        bool wifi_connected = false;
+        MachineConfig selected_config;
+        if (MachineConfigManager::getSelectedMachine(selected_config)) {
+            if (selected_config.connection_type == CONN_WIRELESS) {
+                #if FT_WIFI_ENABLED
+                wifi_connected = WifiManager::isConnected();
+                #else
+                wifi_connected = false;
+                #endif
+            } else {
+                wifi_connected = machine_connected;
+            }
+        }
         
         // Update connection status symbols (always update, even if not connected)
         UICommon::updateConnectionStatus(machine_connected, wifi_connected);
@@ -139,7 +172,7 @@ void loop()
         
         // Only update other status info if machine is connected
         if (machine_connected) {
-            const FluidNCStatus& status = FluidNCClient::getStatus();
+            const FluidNCStatus& status = CommManager::getStatus();
         
             // Update status bar
             const char* state_str = "IDLE";
@@ -295,8 +328,8 @@ void loop()
     static unsigned long lastUpdate = 0;
     if (millis() - lastUpdate > 5000) {
         lastUpdate = millis();
-        Serial.printf("[%lu] LVGL running, Free heap: %d, FluidNC: %s\n", 
+        Serial.printf("[%lu] LVGL running, Free heap: %d, Machine: %s\n",
                       millis()/1000, ESP.getFreeHeap(),
-                      FluidNCClient::isConnected() ? "Connected" : "Disconnected");
+                      CommManager::isConnected() ? "Connected" : "Disconnected");
     }
 }

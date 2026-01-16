@@ -7,7 +7,8 @@
 
 enum ConnectionType {
     CONN_WIRED = 0,
-    CONN_WIRELESS = 1
+    CONN_WIRELESS = 1,
+    CONN_UART = 2
 };
 
 struct MachineConfig {

@@ -2,7 +2,7 @@
 #include "ui/ui_theme.h"
 #include "ui/ui_tabs.h"
 #include "ui/upload_manager.h"
-#include "network/fluidnc_client.h"
+#include "core/comm_manager.h"
 #include "config.h"
 #include "config.h"
 #include <Arduino.h>
@@ -175,7 +175,7 @@ void UITabFiles::refreshFileList() {
 }
 
 void UITabFiles::refreshFileList(const std::string &path) {
-    if (!FluidNCClient::isConnected()) {
+    if (!CommManager::isConnected()) {
         if (status_label) {
             lv_label_set_text(status_label, "Not connected");
             lv_obj_set_style_text_color(status_label, UITheme::UI_WARNING, 0);
@@ -185,7 +185,7 @@ void UITabFiles::refreshFileList(const std::string &path) {
     }
     
     // Check if machine is in IDLE state - don't fetch files if machine is running
-    const FluidNCStatus& status = FluidNCClient::getStatus();
+    const FluidNCStatus& status = CommManager::getStatus();
     if (status.state != STATE_IDLE) {
         if (status_label) {
             lv_label_set_text(status_label, "Machine must be IDLE to list files");
@@ -214,7 +214,7 @@ void UITabFiles::refreshFileList(const std::string &path) {
     file_names.clear();
     
     // Register callback to receive JSON file list response
-    FluidNCClient::setMessageCallback([](const char* message) {
+    CommManager::setMessageCallback([](const char* message) {
         // Accumulate multi-line JSON responses
         static String jsonBuffer;
         static bool collecting = false;
@@ -229,7 +229,7 @@ void UITabFiles::refreshFileList(const std::string &path) {
             if (jsonBuffer.length() > 0 && collecting) {
                 Serial.printf("[Files] Timeout - parsing JSON buffer (%d bytes)\n", jsonBuffer.length());
                 parseFileList(jsonBuffer.c_str());
-                FluidNCClient::clearMessageCallback();
+                CommManager::clearMessageCallback();
             }
             jsonBuffer = "";
             collecting = false;
@@ -253,7 +253,7 @@ void UITabFiles::refreshFileList(const std::string &path) {
                 parseFileList(jsonBuffer.c_str());
                 jsonBuffer = "";
                 collecting = false;
-                FluidNCClient::clearMessageCallback();
+                CommManager::clearMessageCallback();
             }
             return;  // Always return early for "ok" messages
         }
@@ -287,7 +287,7 @@ void UITabFiles::refreshFileList(const std::string &path) {
     // Send JSON file list command for specified path
     char cmd[256];
     snprintf(cmd, sizeof(cmd), "$Files/ListGcode=%s\n", path.c_str());
-    FluidNCClient::sendCommand(cmd);
+    CommManager::sendCommand(cmd);
 }
 
 void UITabFiles::refresh_button_event_cb(lv_event_t *e) {
@@ -537,7 +537,7 @@ static void play_button_event_cb(lv_event_t *e) {
         // Send run command to FluidNC
         char cmd[256];
         snprintf(cmd, sizeof(cmd), "%s%s\n", cmd_prefix, filename);
-        FluidNCClient::sendCommand(cmd);
+        CommManager::sendCommand(cmd);
         
         // Switch to Status tab (index 0) to monitor progress
         lv_obj_t *tabview = UITabs::getTabview();
@@ -564,7 +564,7 @@ static void delete_confirm_event_cb(lv_event_t *e) {
         // Send delete command to FluidNC
         char cmd[256];
         snprintf(cmd, sizeof(cmd), "%s%s\n", cmd_prefix, filename);
-        FluidNCClient::sendCommand(cmd);
+        CommManager::sendCommand(cmd);
         
         // Request a refresh after a short delay (500ms)
         // The refresh will be handled by checkPendingRefresh() in the main loop

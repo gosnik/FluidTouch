@@ -6,7 +6,7 @@
 #include "ui/tabs/ui_tab_macros.h"
 #include "ui/tabs/ui_tab_terminal.h"
 #include "ui/tabs/ui_tab_settings.h"
-#include "network/fluidnc_client.h"
+#include "core/comm_manager.h"
 
 // Static member initialization
 lv_obj_t *UITabs::tabview = nullptr;
@@ -107,8 +107,8 @@ void UITabs::createMacrosTab(lv_obj_t *tab) {
 void UITabs::createTerminalTab(lv_obj_t *tab) {
     UITabTerminal::create(tab);
 
-    // Register terminal callback to receive FluidNC messages (excluding status reports)
-    FluidNCClient::setTerminalCallback([](const char* message) {
+    // Register terminal callback to receive CNC messages (excluding status reports)
+    CommManager::setTerminalCallback([](const char* message) {
         UITabTerminal::appendMessage(message);
     });
 }

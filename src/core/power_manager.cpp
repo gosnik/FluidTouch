@@ -1,9 +1,11 @@
 #include "core/power_manager.h"
-#include "network/fluidnc_client.h"
+#include "core/comm_manager.h"
 #include "config.h"
 #include <Preferences.h>
 #include <Arduino.h>
-#include <WiFi.h>
+#if FT_WIFI_ENABLED
+#include "network/wifi_manager.h"
+#endif
 #include <esp_sleep.h>
 
 // Static member initialization
@@ -219,7 +221,9 @@ void PowerManager::applyNormalBrightness() {
 void PowerManager::enterFullBrightness() {
     if (current_state != FULL_BRIGHTNESS) {
         Serial.printf("PowerManager: Entering FULL_BRIGHTNESS (brightness=%d)\n", normal_brightness);
-        display_driver->setBacklight(normal_brightness);
+        if (display_driver) {
+            display_driver->setBacklight(normal_brightness);
+        }
         current_state = FULL_BRIGHTNESS;
         state_changed = true;
     }
@@ -228,7 +232,9 @@ void PowerManager::enterFullBrightness() {
 void PowerManager::enterDimmed() {
     if (current_state != DIMMED) {
         Serial.printf("PowerManager: Entering DIMMED (brightness=%d)\n", dim_brightness);
-        display_driver->setBacklight(dim_brightness);
+        if (display_driver) {
+            display_driver->setBacklight(dim_brightness);
+        }
         current_state = DIMMED;
         state_changed = true;
     }
@@ -237,7 +243,9 @@ void PowerManager::enterDimmed() {
 void PowerManager::enterScreenOff() {
     if (current_state != SCREEN_OFF) {
         Serial.println("PowerManager: Entering SCREEN_OFF");
-        display_driver->setBacklightOff();
+        if (display_driver) {
+            display_driver->setBacklightOff();
+        }
         current_state = SCREEN_OFF;
         state_changed = true;
     }
@@ -253,13 +261,16 @@ void PowerManager::enterDeepSleep() {
     prefs.end();
     
     // Power down display (backlight only - see display_driver.cpp for details)
-    display_driver->powerDown();
+    if (display_driver) {
+        display_driver->powerDown();
+    }
     delay(100);
     
     // Shutdown network and radios for power savings
-    FluidNCClient::disconnect();
-    WiFi.disconnect(true);
-    WiFi.mode(WIFI_OFF);
+    CommManager::disconnect();
+    #if FT_WIFI_ENABLED
+    WifiManager::disconnect(true);
+    #endif
     //FIXME? btStop();
     
     // Disable all wakeup sources except reset button

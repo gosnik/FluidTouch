@@ -291,6 +291,8 @@ void UIMachineSelect::refreshMachineList() {
                 String connection_text;
                 if (machines[i].connection_type == CONN_WIRELESS) {
                     connection_text = String(LV_SYMBOL_WIFI) + " " + String(machines[i].ssid);
+                } else if (machines[i].connection_type == CONN_UART) {
+                    connection_text = String(LV_SYMBOL_USB) + " UART";
                 } else {
                     connection_text = String(LV_SYMBOL_USB) + " Wired";
                 }
@@ -567,7 +569,13 @@ void UIMachineSelect::onConfigSave(lv_event_t *e) {
     // Create config
     MachineConfig config;
     strncpy(config.name, name, sizeof(config.name) - 1);
-    config.connection_type = (sel == 0) ? CONN_WIRELESS : CONN_WIRED;
+    if (sel == 0) {
+        config.connection_type = CONN_WIRELESS;
+    } else if (sel == 1) {
+        config.connection_type = CONN_WIRED;
+    } else {
+        config.connection_type = CONN_UART;
+    }
     strncpy(config.ssid, ssid, sizeof(config.ssid) - 1);
     strncpy(config.password, password, sizeof(config.password) - 1);
     strncpy(config.fluidnc_url, url, sizeof(config.fluidnc_url) - 1);
@@ -595,6 +603,7 @@ void UIMachineSelect::onConnectionTypeChanged(lv_event_t *e) {
 void UIMachineSelect::updateConnectionFields() {
     uint16_t sel = lv_dropdown_get_selected(dd_connection_type);
     bool is_wireless = (sel == 0);
+    bool is_uart = (sel == 2);
     
     // Enable/disable wireless-specific fields
     if (is_wireless) {
@@ -603,6 +612,14 @@ void UIMachineSelect::updateConnectionFields() {
     } else {
         lv_obj_add_state(ta_ssid, LV_STATE_DISABLED);
         lv_obj_add_state(ta_password, LV_STATE_DISABLED);
+    }
+
+    if (is_uart) {
+        lv_obj_add_state(ta_url, LV_STATE_DISABLED);
+        lv_obj_add_state(ta_port, LV_STATE_DISABLED);
+    } else {
+        lv_obj_clear_state(ta_url, LV_STATE_DISABLED);
+        lv_obj_clear_state(ta_port, LV_STATE_DISABLED);
     }
 }
 
@@ -723,8 +740,16 @@ void UIMachineSelect::showConfigDialog(int index) {
     lv_obj_set_height(dd_connection_type, UI_SCALE_Y(48));
     lv_obj_set_style_text_font(dd_connection_type, &lv_font_montserrat_18, 0);
     lv_obj_set_style_pad_top(dd_connection_type, UI_SCALE_Y(12), LV_PART_MAIN);  // Adjust top padding to vertically center text
-    lv_dropdown_set_options(dd_connection_type, "Wireless");  // Wired option hidden for now, reserved for future
-    if (!is_new) lv_dropdown_set_selected(dd_connection_type, machines[index].connection_type);
+    lv_dropdown_set_options(dd_connection_type, "Wireless\nWired\nUART");
+    if (!is_new) {
+        uint16_t selected = 0;
+        if (machines[index].connection_type == CONN_WIRED) {
+            selected = 1;
+        } else if (machines[index].connection_type == CONN_UART) {
+            selected = 2;
+        }
+        lv_dropdown_set_selected(dd_connection_type, selected);
+    }
     lv_obj_add_event_cb(dd_connection_type, onConnectionTypeChanged, LV_EVENT_VALUE_CHANGED, nullptr);
     
     // Password field

@@ -1,9 +1,13 @@
 #include "ui/upload_manager.h"
 #include "config.h"
-#include "network/fluidnc_client.h"
+#include "core/comm_manager.h"
+#include <HTTPClient.h>
 #include <SD.h>
 #include <SPI.h>
-#include <HTTPClient.h>
+#if FT_WIFI_ENABLED
+#include "network/wifi_manager.h"
+#include <WiFiClient.h>
+#endif
 #include <esp_heap_caps.h>
 #include <lvgl.h>
 
@@ -90,8 +94,16 @@ bool UploadManager::uploadFile(const char* localPath,
     }
     
     // Get FluidNC IP and construct URL
-    String machineIP = FluidNCClient::getMachineIP();
+    String machineIP = CommManager::getMachineIP();
     if (machineIP.isEmpty()) {
+        if (CommManager::getConnectionType() == CONN_UART) {
+            Serial.println("[UploadManager] Uploads not available over UART");
+            heap_caps_free(buffer);
+            file.close();
+            _uploading = false;
+            if (onComplete) onComplete(false, "Upload not supported over UART");
+            return false;
+        }
         Serial.println("[UploadManager] FluidNC not connected");
         heap_caps_free(buffer);
         file.close();
@@ -100,11 +112,12 @@ bool UploadManager::uploadFile(const char* localPath,
         return false;
     }
     
+    #if FT_WIFI_ENABLED
     // Resolve hostname if needed
-    IPAddress serverIP;
     if (machineIP.indexOf('.') == -1) {
         // It's a hostname, try to resolve it
-        if (!WiFi.hostByName(machineIP.c_str(), serverIP)) {
+        String resolved_ip;
+        if (!WifiManager::resolveHostname(machineIP.c_str(), resolved_ip)) {
             Serial.printf("[UploadManager] Failed to resolve hostname: %s\n", machineIP.c_str());
             heap_caps_free(buffer);
             file.close();
@@ -112,9 +125,17 @@ bool UploadManager::uploadFile(const char* localPath,
             if (onComplete) onComplete(false, "Failed to resolve hostname");
             return false;
         }
-        machineIP = serverIP.toString();
+        machineIP = resolved_ip;
         Serial.printf("[UploadManager] Resolved to IP: %s\n", machineIP.c_str());
     }
+    #else
+    Serial.println("[UploadManager] WiFi disabled in this build");
+    heap_caps_free(buffer);
+    file.close();
+    _uploading = false;
+    if (onComplete) onComplete(false, "WiFi disabled");
+    return false;
+    #endif
     
     // Build remote path - remove leading slash from filename if present
     String filenameStr = String(filename);
@@ -173,6 +194,7 @@ bool UploadManager::uploadFile(const char* localPath,
         onProgress(0, fileSize);
     }
     
+    #if FT_WIFI_ENABLED
     // Create WiFi client and connect directly
     WiFiClient client;
     if (!client.connect(machineIP.c_str(), 80)) {
@@ -293,6 +315,13 @@ bool UploadManager::uploadFile(const char* localPath,
     
     Serial.printf("[UploadManager] Upload %s\n", success ? "completed" : "failed");
     return success;
+    #else
+    heap_caps_free(buffer);
+    file.close();
+    _uploading = false;
+    if (onComplete) onComplete(false, "WiFi disabled");
+    return false;
+    #endif
 }
 
 

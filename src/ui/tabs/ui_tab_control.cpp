@@ -3,7 +3,9 @@
 #include "ui/tabs/control/ui_tab_control_actions.h"
 #include "ui/tabs/control/ui_tab_control_jog.h"
 #include "ui/tabs/control/ui_tab_control_joystick.h"
+#include "ui/tabs/control/ui_tab_control_power_feed.h"
 #include "ui/tabs/control/ui_tab_control_probe.h"
+#include "ui/tabs/control/ui_tab_control_rotary_table.h"
 #include "ui/tabs/control/ui_tab_control_override.h"
 #include <Arduino.h>
 
@@ -64,6 +66,8 @@ void UITabControl::create(lv_obj_t *tab) {
     lv_obj_t *tab_actions = lv_tabview_add_tab(sub_tabview, "Actions");
     lv_obj_t *tab_jog = lv_tabview_add_tab(sub_tabview, "Jog");
     lv_obj_t *tab_joystick = lv_tabview_add_tab(sub_tabview, "Joystick");
+    lv_obj_t *tab_power_feed = lv_tabview_add_tab(sub_tabview, "Power Feed");
+    lv_obj_t *tab_rotary = lv_tabview_add_tab(sub_tabview, "Rotary Table");
     lv_obj_t *tab_probe = lv_tabview_add_tab(sub_tabview, "Probe");
     lv_obj_t *tab_overrides = lv_tabview_add_tab(sub_tabview, "Overrides");
     
@@ -71,6 +75,8 @@ void UITabControl::create(lv_obj_t *tab) {
     lv_obj_clear_flag(tab_actions, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_clear_flag(tab_jog, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_clear_flag(tab_joystick, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_clear_flag(tab_power_feed, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_clear_flag(tab_rotary, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_clear_flag(tab_probe, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_clear_flag(tab_overrides, LV_OBJ_FLAG_SCROLLABLE);
     
@@ -78,6 +84,8 @@ void UITabControl::create(lv_obj_t *tab) {
     lv_obj_set_style_bg_color(tab_actions, UITheme::BG_MEDIUM, 0);
     lv_obj_set_style_bg_color(tab_jog, UITheme::BG_MEDIUM, 0);
     lv_obj_set_style_bg_color(tab_joystick, UITheme::BG_MEDIUM, 0);
+    lv_obj_set_style_bg_color(tab_power_feed, UITheme::BG_MEDIUM, 0);
+    lv_obj_set_style_bg_color(tab_rotary, UITheme::BG_MEDIUM, 0);
     lv_obj_set_style_bg_color(tab_probe, UITheme::BG_MEDIUM, 0);
     lv_obj_set_style_bg_color(tab_overrides, UITheme::BG_MEDIUM, 0);
     
@@ -85,6 +93,8 @@ void UITabControl::create(lv_obj_t *tab) {
     lv_obj_set_style_pad_all(tab_actions, 5, 0);
     lv_obj_set_style_pad_all(tab_jog, 5, 0);
     lv_obj_set_style_pad_all(tab_joystick, 5, 0);
+    lv_obj_set_style_pad_all(tab_power_feed, 5, 0);
+    lv_obj_set_style_pad_all(tab_rotary, 5, 0);
     lv_obj_set_style_pad_all(tab_probe, 5, 0);
     lv_obj_set_style_pad_all(tab_overrides, 5, 0);
 
@@ -115,6 +125,8 @@ void UITabControl::create(lv_obj_t *tab) {
     UITabControlActions::create(tab_actions);
     UITabControlJog::create(tab_jog);
     UITabControlJoystick::create(tab_joystick);
+    UITabControlPowerFeed::create(tab_power_feed);
+    UITabControlRotaryTable::create(tab_rotary);
     UITabControlProbe::create(tab_probe);
     UITabControlOverride::create(tab_overrides);
 }

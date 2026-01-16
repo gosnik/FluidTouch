@@ -1,7 +1,7 @@
 #include "ui/tabs/control/ui_tab_control_joystick.h"
 #include "ui/tabs/settings/ui_tab_settings_jog.h"
 #include "ui/ui_theme.h"
-#include "network/fluidnc_client.h"
+#include "core/comm_manager.h"
 #include "config.h"
 #include <lvgl.h>
 #include <math.h>
@@ -67,7 +67,7 @@ static float applyJoystickCurve(float percent) {
 // Send jog cancel command (realtime command 0x85)
 static void sendJogCancel() {
     // Send as null-terminated string (same format as jog tab uses)
-    FluidNCClient::sendCommand("\x85");
+    CommManager::sendCommand("\x85");
     Serial.println("Joystick: Sent jog cancel (0x85)");
 }
 
@@ -185,7 +185,7 @@ static void xy_joystick_event_handler(lv_event_t *e) {
                 char jog_cmd[64];
                 snprintf(jog_cmd, sizeof(jog_cmd), "$J=G91 X%.4f Y%.4f F%.0f\n", 
                          x_distance, y_distance, feed_rate);
-                FluidNCClient::sendCommand(jog_cmd);
+                CommManager::sendCommand(jog_cmd);
                 
                 xy_jogging = true;
                 last_jog_time = current_time;
@@ -313,7 +313,7 @@ static void z_joystick_event_handler(lv_event_t *e) {
                 char jog_cmd[64];
                 snprintf(jog_cmd, sizeof(jog_cmd), "$J=G91 Z%.4f F%.0f\n", 
                          z_distance, feed_rate);
-                FluidNCClient::sendCommand(jog_cmd);
+                CommManager::sendCommand(jog_cmd);
                 
                 z_jogging = true;
                 last_jog_time = current_time;
@@ -411,7 +411,7 @@ static void x_joystick_event_handler(lv_event_t *e) {
                 
                 char jog_cmd[64];
                 snprintf(jog_cmd, sizeof(jog_cmd), "$J=G91 X%.4f F%.0f\n", x_distance, feed_rate);
-                FluidNCClient::sendCommand(jog_cmd);
+                CommManager::sendCommand(jog_cmd);
                 
                 xy_jogging = true;
                 last_jog_time = current_time;
@@ -495,7 +495,7 @@ static void y_joystick_event_handler(lv_event_t *e) {
                 
                 char jog_cmd[64];
                 snprintf(jog_cmd, sizeof(jog_cmd), "$J=G91 Y%.4f F%.0f\n", y_distance, feed_rate);
-                FluidNCClient::sendCommand(jog_cmd);
+                CommManager::sendCommand(jog_cmd);
                 
                 xy_jogging = true;
                 last_jog_time = current_time;

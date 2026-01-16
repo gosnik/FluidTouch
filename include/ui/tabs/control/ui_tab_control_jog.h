@@ -8,12 +8,15 @@ public:
     static void create(lv_obj_t *tab);
 
 private:
+    static lv_obj_t *parent_tab;
     static lv_obj_t *xy_step_display_label;
     static lv_obj_t *z_step_display_label;
     static lv_obj_t *xy_step_buttons[5];
     static lv_obj_t *z_step_buttons[5];
     static lv_obj_t *xy_feedrate_label;
     static lv_obj_t *z_feedrate_label;
+    static lv_timer_t *encoder_timer;
+    static int16_t last_encoder_counts[3];
     static float xy_current_step;
     static float z_current_step;
     static int xy_current_step_index;
@@ -31,6 +34,7 @@ private:
     static void update_z_step_display();
     static void update_xy_step_button_styles();
     static void update_z_step_button_styles();
+    static void encoderTimerCb(lv_timer_t *timer);
     
     // Jog button event handlers
     static void xy_jog_button_event_cb(lv_event_t *e);

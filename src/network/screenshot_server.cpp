@@ -1,12 +1,12 @@
 #include "network/screenshot_server.h"
 #include "config.h"
 #include "core/display_driver.h"
-#include <WiFi.h>
+
+#if ENABLE_SCREENSHOT_SERVER && FT_WIFI_ENABLED
+#include "network/wifi_manager.h"
 #include <WebServer.h>
 #include <lvgl.h>
 #include <esp_heap_caps.h>
-
-#if ENABLE_SCREENSHOT_SERVER
 
 static WebServer server(80);
 static bool wifi_connected = false;
@@ -182,7 +182,7 @@ static void handleRoot() {
     html += "<h1>FluidTouch Display</h1>";
     html += "<div class='info'>";
     html += "<p><strong>Display:</strong> " + String(SCREEN_WIDTH) + "x" + String(SCREEN_HEIGHT) + "</p>";
-    html += "<p><strong>IP Address:</strong> " + WiFi.localIP().toString() + "</p>";
+    html += "<p><strong>IP Address:</strong> " + WifiManager::getLocalIpString() + "</p>";
     html += "</div>";
     html += "<button onclick='captureScreenshot()'>Capture Screenshot</button>";
     html += "<button onclick='location.reload()'>Refresh Page</button>";
@@ -211,7 +211,7 @@ static void handleRoot() {
 }
 
 void ScreenshotServer::init(DisplayDriver* display_driver) {
-    #if !ENABLE_SCREENSHOT_SERVER
+    #if !ENABLE_SCREENSHOT_SERVER || !FT_WIFI_ENABLED
     return;
     #endif
     
@@ -221,7 +221,7 @@ void ScreenshotServer::init(DisplayDriver* display_driver) {
     Serial.println("\n=== Screenshot Server ===");
     
     // Check if WiFi is already connected (should be connected via machine config)
-    if (WiFi.status() != WL_CONNECTED) {
+    if (!WifiManager::isConnected()) {
         Serial.println("WiFi not connected. Screenshot server disabled.");
         wifi_connected = false;
         return;
@@ -230,8 +230,8 @@ void ScreenshotServer::init(DisplayDriver* display_driver) {
     wifi_connected = true;
     Serial.println("WiFi already connected!");
     Serial.print("IP Address: ");
-    Serial.println(WiFi.localIP());
-    Serial.println("Access the screenshot server at: http://" + WiFi.localIP().toString());
+    Serial.println(WifiManager::getLocalIpString());
+    Serial.println("Access the screenshot server at: http://" + WifiManager::getLocalIpString());
     
     // Setup web server routes
     server.on("/", handleRoot);
@@ -252,19 +252,21 @@ void ScreenshotServer::handleClient() {
 }
 
 bool ScreenshotServer::isConnected() {
-    return wifi_connected && (WiFi.status() == WL_CONNECTED);
+    return wifi_connected && WifiManager::isConnected();
 }
 
 String ScreenshotServer::getIPAddress() {
     if (wifi_connected) {
-        return WiFi.localIP().toString();
+        return WifiManager::getLocalIpString();
     }
     return "Not connected";
 }
 
 #else
 // Stub implementations when server is disabled
-void ScreenshotServer::init(DisplayDriver* display_driver) {}
+void ScreenshotServer::init(DisplayDriver* display_driver) {
+    (void)display_driver;
+}
 void ScreenshotServer::handleClient() {}
 bool ScreenshotServer::isConnected() { return false; }
 String ScreenshotServer::getIPAddress() { return "Disabled"; }

@@ -2,7 +2,10 @@
 #include "ui/ui_theme.h"
 #include "config.h"
 #include "network/screenshot_server.h"
-#include <WiFi.h>
+#include "ui/machine_config.h"
+#if FT_WIFI_ENABLED
+#include "network/wifi_manager.h"
+#endif
 
 // Static member initialization
 lv_obj_t *UITabSettingsAbout::screenshot_link_label = nullptr;
@@ -93,8 +96,18 @@ void UITabSettingsAbout::update() {
     // Only update once when WiFi connects
     if (wifi_url_set) return;
     
-    if (WiFi.status() == WL_CONNECTED) {
-        String url = "http://" + WiFi.localIP().toString();
+    MachineConfig config;
+    bool is_wireless = MachineConfigManager::getSelectedMachine(config)
+        && (config.connection_type == CONN_WIRELESS);
+    if (!is_wireless) {
+        lv_label_set_text(screenshot_link_label, "WiFi not\nused");
+        lv_obj_set_style_text_color(screenshot_link_label, UITheme::TEXT_DISABLED, 0);
+        return;
+    }
+
+    #if FT_WIFI_ENABLED
+    if (WifiManager::isConnected()) {
+        String url = "http://" + WifiManager::getLocalIpString();
         lv_label_set_text(screenshot_link_label, url.c_str());
         lv_obj_set_style_text_color(screenshot_link_label, UITheme::UI_INFO, 0);
         
@@ -103,4 +116,8 @@ void UITabSettingsAbout::update() {
         lv_label_set_text(screenshot_link_label, "WiFi not\nconnected");
         lv_obj_set_style_text_color(screenshot_link_label, UITheme::TEXT_DISABLED, 0);
     }
+    #else
+    lv_label_set_text(screenshot_link_label, "WiFi disabled");
+    lv_obj_set_style_text_color(screenshot_link_label, UITheme::TEXT_DISABLED, 0);
+    #endif
 }

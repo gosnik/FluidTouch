@@ -55,8 +55,37 @@
 #define PREFS_NAMESPACE "fluidtouch"        // Machine configurations
 #define PREFS_SYSTEM_NAMESPACE "ft_system"  // System flags (clean_shutdown, etc.)
 
-// Screenshot server configuration
+// Grbl UART configuration
+#define GRBL_UART_RX_PIN 7
+#define GRBL_UART_TX_PIN 8
+#define GRBL_UART_BAUD 115200
+
+// Encoder pin configuration
+#if defined(CONFIG_IDF_TARGET_ESP32P4)
+#define ENCODER1_A_PIN 21
+#define ENCODER1_B_PIN 22
+#define ENCODER2_A_PIN 24
+#define ENCODER2_B_PIN 25
+#define ENCODER3_A_PIN 28
+#define ENCODER3_B_PIN 29
+#else
+#define ENCODER1_A_PIN -1
+#define ENCODER1_B_PIN -1
+#define ENCODER2_A_PIN -1
+#define ENCODER2_B_PIN -1
+#define ENCODER3_A_PIN -1
+#define ENCODER3_B_PIN -1
+#endif
+
+// WiFi feature toggle (override in build flags)
+#ifndef FT_WIFI_ENABLED
+#define FT_WIFI_ENABLED true
+#endif
+
+// Screenshot server configuration (override in build flags)
+#ifndef ENABLE_SCREENSHOT_SERVER
 #define ENABLE_SCREENSHOT_SERVER true
+#endif
 
 // SD Card Configuration
 #ifdef HARDWARE_ADVANCE

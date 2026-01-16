@@ -2,7 +2,7 @@
 #include "ui/ui_theme.h"
 #include "ui/machine_config.h"
 #include "config.h"
-#include "network/fluidnc_client.h"
+#include "core/comm_manager.h"
 #include <Arduino.h>
 #include <Preferences.h>
 #include <ArduinoJson.h>
@@ -453,7 +453,7 @@ void UITabMacros::onMacroClicked(lv_event_t *e) {
     snprintf(command, sizeof(command), "$SD/Run=/sd/fluidtouch/macros/%s\n", macros[index].file_path);
     
     Serial.printf("Executing macro: %s\n", command);
-    FluidNCClient::sendCommand(command);
+    CommManager::sendCommand(command);
 }
 
 // Show Add Macro dialog
@@ -922,7 +922,7 @@ void UITabMacros::loadMacroFilesFromSD() {
     Serial.println("[Macros] Requesting file list from SD card");
     
     // Register callback to receive JSON file list response
-    FluidNCClient::setMessageCallback([](const char* message) {
+    CommManager::setMessageCallback([](const char* message) {
         static String jsonBuffer;
         static bool collecting = false;
         static uint32_t lastMessageTime = 0;
@@ -988,7 +988,7 @@ void UITabMacros::loadMacroFilesFromSD() {
                         }
                     }
                 }
-                FluidNCClient::clearMessageCallback();
+                CommManager::clearMessageCallback();
             }
             jsonBuffer = "";
             collecting = false;
@@ -1059,7 +1059,7 @@ void UITabMacros::loadMacroFilesFromSD() {
                 }
                 jsonBuffer = "";
                 collecting = false;
-                FluidNCClient::clearMessageCallback();
+                CommManager::clearMessageCallback();
             }
             return;
         }
@@ -1086,7 +1086,7 @@ void UITabMacros::loadMacroFilesFromSD() {
     });
     
     // Send command to list files from macros directory
-    FluidNCClient::sendCommand("$Files/ListGcode=/sd/fluidtouch/macros\n");
+    CommManager::sendCommand("$Files/ListGcode=/sd/fluidtouch/macros\n");
 }
 
 // Update progress display

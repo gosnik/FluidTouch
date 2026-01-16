@@ -1,6 +1,6 @@
 #include "ui/tabs/control/ui_tab_control_actions.h"
 #include "ui/ui_theme.h"
-#include "network/fluidnc_client.h"
+#include "core/comm_manager.h"
 #include "config.h"
 
 // Static member initialization
@@ -209,22 +209,22 @@ void UITabControlActions::updatePauseButton(int machine_state) {
 }
 
 void UITabControlActions::onPauseResumeClicked(lv_event_t *e) {
-    if (!FluidNCClient::isConnected()) {
+    if (!CommManager::isConnected()) {
         Serial.println("[Actions] Not connected to FluidNC");
         return;
     }
     
     // Check actual machine state
-    FluidNCStatus status = FluidNCClient::getStatus();
+    FluidNCStatus status = CommManager::getStatus();
     
     if (status.state == STATE_HOLD) {
         // Machine is paused - send Resume command
         Serial.println("[Actions] Sending Resume command (~)");
-        FluidNCClient::sendCommand("~");
+        CommManager::sendCommand("~");
     } else {
         // Machine is running/idle - send Pause command
         Serial.println("[Actions] Sending Pause command (!)");
-        FluidNCClient::sendCommand("!");
+        CommManager::sendCommand("!");
     }
     
     // Note: Button appearance will be updated by the periodic updatePauseButton() call
@@ -232,17 +232,17 @@ void UITabControlActions::onPauseResumeClicked(lv_event_t *e) {
 }
 
 void UITabControlActions::onUnlockClicked(lv_event_t *e) {
-    if (!FluidNCClient::isConnected()) {
+    if (!CommManager::isConnected()) {
         Serial.println("[Actions] Not connected to FluidNC");
         return;
     }
     
     Serial.println("[Actions] Sending Unlock command ($X)");
-    FluidNCClient::sendCommand("$X\n");
+    CommManager::sendCommand("$X\n");
 }
 
 void UITabControlActions::onSoftResetClicked(lv_event_t *e) {
-    if (!FluidNCClient::isConnected()) {
+    if (!CommManager::isConnected()) {
         Serial.println("[Actions] Not connected to FluidNC");
         return;
     }
@@ -250,7 +250,7 @@ void UITabControlActions::onSoftResetClicked(lv_event_t *e) {
     Serial.println("[Actions] Sending Soft Reset command (Ctrl-X)");
     // Send Ctrl-X (0x18) as a single character
     char reset_cmd[2] = {0x18, 0x00};
-    FluidNCClient::sendCommand(reset_cmd);
+    CommManager::sendCommand(reset_cmd);
     // Button will sync with actual state from FluidNC status
     if (lbl_pause) {
         lv_label_set_text(lbl_pause, "Pause");
@@ -258,98 +258,98 @@ void UITabControlActions::onSoftResetClicked(lv_event_t *e) {
 }
 
 void UITabControlActions::onHomeXClicked(lv_event_t *e) {
-    if (!FluidNCClient::isConnected()) {
+    if (!CommManager::isConnected()) {
         Serial.println("[Actions] Not connected to FluidNC");
         return;
     }
     
     Serial.println("[Actions] Sending Home X command ($HX)");
-    FluidNCClient::sendCommand("$HX\n");
+    CommManager::sendCommand("$HX\n");
 }
 
 void UITabControlActions::onHomeYClicked(lv_event_t *e) {
-    if (!FluidNCClient::isConnected()) {
+    if (!CommManager::isConnected()) {
         Serial.println("[Actions] Not connected to FluidNC");
         return;
     }
     
     Serial.println("[Actions] Sending Home Y command ($HY)");
-    FluidNCClient::sendCommand("$HY\n");
+    CommManager::sendCommand("$HY\n");
 }
 
 void UITabControlActions::onHomeZClicked(lv_event_t *e) {
-    if (!FluidNCClient::isConnected()) {
+    if (!CommManager::isConnected()) {
         Serial.println("[Actions] Not connected to FluidNC");
         return;
     }
     
     Serial.println("[Actions] Sending Home Z command ($HZ)");
-    FluidNCClient::sendCommand("$HZ\n");
+    CommManager::sendCommand("$HZ\n");
 }
 
 void UITabControlActions::onHomeAllClicked(lv_event_t *e) {
-    if (!FluidNCClient::isConnected()) {
+    if (!CommManager::isConnected()) {
         Serial.println("[Actions] Not connected to FluidNC");
         return;
     }
     
     Serial.println("[Actions] Sending Home All command ($H)");
-    FluidNCClient::sendCommand("$H\n");
+    CommManager::sendCommand("$H\n");
 }
 
 void UITabControlActions::onZeroXClicked(lv_event_t *e) {
-    if (!FluidNCClient::isConnected()) {
+    if (!CommManager::isConnected()) {
         Serial.println("[Actions] Not connected to FluidNC");
         return;
     }
     
     Serial.println("[Actions] Sending Zero X command (G10 L20 P0 X0)");
-    FluidNCClient::sendCommand("G10 L20 P0 X0\n");
+    CommManager::sendCommand("G10 L20 P0 X0\n");
 }
 
 void UITabControlActions::onZeroYClicked(lv_event_t *e) {
-    if (!FluidNCClient::isConnected()) {
+    if (!CommManager::isConnected()) {
         Serial.println("[Actions] Not connected to FluidNC");
         return;
     }
     
     Serial.println("[Actions] Sending Zero Y command (G10 L20 P0 Y0)");
-    FluidNCClient::sendCommand("G10 L20 P0 Y0\n");
+    CommManager::sendCommand("G10 L20 P0 Y0\n");
 }
 
 void UITabControlActions::onZeroZClicked(lv_event_t *e) {
-    if (!FluidNCClient::isConnected()) {
+    if (!CommManager::isConnected()) {
         Serial.println("[Actions] Not connected to FluidNC");
         return;
     }
     
     Serial.println("[Actions] Sending Zero Z command (G10 L20 P0 Z0)");
-    FluidNCClient::sendCommand("G10 L20 P0 Z0\n");
+    CommManager::sendCommand("G10 L20 P0 Z0\n");
 }
 
 void UITabControlActions::onZeroAllClicked(lv_event_t *e) {
-    if (!FluidNCClient::isConnected()) {
+    if (!CommManager::isConnected()) {
         Serial.println("[Actions] Not connected to FluidNC");
         return;
     }
     
     Serial.println("[Actions] Sending Zero All command (G10 L20 P0 X0 Y0 Z0)");
-    FluidNCClient::sendCommand("G10 L20 P0 X0 Y0 Z0\n");
+    CommManager::sendCommand("G10 L20 P0 X0 Y0 Z0\n");
 }
 
 void UITabControlActions::onQuickStopClicked(lv_event_t *e) {
-    if (!FluidNCClient::isConnected()) {
+    if (!CommManager::isConnected()) {
         Serial.println("[Actions] Not connected to FluidNC");
         return;
     }
     
     Serial.println("[Actions] QUICK STOP - Sending Feed Hold + Soft Reset");
     // First send feed hold
-    FluidNCClient::sendCommand("!");
+    CommManager::sendCommand("!");
     // Small delay then soft reset
     delay(100);
     char reset_cmd[2] = {0x18, 0x00};
-    FluidNCClient::sendCommand(reset_cmd);
+    CommManager::sendCommand(reset_cmd);
     // Button will sync with actual state from FluidNC status
     if (lbl_pause) {
         lv_label_set_text(lbl_pause, "Pause");

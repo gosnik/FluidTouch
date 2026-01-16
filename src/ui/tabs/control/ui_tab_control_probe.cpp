@@ -1,7 +1,7 @@
 #include "ui/tabs/control/ui_tab_control_probe.h"
 #include "ui/tabs/settings/ui_tab_settings_probe.h"
 #include "ui/ui_theme.h"
-#include "network/fluidnc_client.h"
+#include "core/comm_manager.h"
 #include "config.h"
 #include <lvgl.h>
 
@@ -253,7 +253,7 @@ void UITabControlProbe::probe_z_minus_handler(lv_event_t* e) {
 }
 
 void UITabControlProbe::executeProbe(const char* axis, const char* direction) {
-    if (!FluidNCClient::isConnected()) {
+    if (!CommManager::isConnected()) {
         if (results_text) {
             lv_textarea_set_text(results_text, "Error: Not connected to FluidNC");
         }
@@ -290,10 +290,10 @@ void UITabControlProbe::executeProbe(const char* axis, const char* direction) {
     }
     
     // Save current distance mode (G90/G91) to restore after probing
-    const char* saved_distance_mode = FluidNCClient::getStatus().modal_distance;
+    const char* saved_distance_mode = CommManager::getStatus().modal_distance;
     
     // Set incremental mode BEFORE probe command (modal group violation if combined)
-    FluidNCClient::sendCommand("G91\n");
+    CommManager::sendCommand("G91\n");
     
     // Build G38.2 command WITHOUT G91 (already set above): G38.2 <AXIS><DIRECTION><DISTANCE> F<FEED> P<THICKNESS>
     char command[128];
@@ -307,7 +307,7 @@ void UITabControlProbe::executeProbe(const char* axis, const char* direction) {
     }
     
     Serial.printf("Probe: Sending command: %s\n", command);
-    FluidNCClient::sendCommand(command);
+    CommManager::sendCommand(command);
     
     // Send retract move if retract distance is specified
     if (retract > 0.001) {
@@ -319,13 +319,13 @@ void UITabControlProbe::executeProbe(const char* axis, const char* direction) {
         snprintf(retract_command, sizeof(retract_command), "G0 %c%c%.2f\n", 
                  axis[0], retract_sign, retract);
         Serial.printf("Probe: Sending retract: %s", retract_command);
-        FluidNCClient::sendCommand(retract_command);
+        CommManager::sendCommand(retract_command);
     }
     
     // Restore original distance mode (G90 or G91)
     char restore_cmd[8];
     snprintf(restore_cmd, sizeof(restore_cmd), "%s\n", saved_distance_mode);
-    FluidNCClient::sendCommand(restore_cmd);
+    CommManager::sendCommand(restore_cmd);
 }
 
 void UITabControlProbe::updateResult(const char* message) {

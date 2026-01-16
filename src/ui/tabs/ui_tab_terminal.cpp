@@ -1,6 +1,6 @@
 #include "ui/tabs/ui_tab_terminal.h"
 #include "ui/ui_theme.h"
-#include "network/fluidnc_client.h"
+#include "core/comm_manager.h"
 #include "config.h"
 #include "ui/fonts/jetbrains_mono_16.h"
 
@@ -148,7 +148,7 @@ void UITabTerminal::send_command() {
 
         // Send command to FluidNC with newline
         String cmd_with_newline = String(cmd) + "\n";
-        FluidNCClient::sendCommand(cmd_with_newline.c_str());
+        CommManager::sendCommand(cmd_with_newline.c_str());
 
         // Echo command to terminal
         terminal_buffer += "> ";
