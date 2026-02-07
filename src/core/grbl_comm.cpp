@@ -11,6 +11,9 @@ MessageCallback GrblComm::messageCallback = nullptr;
 MessageCallback GrblComm::terminalCallback = nullptr;
 char GrblComm::lineBuffer[256] = {0};
 size_t GrblComm::lineLen = 0;
+namespace {
+constexpr uint32_t kStatusTimeoutMs = 1000;
+}
 
 void GrblComm::init() {
     if (initialized) {
@@ -44,6 +47,19 @@ void GrblComm::disconnect() {
 }
 
 bool GrblComm::isConnected() {
+    if (!currentStatus.is_connected) {
+        return false;
+    }
+    if (lastStatusRxMs == 0) {
+        currentStatus.is_connected = false;
+        currentStatus.state = STATE_DISCONNECTED;
+        return false;
+    }
+    const uint32_t now = millis();
+    if ((now - lastStatusRxMs) > kStatusTimeoutMs) {
+        currentStatus.is_connected = false;
+        currentStatus.state = STATE_DISCONNECTED;
+    }
     return currentStatus.is_connected;
 }
 
@@ -118,7 +134,7 @@ void GrblComm::loop() {
         lastStatusRequestMs = now;
     }
 
-    if (currentStatus.is_connected && lastStatusRxMs != 0 && (now - lastStatusRxMs) > 1000) {
+    if (currentStatus.is_connected && lastStatusRxMs != 0 && (now - lastStatusRxMs) > kStatusTimeoutMs) {
         currentStatus.is_connected = false;
         currentStatus.state = STATE_DISCONNECTED;
     }

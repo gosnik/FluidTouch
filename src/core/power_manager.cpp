@@ -1,5 +1,6 @@
 #include "core/power_manager.h"
 #include "core/comm_manager.h"
+#include "core/usb_host_manager.h"
 #include "config.h"
 #include <Preferences.h>
 #include <Arduino.h>
@@ -196,6 +197,7 @@ void PowerManager::setNormalBrightness(uint8_t brightness) {
         // If currently at full brightness, apply new brightness immediately
         if (current_state == FULL_BRIGHTNESS && display_driver) {
             display_driver->setBacklight(normal_brightness);
+            UsbHostManager::sendDisplayBrightnessAll(normal_brightness);
         }
     }
 }
@@ -206,6 +208,7 @@ void PowerManager::setDimBrightness(uint8_t brightness) {
         // If currently dimmed, apply new brightness immediately
         if (current_state == DIMMED && display_driver) {
             display_driver->setBacklight(dim_brightness);
+            UsbHostManager::sendDisplayBrightnessAll(dim_brightness);
         }
     }
 }
@@ -215,6 +218,7 @@ void PowerManager::applyNormalBrightness() {
         display_driver->setBacklight(normal_brightness);
         // Also update state to full brightness
         current_state = FULL_BRIGHTNESS;
+        UsbHostManager::sendDisplayBrightnessAll(normal_brightness);
     }
 }
 
@@ -224,6 +228,7 @@ void PowerManager::enterFullBrightness() {
         if (display_driver) {
             display_driver->setBacklight(normal_brightness);
         }
+        UsbHostManager::sendDisplayBrightnessAll(normal_brightness);
         current_state = FULL_BRIGHTNESS;
         state_changed = true;
     }
@@ -235,6 +240,7 @@ void PowerManager::enterDimmed() {
         if (display_driver) {
             display_driver->setBacklight(dim_brightness);
         }
+        UsbHostManager::sendDisplayBrightnessAll(dim_brightness);
         current_state = DIMMED;
         state_changed = true;
     }

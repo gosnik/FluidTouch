@@ -2,6 +2,10 @@
 #include "core/encoder.h"
 #include "driver/gpio.h"
 #include "sdkconfig.h"
+#if defined(CONFIG_IDF_TARGET_ESP32P4)
+#include "core/qtdial_hid_protocol.h"
+#include "core/usb_host_manager.h"
+#endif
 
 Encoder::Encoder(pcnt_unit_t unit) : unit_(unit), a_pin_(-1), b_pin_(-1) {}
 
@@ -84,6 +88,24 @@ bool init_encoders(const EncoderPins *pins, size_t count) {
 }
 
 int16_t get_encoder_value(size_t index) {
+#if defined(CONFIG_IDF_TARGET_ESP32P4)
+  uint8_t role_id = QtdialHidProtocol::kRoleX;
+  if (index == 1) {
+    role_id = QtdialHidProtocol::kRoleY;
+  } else if (index == 2) {
+    role_id = QtdialHidProtocol::kRoleZ;
+  }
+  int32_t usb_count = 0;
+  if (UsbHostManager::getRoleCount(role_id, &usb_count)) {
+    if (usb_count > INT16_MAX) {
+      return INT16_MAX;
+    }
+    if (usb_count < INT16_MIN) {
+      return INT16_MIN;
+    }
+    return static_cast<int16_t>(usb_count);
+  }
+#endif
   if (index >= kEncoderCount || !encoder_ready[index]) {
     return 0;
   }

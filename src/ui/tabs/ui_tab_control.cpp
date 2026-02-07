@@ -7,7 +7,41 @@
 #include "ui/tabs/control/ui_tab_control_probe.h"
 #include "ui/tabs/control/ui_tab_control_rotary_table.h"
 #include "ui/tabs/control/ui_tab_control_override.h"
+#include "core/usb_host_manager.h"
 #include <Arduino.h>
+
+namespace {
+const char *screen_for_control_subtab(uint32_t tab_index)
+{
+    switch (tab_index) {
+        case 0: // Actions
+            return "cnc_axis";
+        case 1: // Jog
+            return "cnc_jog_mode";
+        case 2: // Joystick
+            return "cnc_jog_mode";
+        case 3: // Power Feed
+            return "cnc_power_feed_mode";
+        case 4: // Rotary Table
+            return "cnc_setup_offsets";
+        case 5: // Probe
+            return "cnc_setup_offsets";
+        case 6: // Overrides
+            return "cnc_run_mode";
+        default:
+            return "cnc_axis";
+    }
+}
+
+void control_subtab_changed_cb(lv_event_t *e)
+{
+    lv_obj_t *tabview = static_cast<lv_obj_t*>(lv_event_get_target(e));
+    uint32_t active_tab = lv_tabview_get_tab_active(tabview);
+    const char *screen = screen_for_control_subtab(active_tab);
+    UsbHostManager::setPreferredScreen(screen, false);
+    UsbHostManager::sendDisplaySelectScreenAll(screen, false);
+}
+} // namespace
 
     
 void UITabControl::create(lv_obj_t *tab) {
@@ -97,6 +131,14 @@ void UITabControl::create(lv_obj_t *tab) {
     lv_obj_set_style_pad_all(tab_rotary, 5, 0);
     lv_obj_set_style_pad_all(tab_probe, 5, 0);
     lv_obj_set_style_pad_all(tab_overrides, 5, 0);
+
+    // Sync qtdial screen to selected control sub-tab
+    lv_obj_add_event_cb(sub_tabview, control_subtab_changed_cb, LV_EVENT_VALUE_CHANGED, nullptr);
+    {
+        const char *screen = screen_for_control_subtab(lv_tabview_get_tab_active(sub_tabview));
+        UsbHostManager::setPreferredScreen(screen, false);
+        UsbHostManager::sendDisplaySelectScreenAll(screen, false);
+    }
 
     // Get the actual tab buttons and style them directly with the teal accent color
     uint32_t tab_count = lv_obj_get_child_count(tab_bar);

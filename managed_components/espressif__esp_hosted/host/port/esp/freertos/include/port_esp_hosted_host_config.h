@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2025-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -9,6 +9,8 @@
 
 #include "sdkconfig.h"
 #include "esp_task.h"
+
+#include "esp_wifi_remote.h"
 
 #ifdef CONFIG_ESP_HOSTED_ENABLED
   #define H_ESP_HOSTED_HOST 1
@@ -374,6 +376,12 @@ enum {
 
 /* --------------------- Common slave reset strategy ------------------- */
 
+#if defined(CONFIG_ESP_HOSTED_TRANSPORT_RESTART_ON_FAILURE)
+  #define H_TRANSPORT_RESTART_ON_FAILURE 1
+#else
+  #define H_TRANSPORT_RESTART_ON_FAILURE 0
+#endif
+
 #if defined(CONFIG_ESP_HOSTED_SLAVE_RESET_ON_EVERY_HOST_BOOTUP)
   /* Always reset the slave when host boots up
    * This ensures a clean transport state and prevents any inconsistent states,
@@ -413,17 +421,17 @@ enum {
 #endif
 
 #if defined(CONFIG_ESP_HOSTED_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE_TIMEOUT)
-  /* Timeout in seconds before host restarts due to no communication
+  /* Timeout in milliseconds before host restarts due to no communication
    * Maximum time that the host will wait for a response from the slave
    * before triggering an automatic restart.
    */
-  #define H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE_TIMEOUT CONFIG_ESP_HOSTED_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE_TIMEOUT
+  #define H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE_TIMEOUT_MS (CONFIG_ESP_HOSTED_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE_TIMEOUT * 1000)
 #else
   /* Default timeout value (-1 means disabled) */
-  #define H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE_TIMEOUT -1
+  #define H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE_TIMEOUT_MS -1
 #endif
 
-#if H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE && H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE_TIMEOUT == -1
+#if H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE && H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE_TIMEOUT_MS == -1
   #error "Invalid combination. Host Restart No Communication With Slave is enabled but timeout is not configured"
 #endif
 
@@ -592,5 +600,11 @@ enum {
 
 esp_err_t esp_hosted_set_default_config(void);
 bool esp_hosted_is_config_valid(void);
+
+#if CONFIG_ESP_HOSTED_ENABLE_GPIO_EXPANDER
+  #define H_GPIO_EXPANDER_SUPPORT 1
+#else
+  #define H_GPIO_EXPANDER_SUPPORT 0
+#endif
 
 #endif /*__ESP_HOSTED_CONFIG_H__*/

@@ -4,6 +4,7 @@ if(IDF_TARGET STREQUAL "esp32p4")
     # ESP-ADF components use legacy FreeRTOS types not supported on ESP32-P4.
     list(APPEND EXTRA_COMPONENT_DIRS
         "${CMAKE_CURRENT_LIST_DIR}/lib/esp-bsp/bsp/esp32_p4_function_ev_board"
+        "${CMAKE_CURRENT_LIST_DIR}/components/usb_host_hid"
     )
     list(APPEND EXCLUDE_COMPONENTS
         adf_utils

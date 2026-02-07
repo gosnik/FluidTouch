@@ -93,13 +93,13 @@ namespace UITheme {
     static constexpr lv_color_t MACRO_COLOR_8 = LV_COLOR_MAKE(0x45, 0x45, 0x45); // Dark Gray
     
     // Jog Step Configuration (largest to smallest)
-    static constexpr float XY_STEP_VALUES[] = {100.0f, 50.0f, 10.0f, 1.0f, 0.1f};
-    static constexpr const char* XY_STEP_LABELS[] = {"100", "50", "10", "1", "0.1"};
-    static constexpr int XY_STEP_COUNT = 5;
+    static constexpr float XY_STEP_VALUES[] = {100.0f, 50.0f, 10.0f, 1.0f, 0.1f, 0.01f};
+    static constexpr const char* XY_STEP_LABELS[] = {"100", "50", "10", "1", "0.1", "0.01"};
+    static constexpr int XY_STEP_COUNT = 6;
     
-    static constexpr float Z_STEP_VALUES[] = {50.0f, 25.0f, 10.0f, 1.0f, 0.1f};
-    static constexpr const char* Z_STEP_LABELS[] = {"50", "25", "10", "1", "0.1"};
-    static constexpr int Z_STEP_COUNT = 5;
+    static constexpr float Z_STEP_VALUES[] = {50.0f, 25.0f, 10.0f, 1.0f, 0.1f, 0.01f};
+    static constexpr const char* Z_STEP_LABELS[] = {"50", "25", "10", "1", "0.1", "0.01"};
+    static constexpr int Z_STEP_COUNT = 6;
 }
 
 #endif // UI_THEME_H

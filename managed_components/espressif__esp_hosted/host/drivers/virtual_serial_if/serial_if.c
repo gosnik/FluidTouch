@@ -36,7 +36,7 @@ struct serial_drv_handle_t* serial_handle = NULL;
 
 uint16_t compose_tlv(uint8_t* buf, uint8_t* data, uint16_t data_length)
 {
-	char* ep_name = RPC_EP_NAME_RSP;
+	const char* ep_name = RPC_EP_NAME_RSP;
 	uint16_t ep_length = strlen(ep_name);
 	uint16_t count = 0;
 	uint8_t idx;
@@ -66,8 +66,8 @@ uint16_t compose_tlv(uint8_t* buf, uint8_t* data, uint16_t data_length)
 
 uint8_t parse_tlv(uint8_t* data, uint32_t* pro_len)
 {
-	char* ep_name = RPC_EP_NAME_RSP;
-	char* ep_name2 = RPC_EP_NAME_EVT;
+	const char* ep_name = RPC_EP_NAME_RSP;
+	const char* ep_name2 = RPC_EP_NAME_EVT;
 	uint64_t len = 0;
 	uint16_t val_len = 0;
 	if (data[len] == PROTO_PSER_TLV_T_EPNAME) {
@@ -113,7 +113,15 @@ uint8_t parse_tlv(uint8_t* data, uint32_t* pro_len)
 
 int transport_pserial_close(void)
 {
-	int ret = serial_drv_close(&serial_handle);
+	int ret = SUCCESS;
+
+	ret = rpc_platform_deinit();
+	if (ret != SUCCESS) {
+		ESP_LOGE(TAG, "Platform deinit failed\n");
+	}
+
+	ret = serial_drv_close(&serial_handle);
+
 	if (ret) {
 		ESP_LOGE(TAG, "Failed to close driver interface\n");
 		return FAILURE;
@@ -150,7 +158,7 @@ int transport_pserial_open(void)
 
 int transport_pserial_send(uint8_t* data, uint16_t data_length)
 {
-	char* ep_name = RPC_EP_NAME_RSP;
+	const char* ep_name = RPC_EP_NAME_RSP;
 	int count = 0, ret = 0;
 	uint16_t buf_len = 0;
 	uint8_t *write_buf = NULL;

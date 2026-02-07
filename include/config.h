@@ -56,9 +56,9 @@
 #define PREFS_SYSTEM_NAMESPACE "ft_system"  // System flags (clean_shutdown, etc.)
 
 // Grbl UART configuration
-#define GRBL_UART_RX_PIN 7
-#define GRBL_UART_TX_PIN 8
-#define GRBL_UART_BAUD 115200
+#define GRBL_UART_RX_PIN 46
+#define GRBL_UART_TX_PIN 47
+#define GRBL_UART_BAUD 1000000
 
 // Encoder pin configuration
 #if defined(CONFIG_IDF_TARGET_ESP32P4)

@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2015-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2015-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -13,10 +13,12 @@
 #include "esp_hosted_rpc.h"
 #include "esp_log.h"
 #include "port_esp_hosted_host_wifi_config.h"
+#include "port_esp_hosted_host_config.h"
 #include "port_esp_hosted_host_os.h"
 #include "esp_hosted_transport.h"
 #include "port_esp_hosted_host_log.h"
 #include "transport_drv.h"
+#include "esp_hosted_event.h"
 
 #if H_DPP_SUPPORT
 #include "esp_dpp.h"
@@ -93,6 +95,9 @@ static esp_err_t rpc_supp_cb_thread_stop(void);
 static esp_supp_dpp_event_cb_t dpp_evt_cb = NULL;
 #endif
 
+static volatile bool netif_started = false;
+static volatile bool netif_connected = false;
+
 typedef struct {
 	int event;
 	rpc_rsp_cb_t fun;
@@ -107,6 +112,8 @@ int rpc_init(void)
 int rpc_start(void)
 {
 	ESP_LOGD(TAG, "%s", __func__);
+	netif_started = false;
+	netif_connected = false;
 	return rpc_slaveif_start();
 }
 
@@ -131,8 +138,6 @@ static bool is_wifi_netif_started(wifi_interface_t wifi_if) {
 
 static int rpc_event_callback(ctrl_cmd_t * app_event)
 {
-	static bool netif_started = false;
-	static bool netif_connected = false;
 	static bool softap_started = false;
 
 	ESP_LOGV(TAG, "%u",app_event->msg_id);
@@ -151,11 +156,17 @@ static int rpc_event_callback(ctrl_cmd_t * app_event)
 	switch(app_event->msg_id) {
 
 		case RPC_ID__Event_ESPInit: {
-			ESP_LOGI(TAG, "--- ESP Event: Slave ESP Init ---");
+			ESP_LOGI(TAG, "Coprocessor Boot-up");
+			esp_hosted_event_init_t event = { 0 };
+			event.reason = app_event->u.e_init.cp_reset_reason;
+			g_h.funcs->_h_event_post(ESP_HOSTED_EVENT, ESP_HOSTED_EVENT_CP_INIT,
+					&event, sizeof(event), HOSTED_BLOCK_MAX);
 			break;
 		} case RPC_ID__Event_Heartbeat: {
-			ESP_LOGI(TAG, "ESP Event: Heartbeat event [%lu]",
-					(long unsigned int)app_event->u.e_heartbeat.hb_num);
+			esp_hosted_event_heartbeat_t event = { 0 };
+			event.heartbeat = app_event->u.e_heartbeat.hb_num;
+			g_h.funcs->_h_event_post(ESP_HOSTED_EVENT, ESP_HOSTED_EVENT_CP_HEARTBEAT,
+					&event, sizeof(event), HOSTED_BLOCK_MAX);
 			break;
 		} case RPC_ID__Event_AP_StaConnected: {
 			wifi_event_ap_staconnected_t *p_e = &app_event->u.e_wifi_ap_staconnected;
@@ -667,6 +678,7 @@ int rpc_rsp_callback(ctrl_cmd_t * app_resp)
 	case RPC_ID__Resp_WifiStaItwtSendProbeReq:
 	case RPC_ID__Resp_WifiStaItwtSetTargetWakeTimeOffset:
 #endif // H_WIFI_HE_SUPPORT
+
 #if H_WIFI_ENTERPRISE_SUPPORT
 	case RPC_ID__Resp_WifiStaEnterpriseEnable:
 	case RPC_ID__Resp_WifiStaEnterpriseDisable:
@@ -700,10 +712,23 @@ int rpc_rsp_callback(ctrl_cmd_t * app_resp)
 	case RPC_ID__Resp_SuppDppStartListen:
 	case RPC_ID__Resp_SuppDppStopListen:
 #endif
+
 #ifdef H_PEER_DATA_TRANSFER
 	case RPC_ID__Resp_CustomRpc:
 #endif
-	case RPC_ID__Resp_GetCoprocessorFwVersion: {
+
+#if H_GPIO_EXPANDER_SUPPORT
+	case RPC_ID__Resp_GpioConfig:
+	case RPC_ID__Resp_GpioResetPin:
+	case RPC_ID__Resp_GpioSetLevel:
+	case RPC_ID__Resp_GpioGetLevel:
+	case RPC_ID__Resp_GpioSetDirection:
+	case RPC_ID__Resp_GpioInputEnable:
+	case RPC_ID__Resp_GpioSetPullMode:
+#endif
+
+	case RPC_ID__Resp_GetCoprocessorFwVersion:
+									 {
 		/* Intended fallthrough */
 		break;
 	} default: {
@@ -2441,3 +2466,119 @@ esp_err_t esp_hosted_register_custom_callback(uint32_t msg_id,
 	return rpc_slaveif_register_custom_callback(msg_id, callback);
 }
 #endif
+
+
+esp_err_t rpc_iface_configure_heartbeat(bool enable, int duration_sec)
+{
+	/* implemented synchronous */
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
+
+	req->u.e_heartbeat.enable = enable;
+	req->u.e_heartbeat.duration = duration_sec;
+
+	resp = rpc_slaveif_config_heartbeat(req);
+
+	return rpc_rsp_callback(resp);
+}
+
+#if H_GPIO_EXPANDER_SUPPORT
+esp_err_t esp_hosted_cp_gpio_config(const esp_hosted_cp_gpio_config_t *pGPIOConfig)
+{
+	/* implemented synchronous */
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
+
+	if (!pGPIOConfig)
+		return FAILURE;
+
+	req->u.gpio_config.pin_bit_mask = pGPIOConfig->pin_bit_mask;
+	req->u.gpio_config.mode = pGPIOConfig->mode;
+	req->u.gpio_config.pull_up_en = pGPIOConfig->pull_up_en;
+	req->u.gpio_config.pull_down_en = pGPIOConfig->pull_down_en;
+	req->u.gpio_config.intr_type = pGPIOConfig->intr_type;
+
+	resp = rpc_slaveif_gpio_config(req);
+
+	return rpc_rsp_callback(resp);
+}
+
+esp_err_t esp_hosted_cp_gpio_reset_pin(uint32_t gpio_num)
+{
+	/* implemented synchronous */
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
+
+	req->u.gpio_num = gpio_num;
+	resp = rpc_slaveif_gpio_reset_pin(req);
+
+	return rpc_rsp_callback(resp);
+}
+
+esp_err_t esp_hosted_cp_gpio_set_level(uint32_t gpio_num, uint32_t level)
+{
+	/* implemented synchronous */
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
+
+	req->u.gpio_set_level.gpio_num = gpio_num;
+	req->u.gpio_set_level.level = level;
+
+	resp = rpc_slaveif_gpio_set_level(req);
+	return rpc_rsp_callback(resp);
+}
+
+esp_err_t esp_hosted_cp_gpio_get_level(uint32_t gpio_num, int *level)
+{
+	/* implemented synchronous */
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
+
+	req->u.gpio_num = gpio_num;
+	resp = rpc_slaveif_gpio_get_level(req);
+
+	if (resp && resp->resp_event_status == SUCCESS) {
+		*level = resp->u.gpio_get_level;
+	}
+
+	return rpc_rsp_callback(resp);
+}
+
+esp_err_t esp_hosted_cp_gpio_set_direction(uint32_t gpio_num, uint32_t mode)
+{
+	/* implemented synchronous */
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
+
+	req->u.gpio_set_direction.gpio_num = gpio_num;
+	req->u.gpio_set_direction.mode = mode;
+
+	resp = rpc_slaveif_gpio_set_direction(req);
+	return rpc_rsp_callback(resp);
+}
+
+esp_err_t esp_hosted_cp_gpio_input_enable(uint32_t gpio_num)
+{
+	/* implemented synchronous */
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
+
+	req->u.gpio_num = gpio_num;
+	resp = rpc_slaveif_gpio_input_enable(req);
+	return rpc_rsp_callback(resp);
+}
+
+esp_err_t esp_hosted_cp_gpio_set_pull_mode(uint32_t gpio_num, uint32_t pull_mode)
+{
+	/* implemented synchronous */
+	ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+	ctrl_cmd_t *resp = NULL;
+
+	req->u.gpio_set_pull_mode.gpio_num = gpio_num;
+	req->u.gpio_set_pull_mode.pull_mode = pull_mode;
+
+	resp = rpc_slaveif_gpio_set_pull_mode(req);
+	return rpc_rsp_callback(resp);
+}
+#endif
+

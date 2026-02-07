@@ -1,5 +1,107 @@
 # Changelog
 
+## 2.11.5
+
+### Bug Fix
+
+* Renamed `H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE_TIMEOUT` to `H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE_TIMEOUT_MS` to clarify units are in milliseconds.
+
+## 2.11.4
+
+### Feature
+
+* ESP32-P4 C61 Core board support - Improvise
+
+### Bug Fix
+
+* TCP iPerf stability with documented performance optimizations
+
+#### Tested
+
+* Host power save and wake-up functionality
+
+  * Wake-up GPIOs:
+
+    * P4 Core Board – C61: IO04
+    * P4 Core Board – P4: IO06
+  * GPIOs disabled by default (`-1`) due to no physical connection; verified via jumper wiring and solder
+* Network split scenarios
+
+## 2.11.3
+
+### Bug Fix
+
+- made UART Hosted interface more stable:
+  - flush the input after reset. Rx line may toggle while resetting the co-processor, causing Host UART to store invalid data.
+  - check that offset in received payload header is valid: discard packet for invalid offsets.
+  - check flags in received payload only after the payload is considered valid
+
+## 2.11.2
+Minor fix: On Timeout/Failure, Print RPC req str instead of RPCId
+
+## 2.11.1
+Minor fixes: const qualifier violations while building
+
+## 2.11.0
+
+### Bug Fix
+
+- remove double freeing of buffer if `chan_arr[buf_handle->if_type]->rx()` fails. Underlying rx function will free the memory
+
+> [!WARNING]
+> This version of ESP-Hosted onwards must be used with wifi-remote component v1.3.1 or greater. See the [Migration Guide](https://github.com/espressif/esp-hosted-mcu/blob/main/docs/migration_guide.md) for more information.
+
+## 2.10.0
+
+### Features: GPIO Expander
+
+*   **GPIO Expander**: Added feature to allow the host to control the GPIOs of the slave co-processor over the existing transport link. See [GPIO Expander Guide](./docs/gpio_expander.md).
+*   **GPIO Expander Example**: Added a new example `examples/host_gpio_expander` to demonstrate the usage of the GPIO expander feature.
+
+### APIs Added
+*   `esp_hosted_cp_gpio_config`
+*   `esp_hosted_cp_gpio_reset_pin`
+*   `esp_hosted_cp_gpio_set_level`
+*   `esp_hosted_cp_gpio_get_level`
+*   `esp_hosted_cp_gpio_set_direction`
+*   `esp_hosted_cp_gpio_input_enable`
+*   `esp_hosted_cp_gpio_set_pull_mode`
+
+## 2.9.7
+
+### Features
+
+- Add example, [host_shuts_down_slave_to_power_save](https://components.espressif.com/components/espressif/esp_hosted/examples/host_shuts_down_slave_to_power_save)
+  - Use `EN` pin on coprocessor to power off/on
+  - Power down coprocessor when not in use
+  - Power on coprocessor when required
+  - Connect Wi-Fi on coprocessor wake up
+
+### Bug Fixes
+
+- Fix the memory leaks in hosted deinit -> init path
+
+## 2.9.5 - 2.9.6
+
+Using shorter, more manageable names for esp hosted events
+Before adoption, concise the event names from full string COPROCESSOR to just CP in event names
+
+## 2.9.4
+
+### Features
+
+- enabled ESP-Hosted events. Host can register an event handler to receive these events from co-processor:
+  - INIT event, indicating the co-processor has started
+  - HEARTBEAT event, when enabled by the host
+  - TRANSPORT_FAILURE event, when ESP-Hosted encounters a transport failure
+- host can use these events to determine if the co-processor rebooted (unexpected INIT event) or hanged (missing HEARTBEAT)
+- added `examples/host_hosted_events` as an example to show how the host can use either event to reinitialise a Station connection to an AP
+
+### Bug Fixes
+
+- fixed ESP-Hosted and SDIO issues that prevent transport reinitialisation
+- fixed files to skip when running codespell during pre-commit
+
 ## 2.9.3
 
 ## Bug Fix

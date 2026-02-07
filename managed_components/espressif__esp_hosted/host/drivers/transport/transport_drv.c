@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2015-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2015-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -27,6 +27,7 @@
 
 #include "esp_hosted_cli.h"
 #include "rpc_wrap.h"
+#include "esp_private/wifi.h"
 
 /**
  * @brief  Slave capabilities are parsed
@@ -49,7 +50,7 @@ static void process_event(uint8_t *evt_buf, uint16_t len);
 static int process_init_event(uint8_t *evt_buf, uint16_t len);
 
 
-#if H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE && H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE_TIMEOUT != -1
+#if H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE && H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE_TIMEOUT_MS != -1
 static void *init_timeout_timer = NULL;
 
 static void init_timeout_cb(void *arg)
@@ -116,13 +117,18 @@ static void transport_drv_init(void)
 
 esp_err_t teardown_transport(void)
 {
-	#if H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE && H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE_TIMEOUT != -1
+	#if H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE && H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE_TIMEOUT_MS != -1
 	/* Stop and cleanup init timeout timer if still active */
 	if (init_timeout_timer) {
 		g_h.funcs->_h_timer_stop(init_timeout_timer);
 		init_timeout_timer = NULL;
 	}
 	#endif
+
+	/* Stop CLI before tearing down transport */
+#ifdef H_ESP_HOSTED_CLI_ENABLED
+	esp_hosted_cli_stop();
+#endif
 
 	if (bus_handle) {
 		bus_deinit_internal(bus_handle);
@@ -147,15 +153,15 @@ esp_err_t transport_drv_reconfigure(void)
 
 	ESP_LOGI(TAG, "Attempt connection with slave: retry[%u]", retry_slave_connection);
 
-#if H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE && H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE_TIMEOUT != -1
+#if H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE && H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE_TIMEOUT_MS != -1
 	/* Start init timeout timer if not already started */
 	if (!init_timeout_timer) {
-		init_timeout_timer = g_h.funcs->_h_timer_start("slave_unresponsive_timer", H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE_TIMEOUT, H_TIMER_TYPE_ONESHOT, init_timeout_cb, NULL);
+		init_timeout_timer = g_h.funcs->_h_timer_start("slave_unresponsive_timer", H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE_TIMEOUT_MS, H_TIMER_TYPE_ONESHOT, init_timeout_cb, NULL);
 		if (!init_timeout_timer) {
 			ESP_LOGE(TAG, "Failed to create init timeout timer");
 			return ESP_FAIL;
 		}
-		ESP_LOGI(TAG, "Started host communication init timer of %u seconds", H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE_TIMEOUT);
+		ESP_LOGI(TAG, "Started host communication init timer of %u millisec", H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE_TIMEOUT_MS);
 	}
 #endif
 
@@ -213,8 +219,8 @@ esp_err_t transport_drv_remove_channel(transport_channel_t *channel)
 	switch (channel->if_type) {
 	case ESP_AP_IF:
 	case ESP_STA_IF:
-		//Should we additionally do:
-		//esp_wifi_internal_reg_rxcb(channel->if_type, NULL);
+		/* Unregister RX callback to prevent memory leak */
+		esp_wifi_internal_reg_rxcb(channel->if_type, NULL);
 		break;
 	case ESP_SERIAL_IF:
 		/* TODO */
@@ -254,6 +260,16 @@ static esp_err_t transport_drv_sta_tx(void *h, void *buffer, size_t len)
 	if (!buffer || !len)
 		return ESP_OK;
 
+	/* Transport state check */
+	if (!is_transport_tx_ready() || !chan_arr[ESP_STA_IF]) {
+		ESP_LOGE(TAG, "Transport TX not ready or STA channel is not available, drop pkt");
+#if defined(ESP_ERR_ESP_NETIF_TX_FAILED)
+		return ESP_ERR_ESP_NETIF_TX_FAILED;
+#else
+		return ESP_ERR_ESP_NETIF_NO_MEM;
+#endif
+	}
+
 	if (unlikely(wifi_tx_throttling)) {
 	#if ESP_PKT_STATS
 		pkt_stats.sta_tx_flowctrl_drop++;
@@ -284,6 +300,17 @@ static esp_err_t transport_drv_ap_tx(void *h, void *buffer, size_t len)
 	if (!buffer || !len)
 		return ESP_OK;
 
+	/* Transport state check */
+	if (!is_transport_tx_ready() || !chan_arr[ESP_AP_IF]) {
+		ESP_LOGE(TAG, "Transport TX not ready or AP channel is not available, drop pkt");
+
+#if defined(ESP_ERR_ESP_NETIF_TX_FAILED)
+		return ESP_ERR_ESP_NETIF_TX_FAILED;
+#else
+		return ESP_ERR_ESP_NETIF_NO_MEM;
+#endif
+	}
+
 	assert(h && h==chan_arr[ESP_AP_IF]->api_chan);
 
 	/*  Prepare transport buffer directly consumable */
@@ -297,6 +324,17 @@ static esp_err_t transport_drv_ap_tx(void *h, void *buffer, size_t len)
 esp_err_t transport_drv_serial_tx(void *h, void *buffer, size_t len)
 {
 	/* TODO */
+	/* Transport state check */
+	if (!is_transport_tx_ready() || !chan_arr[ESP_SERIAL_IF]) {
+
+		ESP_LOGE(TAG, "Transport TX not ready or serial channel is not available, drop pkt");
+
+#if defined(ESP_ERR_ESP_NETIF_TX_FAILED)
+		return ESP_ERR_ESP_NETIF_TX_FAILED;
+#else
+		return ESP_ERR_ESP_NETIF_NO_MEM;
+#endif
+	}
 	assert(h && h==chan_arr[ESP_SERIAL_IF]->api_chan);
 	return esp_hosted_tx(ESP_SERIAL_IF, 0, buffer, len, H_BUFF_NO_ZEROCOPY, buffer, transport_serial_free_cb, 0);
 }
@@ -317,9 +355,13 @@ transport_channel_t *transport_drv_add_channel(void *api_chan,
 	}
 
 	if (chan_arr[if_type]) {
-		/* Channel config already existed */
-		ESP_LOGW(TAG, "Channel [%u] already created, replace with new callbacks", if_type);
+		ESP_LOGW(TAG, "Channel [%u] already created, replacing with new callbacks", if_type);
+
+		if (chan_arr[if_type]->memp) {
+			mempool_destroy(chan_arr[if_type]->memp);
+		}
 		HOSTED_FREE(chan_arr[if_type]);
+		chan_arr[if_type] = NULL;
 	}
 
 
@@ -671,7 +713,7 @@ static int process_init_event(uint8_t *evt_buf, uint16_t len)
 	if (!evt_buf)
 		return ESP_FAIL;
 
-#if H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE && H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE_TIMEOUT != -1
+#if H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE && H_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE_TIMEOUT_MS != -1
 	/* Stop and delete the init timeout timer since we received the init event */
 	if (init_timeout_timer) {
 		g_h.funcs->_h_timer_stop(init_timeout_timer);

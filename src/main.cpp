@@ -1,4 +1,7 @@
 #include <Arduino.h>
+#include "sdkconfig.h"
+#include "esp_log.h"
+#include <cstring>
 #include <lvgl.h>
 #include "config.h"
 #if FT_WIFI_ENABLED
@@ -8,6 +11,8 @@
 #include "core/display_driver.h"     // Display driver module
 #include "core/encoder.h"
 #include "core/power_manager.h"      // Power management module
+#include "core/usb_host_manager.h"
+#include "core/qtdial_hid_protocol.h"
 #include "network/screenshot_server.h"  // Screenshot web server
 #include "core/comm_manager.h"     // Machine comms (WebSocket/UART)
 #include "ui/ui_theme.h"        // UI theme colors
@@ -25,66 +30,109 @@
 #include "ui/tabs/control/ui_tab_control_override.h" // Override tab for updates
 #include "ui/machine_config.h"  // Machine configuration manager
 
+#ifndef TAG
+#define TAG "Main"
+#endif
+
+namespace {
+void sendHidStatus(const FluidNCStatus &status, bool connected)
+{
+    if (UsbHostManager::deviceCount() <= 0) {
+        return;
+    }
+
+    uint8_t payload[36] = {};
+    payload[0] = static_cast<uint8_t>(connected ? status.state : STATE_DISCONNECTED);
+    payload[1] = connected ? 0x07 : 0x00; // connected + wpos + mpos
+
+    const int32_t feed = static_cast<int32_t>(status.feed_rate * QtdialHidProtocol::kStatusFeedScale);
+    const int32_t spindle = static_cast<int32_t>(status.spindle_speed);
+    const int32_t wpos_x = static_cast<int32_t>(status.wpos_x * QtdialHidProtocol::kStatusPosScale);
+    const int32_t wpos_y = static_cast<int32_t>(status.wpos_y * QtdialHidProtocol::kStatusPosScale);
+    const int32_t wpos_z = static_cast<int32_t>(status.wpos_z * QtdialHidProtocol::kStatusPosScale);
+    const int32_t mpos_x = static_cast<int32_t>(status.mpos_x * QtdialHidProtocol::kStatusPosScale);
+    const int32_t mpos_y = static_cast<int32_t>(status.mpos_y * QtdialHidProtocol::kStatusPosScale);
+    const int32_t mpos_z = static_cast<int32_t>(status.mpos_z * QtdialHidProtocol::kStatusPosScale);
+
+    memcpy(&payload[2], &feed, sizeof(feed));
+    memcpy(&payload[6], &spindle, sizeof(spindle));
+    memcpy(&payload[10], &wpos_x, sizeof(wpos_x));
+    memcpy(&payload[14], &wpos_y, sizeof(wpos_y));
+    memcpy(&payload[18], &wpos_z, sizeof(wpos_z));
+    memcpy(&payload[22], &mpos_x, sizeof(mpos_x));
+    memcpy(&payload[26], &mpos_y, sizeof(mpos_y));
+    memcpy(&payload[30], &mpos_z, sizeof(mpos_z));
+
+    UsbHostManager::sendStatusAll(payload, 34);
+}
+} // namespace
+
 void setup()
 {
     Serial.begin(115200);
     delay(1000);
-    Serial.println("\n\n=== FluidTouch - LVGL 9 with LovyanGFX ===");
+    //esp_log_level_set("*", ESP_LOG_DEBUG);
+    ESP_LOGD(TAG, "\n\n=== FluidTouch - LVGL 9 with LovyanGFX ===");
     Serial.printf("Free heap: %d bytes\n", ESP.getFreeHeap());
     Serial.printf("PSRAM size: %d bytes\n", ESP.getPsramSize());
     Serial.printf("Free PSRAM: %d bytes\n", ESP.getFreePsram());
 
     // Initialize Display Driver
-    Serial.println("Initializing display driver...");
+    ESP_LOGI(TAG, "Initializing display driver...");
     static DisplayDriver displayDriver;
     if (!displayDriver.init()) {
-        Serial.println("ERROR: Failed to initialize display!");
+        ESP_LOGI(TAG, "ERROR: Failed to initialize display!");
         while (1) delay(1000);
     }
-    Serial.println("Display driver initialized successfully");
+    ESP_LOGI(TAG, "Display driver initialized successfully");
 
     // Initialize Power Manager
-    Serial.println("Initializing power manager...");
+    ESP_LOGI(TAG, "Initializing power manager...");
     PowerManager::init(&displayDriver);
-    Serial.println("Power manager initialized successfully");
+    ESP_LOGI(TAG, "Power manager initialized successfully");
 
     #if FT_WIFI_ENABLED
-    Serial.println("Initializing WiFi manager...");
+    ESP_LOGI(TAG, "Initializing WiFi manager...");
     WifiManager::init();
     #endif
 
     #if defined(CONFIG_IDF_TARGET_ESP32P4)
-    Serial.println("Initializing encoders...");
+    ESP_LOGI(TAG, "CONFIG_IDF_TARGET_ESP32P4 defined");
+    ESP_LOGI(TAG, "Initializing encoders...");
     const EncoderPins encoder_pins[] = {
         {ENCODER1_A_PIN, ENCODER1_B_PIN},
         {ENCODER2_A_PIN, ENCODER2_B_PIN},
         {ENCODER3_A_PIN, ENCODER3_B_PIN},
     };
     if (!init_encoders(encoder_pins, sizeof(encoder_pins) / sizeof(encoder_pins[0]))) {
-        Serial.println("Encoder init failed. Check encoder pin wiring.");
+        ESP_LOGI(TAG, "Encoder init failed. Check encoder pin wiring.");
     }
+    ESP_LOGI(TAG, "Initializing USB host...");
+    UsbHostManager::init();
+    #else
+    ESP_LOGI(TAG, "CONFIG_IDF_TARGET_ESP32P4 not defined; USB host disabled");
     #endif
 
     // Store display driver reference for later use (screenshot server after WiFi connects)
     UICommon::setDisplayDriver(&displayDriver);
 
     // Initialize Screenshot Server (WiFi not connected yet, will initialize after machine selection)
-    Serial.println("Screenshot server will initialize after WiFi connection...");
+    ESP_LOGI(TAG, "Screenshot server will initialize after WiFi connection...");
 
     // Initialize comms manager
-    Serial.println("Initializing CommManager...");
+    ESP_LOGI(TAG, "Initializing CommManager...");
     CommManager::init();
 
     // Check for auto-import (only if no machines configured)
-    Serial.println("Checking for settings auto-import...");
+    ESP_LOGI(TAG, "Checking for settings auto-import...");
     if (SettingsManager::autoImportOnBoot()) {
-        Serial.println("Settings imported successfully! Restarting...");
+        ESP_LOGI(TAG, "Settings imported successfully! Restarting...");
         delay(2000);  // Give user time to see serial message
         ESP.restart();
     }
 
     // Show splash screen
-    Serial.println("Showing splash screen...");
+    ESP_LOGI(TAG, "Showing splash screen...");
     UISplash::show(displayDriver.getDisplay());
 
     // Check if machine selection should be shown
@@ -97,11 +145,11 @@ void setup()
     
     if (show_machine_select) {
         // Show machine selection screen
-        Serial.println("Showing machine selection screen...");
+        ESP_LOGI(TAG, "Showing machine selection screen...");
         UIMachineSelect::show(displayDriver.getDisplay());
     } else {
         // Auto-load first configured machine
-        Serial.println("Auto-loading first machine...");
+        ESP_LOGI(TAG, "Auto-loading first machine...");
         MachineConfig machines[MAX_MACHINES];
         MachineConfigManager::loadMachines(machines);
         
@@ -123,7 +171,7 @@ void setup()
             UICommon::createMainUI();
         } else {
             // No machines configured, show selection screen anyway
-            Serial.println("No machines configured, showing selection screen...");
+            ESP_LOGI(TAG, "No machines configured, showing selection screen...");
             UIMachineSelect::show(displayDriver.getDisplay());
         }
     }
@@ -136,6 +184,9 @@ void loop()
     
     // Handle machine comms events
     CommManager::loop();
+
+    // Handle USB HID events (qtdial)
+    UsbHostManager::poll();
     
     // Check for connection timeout (non-blocking)
     UICommon::checkConnectionTimeout();
@@ -290,6 +341,9 @@ void loop()
             
             // Update power manager with current machine state
             PowerManager::update(status.state);
+
+            // Sync CNC status to USB HID devices
+            sendHidStatus(status, true);
         } else {
             // Machine disconnected - show OFFLINE state and reset all values to dashes
             UICommon::updateMachineState("OFFLINE");
@@ -307,6 +361,10 @@ void loop()
             
             // Update power manager with OFFLINE state (treat as IDLE for power management)
             PowerManager::update(STATE_IDLE);
+
+            // Send offline status to USB HID devices
+            FluidNCStatus offline_status{};
+            sendHidStatus(offline_status, false);
         }
     }
     

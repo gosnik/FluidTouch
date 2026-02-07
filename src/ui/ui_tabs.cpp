@@ -6,6 +6,8 @@
 #include "ui/tabs/ui_tab_macros.h"
 #include "ui/tabs/ui_tab_terminal.h"
 #include "ui/tabs/ui_tab_settings.h"
+#include "core/usb_host_manager.h"
+#include "core/qtdial_hid_protocol.h"
 #include "core/comm_manager.h"
 
 // Static member initialization
@@ -16,6 +18,10 @@ lv_obj_t *UITabs::tab_files = nullptr;
 lv_obj_t *UITabs::tab_macros = nullptr;
 lv_obj_t *UITabs::tab_terminal = nullptr;
 lv_obj_t *UITabs::tab_settings = nullptr;
+
+namespace {
+void sync_hid_axis_screens(uint32_t active_tab);
+} // namespace
 
 // Create main tabview and all tabs
 void UITabs::createTabs() {
@@ -69,7 +75,21 @@ void UITabs::createTabs() {
     
     // Add event handler for tab changes
     lv_obj_add_event_cb(tabview, tab_changed_event_cb, LV_EVENT_VALUE_CHANGED, nullptr);
+
+    sync_hid_axis_screens(0);
 }
+
+namespace {
+void sync_hid_axis_screens(uint32_t active_tab)
+{
+    (void)active_tab;
+#if defined(CONFIG_IDF_TARGET_ESP32P4)
+    UsbHostManager::sendDisplaySelectScreenForRole(QtdialHidProtocol::kRoleX, "cnc_axis", false);
+    UsbHostManager::sendDisplaySelectScreenForRole(QtdialHidProtocol::kRoleY, "cnc_axis", false);
+    UsbHostManager::sendDisplaySelectScreenForRole(QtdialHidProtocol::kRoleZ, "cnc_axis", false);
+#endif
+}
+} // namespace
 
 // Tab change event handler
 void UITabs::tab_changed_event_cb(lv_event_t *e) {
@@ -81,6 +101,8 @@ void UITabs::tab_changed_event_cb(lv_event_t *e) {
         // Trigger initial load on first selection
         UITabFiles::refreshFileList();
     }
+
+    sync_hid_axis_screens(active_tab);
 }
 
 // Create Status tab content (delegated to UITabStatus module)
