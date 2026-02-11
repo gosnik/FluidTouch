@@ -38,8 +38,8 @@ void MachineConfigManager::loadMachines(MachineConfig machines[MAX_MACHINES]) {
             Serial.printf("    Name: %s, URL: %s:%d\n", machines[i].name, machines[i].fluidnc_url, machines[i].websocket_port);
             
             // Load jog settings (with defaults if not present)
-            machines[i].jog_xy_step = prefs.getFloat((prefix + "jxy_st").c_str(), 10.0f);
-            machines[i].jog_z_step = prefs.getFloat((prefix + "jz_st").c_str(), 1.0f);
+            machines[i].jog_xy_step = prefs.getFloat((prefix + "jxy_st").c_str(), 0.01f);
+            machines[i].jog_z_step = prefs.getFloat((prefix + "jz_st").c_str(), 0.01f);
             machines[i].jog_xy_feed = prefs.getInt((prefix + "jxy_fd").c_str(), 3000);
             machines[i].jog_z_feed = prefs.getInt((prefix + "jz_fd").c_str(), 1000);
             machines[i].jog_max_xy_feed = prefs.getInt((prefix + "jxy_mx").c_str(), 3000);

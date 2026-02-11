@@ -212,8 +212,8 @@ bool SettingsManager::importSettings(const char* filepath) {
             JsonObject jog = machine["jog"];
             machine_configs[machine_index].jog_xy_feed = jog["xy_feed_rate"] | 1000;
             machine_configs[machine_index].jog_z_feed = jog["z_feed_rate"] | 500;
-            machine_configs[machine_index].jog_xy_step = jog["xy_step"] | 10.0f;
-            machine_configs[machine_index].jog_z_step = jog["z_step"] | 1.0f;
+            machine_configs[machine_index].jog_xy_step = jog["xy_step"] | 0.01f;
+            machine_configs[machine_index].jog_z_step = jog["z_step"] | 0.01f;
             
             // Probe settings
             JsonObject probe = machine["probe"];

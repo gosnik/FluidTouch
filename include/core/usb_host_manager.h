@@ -20,6 +20,7 @@ public:
     static bool sendDisplayBrightnessAll(uint8_t brightness);
     static bool sendStatusAll(const uint8_t *payload, size_t length);
     static bool getRoleCount(uint8_t role_id, int32_t *count_out);
+    static bool getSingleDeviceCount(int32_t *count_out);
     static int deviceCount();
 };
 

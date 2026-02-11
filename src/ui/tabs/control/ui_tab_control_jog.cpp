@@ -1,9 +1,11 @@
 #include "ui/tabs/control/ui_tab_control_jog.h"
 #include "ui/tabs/settings/ui_tab_settings_jog.h"
 #include "ui/ui_theme.h"
+#include "ui/ui_common.h"
 #include "core/comm_manager.h"
 #include "core/encoder.h"
 #include "core/power_manager.h"
+#include "core/usb_host_manager.h"
 #include "config.h"
 #include <Arduino.h>
 
@@ -16,16 +18,20 @@ lv_obj_t *UITabControlJog::y_step_buttons[6] = {nullptr, nullptr, nullptr, nullp
 lv_obj_t *UITabControlJog::z_step_buttons[6] = {nullptr, nullptr, nullptr, nullptr, nullptr, nullptr};
 lv_obj_t *UITabControlJog::xy_feedrate_label = nullptr;
 lv_obj_t *UITabControlJog::z_feedrate_label = nullptr;
+lv_obj_t *UITabControlJog::encoder_bind_container = nullptr;
+lv_obj_t *UITabControlJog::encoder_bind_buttons[3] = {nullptr, nullptr, nullptr};
 lv_timer_t *UITabControlJog::encoder_timer = nullptr;
 int16_t UITabControlJog::last_encoder_counts[3] = {0, 0, 0};
-float UITabControlJog::x_current_step = 10.0f;      // Will be loaded from settings
-float UITabControlJog::y_current_step = 10.0f;      // Will be loaded from settings
-float UITabControlJog::z_current_step = 1.0f;       // Will be loaded from settings
-int UITabControlJog::x_current_step_index = 2;      // Will be recalculated
-int UITabControlJog::y_current_step_index = 2;      // Will be recalculated
-int UITabControlJog::z_current_step_index = 1;      // Will be recalculated
-int UITabControlJog::xy_current_feed = 3000;        // Will be loaded from settings
-int UITabControlJog::z_current_feed = 1000;         // Will be loaded from settings
+int32_t UITabControlJog::last_override_count = 0;
+bool UITabControlJog::last_override_count_valid = false;
+float UITabControlJog::x_current_step = 0.01f;      // Will be loaded from settings
+float UITabControlJog::y_current_step = 0.01f;      // Will be loaded from settings
+float UITabControlJog::z_current_step = 0.01f;       // Will be loaded from settings
+int UITabControlJog::x_current_step_index = 0;      // Will be recalculated
+int UITabControlJog::y_current_step_index = 0;      // Will be recalculated
+int UITabControlJog::z_current_step_index = 0;      // Will be recalculated
+int UITabControlJog::xy_current_feed = 300;        // Will be loaded from settings
+int UITabControlJog::z_current_feed = 100;         // Will be loaded from settings
 
 void UITabControlJog::create(lv_obj_t *tab) {
     parent_tab = tab;
@@ -72,19 +78,30 @@ void UITabControlJog::create(lv_obj_t *tab) {
     lv_obj_t *x_step_label = lv_label_create(tab);
     lv_label_set_text(x_step_label, "X Step");
     lv_obj_set_style_text_font(x_step_label, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_color(x_step_label, UITheme::AXIS_XY, 0);
     lv_obj_set_pos(x_step_label, UI_SCALE_X(5), UI_SCALE_Y(9));
     
-    // X Step buttons
-    for (int i = 0; i < UITheme::XY_STEP_COUNT; i++) {
-        lv_obj_t *btn_step = lv_button_create(tab);
-        lv_obj_set_size(btn_step, UI_SCALE_X(40), UI_SCALE_Y(40));
-        lv_obj_set_pos(btn_step, UI_SCALE_X(8), UI_SCALE_Y(30) + i * UI_SCALE_Y(42));
-        lv_obj_add_event_cb(btn_step, x_step_button_event_cb, LV_EVENT_CLICKED, (void*)(intptr_t)i);
+    const int step_btn_width = UI_SCALE_X(40);
+    const int step_btn_height = UI_SCALE_Y(40);
+    const int step_btn_gap = UI_SCALE_X(4);
+    const int xy_step_row_start_x = UI_SCALE_X(5);
+    const int x_step_row_y = UI_SCALE_Y(30);
+    const int y_step_row_y = UI_SCALE_Y(94);
 
-        x_step_buttons[i] = btn_step;
-        
+    // X Step buttons - horizontal row, smallest to largest (left to right)
+    for (int display_index = 0; display_index < UITheme::XY_STEP_COUNT; display_index++) {
+        int value_index = UITheme::XY_STEP_COUNT - 1 - display_index;
+        lv_obj_t *btn_step = lv_button_create(tab);
+        lv_obj_set_size(btn_step, step_btn_width, step_btn_height);
+        lv_obj_set_pos(btn_step,
+                       xy_step_row_start_x + display_index * (step_btn_width + step_btn_gap),
+                       x_step_row_y);
+        lv_obj_add_event_cb(btn_step, x_step_button_event_cb, LV_EVENT_CLICKED, (void*)(intptr_t)value_index);
+
+        x_step_buttons[value_index] = btn_step;
+
         lv_obj_t *lbl = lv_label_create(btn_step);
-        lv_label_set_text(lbl, UITheme::XY_STEP_LABELS[i]);
+        lv_label_set_text(lbl, UITheme::XY_STEP_LABELS[value_index]);
         lv_obj_set_style_text_font(lbl, &lv_font_montserrat_14, 0);
         lv_obj_center(lbl);
     }
@@ -94,28 +111,77 @@ void UITabControlJog::create(lv_obj_t *tab) {
     lv_obj_t *y_step_label = lv_label_create(tab);
     lv_label_set_text(y_step_label, "Y Step");
     lv_obj_set_style_text_font(y_step_label, &lv_font_montserrat_14, 0);
-    lv_obj_set_pos(y_step_label, UI_SCALE_X(58), UI_SCALE_Y(9));
+    lv_obj_set_style_text_color(y_step_label, UITheme::AXIS_XY, 0);
+    lv_obj_set_pos(y_step_label, UI_SCALE_X(5), UI_SCALE_Y(74));
 
-    for (int i = 0; i < UITheme::XY_STEP_COUNT; i++) {
+    // Y Step buttons - horizontal row, smallest to largest (left to right)
+    for (int display_index = 0; display_index < UITheme::XY_STEP_COUNT; display_index++) {
+        int value_index = UITheme::XY_STEP_COUNT - 1 - display_index;
         lv_obj_t *btn_step = lv_button_create(tab);
-        lv_obj_set_size(btn_step, UI_SCALE_X(40), UI_SCALE_Y(40));
-        lv_obj_set_pos(btn_step, UI_SCALE_X(58), UI_SCALE_Y(30) + i * UI_SCALE_Y(42));
-        lv_obj_add_event_cb(btn_step, y_step_button_event_cb, LV_EVENT_CLICKED, (void*)(intptr_t)i);
+        lv_obj_set_size(btn_step, step_btn_width, step_btn_height);
+        lv_obj_set_pos(btn_step,
+                       xy_step_row_start_x + display_index * (step_btn_width + step_btn_gap),
+                       y_step_row_y);
+        lv_obj_add_event_cb(btn_step, y_step_button_event_cb, LV_EVENT_CLICKED, (void*)(intptr_t)value_index);
 
-        y_step_buttons[i] = btn_step;
+        y_step_buttons[value_index] = btn_step;
 
         lv_obj_t *lbl = lv_label_create(btn_step);
-        lv_label_set_text(lbl, UITheme::XY_STEP_LABELS[i]);
+        lv_label_set_text(lbl, UITheme::XY_STEP_LABELS[value_index]);
         lv_obj_set_style_text_font(lbl, &lv_font_montserrat_14, 0);
         lv_obj_center(lbl);
     }
     update_y_step_button_styles();
+
+    // Encoder binding override (single qtdial only)
+    encoder_bind_container = lv_obj_create(tab);
+    lv_obj_set_size(encoder_bind_container, UI_SCALE_X(210), UI_SCALE_Y(60));
+    lv_obj_set_pos(encoder_bind_container, UI_SCALE_X(5), UI_SCALE_Y(140));
+    lv_obj_set_style_bg_opa(encoder_bind_container, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_border_width(encoder_bind_container, 0, 0);
+    lv_obj_set_style_pad_all(encoder_bind_container, 0, 0);
+    lv_obj_clear_flag(encoder_bind_container, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_add_flag(encoder_bind_container, LV_OBJ_FLAG_HIDDEN);
+
+    lv_obj_t *encoder_bind_label = lv_label_create(encoder_bind_container);
+    lv_label_set_text(encoder_bind_label, "Encoder Bind");
+    lv_obj_set_style_text_font(encoder_bind_label, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_color(encoder_bind_label, UITheme::TEXT_MEDIUM, 0);
+    lv_obj_set_pos(encoder_bind_label, 0, 0);
+
+    static const char *kBindLabels[3] = {"X", "Y", "Z"};
+    const int bind_btn_w = UI_SCALE_X(45);
+    const int bind_btn_h = UI_SCALE_Y(36);
+    const int bind_btn_gap = UI_SCALE_X(6);
+    const int bind_row_y = UI_SCALE_Y(20);
+    for (int i = 0; i < 3; ++i) {
+        lv_obj_t *btn = lv_button_create(encoder_bind_container);
+        lv_obj_set_size(btn, bind_btn_w, bind_btn_h);
+        lv_obj_set_pos(btn, i * (bind_btn_w + bind_btn_gap), bind_row_y);
+        lv_obj_add_event_cb(btn, encoder_bind_button_event_cb, LV_EVENT_CLICKED, (void*)(intptr_t)i);
+        encoder_bind_buttons[i] = btn;
+
+        lv_obj_t *lbl = lv_label_create(btn);
+        lv_label_set_text(lbl, kBindLabels[i]);
+        lv_obj_set_style_text_font(lbl, &lv_font_montserrat_14, 0);
+        lv_obj_center(lbl);
+    }
+    update_encoder_bind_button_styles();
+    if (encoder_bind_container) {
+        if (UICommon::isEncoderBindVisible()) {
+            lv_obj_clear_flag(encoder_bind_container, LV_OBJ_FLAG_HIDDEN);
+            reset_override_encoder_count();
+        } else {
+            lv_obj_add_flag(encoder_bind_container, LV_OBJ_FLAG_HIDDEN);
+        }
+    }
     
     // XY Feed rate control
     lv_obj_t *xy_feed_label = lv_label_create(tab);
     lv_label_set_text(xy_feed_label, "XY Feed:");
     lv_obj_set_style_text_font(xy_feed_label, &lv_font_montserrat_14, 0);
-    lv_obj_set_pos(xy_feed_label, UI_SCALE_X(120), UI_SCALE_Y(250));
+    lv_obj_set_style_text_color(xy_feed_label, UITheme::AXIS_XY, 0);
+    lv_obj_set_pos(xy_feed_label, UI_SCALE_X(5), UI_SCALE_Y(250));
     
     // XY Feedrate value (plain text label) - load from settings
     xy_feedrate_label = lv_label_create(tab);
@@ -123,7 +189,8 @@ void UITabControlJog::create(lv_obj_t *tab) {
     snprintf(xy_feed_buf, sizeof(xy_feed_buf), "%d", xy_current_feed);
     lv_label_set_text(xy_feedrate_label, xy_feed_buf);
     lv_obj_set_style_text_font(xy_feedrate_label, &lv_font_montserrat_14, 0);
-    lv_obj_set_pos(xy_feedrate_label, UI_SCALE_X(190), UI_SCALE_Y(250));
+    lv_obj_set_style_text_color(xy_feedrate_label, UITheme::TEXT_MEDIUM, 0);
+    lv_obj_set_pos(xy_feedrate_label, UI_SCALE_X(75), UI_SCALE_Y(250));
     
     // Now update XY step display (after feedrate label exists)
     update_xy_step_display();
@@ -183,19 +250,26 @@ void UITabControlJog::create(lv_obj_t *tab) {
     lv_obj_t *z_step_label = lv_label_create(tab);
     lv_label_set_text(z_step_label, "Z Step");
     lv_obj_set_style_text_font(z_step_label, &lv_font_montserrat_14, 0);
-    lv_obj_set_pos(z_step_label, UI_SCALE_X(395), UI_SCALE_Y(9));
+    lv_obj_set_style_text_color(z_step_label, UITheme::AXIS_XY, 0);
+    lv_obj_set_pos(z_step_label, UI_SCALE_X(365), UI_SCALE_Y(9));
     
-    // Z Step size buttons - vertical (largest to smallest)
-    for (int i = 0; i < UITheme::Z_STEP_COUNT; i++) {
+    const int z_step_row_start_x = UI_SCALE_X(365);
+    const int z_step_row_y = UI_SCALE_Y(30);
+
+    // Z Step size buttons - horizontal row, smallest to largest (left to right)
+    for (int display_index = 0; display_index < UITheme::Z_STEP_COUNT; display_index++) {
+        int value_index = UITheme::Z_STEP_COUNT - 1 - display_index;
         lv_obj_t *btn_step = lv_button_create(tab);
-        lv_obj_set_size(btn_step, UI_SCALE_X(40), UI_SCALE_Y(40));
-        lv_obj_set_pos(btn_step, UI_SCALE_X(395), UI_SCALE_Y(30) + i * UI_SCALE_Y(42));
-        lv_obj_add_event_cb(btn_step, z_step_button_event_cb, LV_EVENT_CLICKED, (void*)(intptr_t)i);
+        lv_obj_set_size(btn_step, step_btn_width, step_btn_height);
+        lv_obj_set_pos(btn_step,
+                       z_step_row_start_x + display_index * (step_btn_width + step_btn_gap),
+                       z_step_row_y);
+        lv_obj_add_event_cb(btn_step, z_step_button_event_cb, LV_EVENT_CLICKED, (void*)(intptr_t)value_index);
         
-        z_step_buttons[i] = btn_step;
+        z_step_buttons[value_index] = btn_step;
         
         lv_obj_t *lbl = lv_label_create(btn_step);
-        lv_label_set_text(lbl, UITheme::Z_STEP_LABELS[i]);
+        lv_label_set_text(lbl, UITheme::Z_STEP_LABELS[value_index]);
         lv_obj_set_style_text_font(lbl, &lv_font_montserrat_14, 0);
         lv_obj_center(lbl);
     }
@@ -290,6 +364,7 @@ void UITabControlJog::create(lv_obj_t *tab) {
     for (size_t i = 0; i < 3; ++i) {
         last_encoder_counts[i] = get_encoder_value(i);
     }
+    reset_override_encoder_count();
 }
 
 // X Step button event handler
@@ -395,6 +470,40 @@ void UITabControlJog::update_z_step_button_styles() {
         }
     }
 }
+
+void UITabControlJog::encoder_bind_button_event_cb(lv_event_t *e) {
+    int index = (int)(intptr_t)lv_event_get_user_data(e);
+    UICommon::setEncoderBindAxis(index, true);
+    update_encoder_bind_button_styles();
+    reset_override_encoder_count();
+}
+
+void UITabControlJog::update_encoder_bind_button_styles() {
+    int axis = UICommon::getEncoderBindAxis();
+    for (int i = 0; i < 3; ++i) {
+        if (!encoder_bind_buttons[i]) {
+            continue;
+        }
+        if (i == axis) {
+            lv_obj_set_style_bg_color(encoder_bind_buttons[i], UITheme::ACCENT_PRIMARY, LV_PART_MAIN | LV_STATE_DEFAULT);
+            lv_obj_set_style_bg_color(encoder_bind_buttons[i], UITheme::ACCENT_PRIMARY_PRESSED, LV_PART_MAIN | LV_STATE_PRESSED);
+        } else {
+            lv_obj_set_style_bg_color(encoder_bind_buttons[i], UITheme::BG_BUTTON, LV_PART_MAIN | LV_STATE_DEFAULT);
+            lv_obj_set_style_bg_color(encoder_bind_buttons[i], UITheme::BORDER_LIGHT, LV_PART_MAIN | LV_STATE_PRESSED);
+        }
+    }
+}
+
+void UITabControlJog::reset_override_encoder_count() {
+    int32_t count = 0;
+    if (UsbHostManager::getSingleDeviceCount(&count)) {
+        last_override_count = count;
+        last_override_count_valid = true;
+    } else {
+        last_override_count_valid = false;
+    }
+}
+
 
 // XY Feedrate adjustment button event handler
 void UITabControlJog::xy_feedrate_adj_event_cb(lv_event_t *e) {
@@ -632,9 +741,29 @@ void UITabControlJog::cancel_jog_event_cb(lv_event_t *e) {
 void UITabControlJog::encoderTimerCb(lv_timer_t *timer) {
     LV_UNUSED(timer);
 
+    UICommon::updateEncoderBindVisibility();
+    if (encoder_bind_container) {
+        update_encoder_bind_button_styles();
+        bool should_show = UICommon::isEncoderBindVisible();
+        bool is_hidden = lv_obj_has_flag(encoder_bind_container, LV_OBJ_FLAG_HIDDEN);
+        if (should_show && is_hidden) {
+            lv_obj_clear_flag(encoder_bind_container, LV_OBJ_FLAG_HIDDEN);
+            reset_override_encoder_count();
+        } else if (!should_show && !is_hidden) {
+            lv_obj_add_flag(encoder_bind_container, LV_OBJ_FLAG_HIDDEN);
+            last_override_count_valid = false;
+            for (size_t i = 0; i < 3; ++i) {
+                last_encoder_counts[i] = get_encoder_value(i);
+            }
+        }
+    }
+
     if (parent_tab && lv_obj_has_flag(parent_tab, LV_OBJ_FLAG_HIDDEN)) {
         for (size_t i = 0; i < 3; ++i) {
             last_encoder_counts[i] = get_encoder_value(i);
+        }
+        if (UICommon::isEncoderBindVisible()) {
+            reset_override_encoder_count();
         }
         return;
     }
@@ -642,6 +771,10 @@ void UITabControlJog::encoderTimerCb(lv_timer_t *timer) {
     if (!CommManager::isConnected()) {
         for (size_t i = 0; i < 3; ++i) {
             last_encoder_counts[i] = get_encoder_value(i);
+        }
+        if (UICommon::isEncoderBindVisible()) {
+            reset_override_encoder_count();
+            UICommon::maybeSendEncoderBindDisplay(false);
         }
         return;
     }
@@ -661,6 +794,30 @@ void UITabControlJog::encoderTimerCb(lv_timer_t *timer) {
         {'Y', y_current_step, xy_feedrate},
         {'Z', z_current_step, z_feedrate},
     };
+
+    if (UICommon::isEncoderBindVisible()) {
+        int32_t count = 0;
+        if (UsbHostManager::getSingleDeviceCount(&count)) {
+            if (!last_override_count_valid) {
+                last_override_count = count;
+                last_override_count_valid = true;
+            }
+            int32_t delta = count - last_override_count;
+            last_override_count = count;
+            if (delta != 0) {
+                const AxisCmd &axis = axes[UICommon::getEncoderBindAxis()];
+                float move = axis.step * static_cast<float>(delta);
+                char jog_cmd[64];
+                snprintf(jog_cmd, sizeof(jog_cmd), "$J=G91 %c%.3f F%d\n",
+                         axis.axis, move, axis.feedrate);
+                ESP_LOGI("UI", "[Jog] Encoder bind %c jog: %s", axis.axis, jog_cmd);
+                CommManager::sendCommand(jog_cmd);
+                PowerManager::onUserActivity();
+            }
+            UICommon::maybeSendEncoderBindDisplay(false);
+            return;
+        }
+    }
 
     for (size_t i = 0; i < 3; ++i) {
         int16_t count = get_encoder_value(i);

@@ -132,7 +132,7 @@ void UITabSettingsPower::create(lv_obj_t *tab) {
     lv_obj_set_pos(brightness_label, UI_SCALE_X(300), UI_SCALE_Y(120));
     
     dim_brightness_dropdown = lv_dropdown_create(tab);
-    lv_dropdown_set_options(dim_brightness_dropdown, "5%\n10%\n25%\n50%");
+    lv_dropdown_set_options(dim_brightness_dropdown, "0%\n5%\n10%\n25%\n50%");
     lv_obj_set_size(dim_brightness_dropdown, UI_SCALE_X(130), UI_SCALE_Y(48));
     lv_obj_set_style_pad_top(dim_brightness_dropdown, UI_SCALE_Y(12), LV_PART_MAIN);  // Adjust top padding to vertically center text
     lv_obj_set_pos(dim_brightness_dropdown, UI_SCALE_X(420), UI_SCALE_Y(107));
@@ -140,11 +140,12 @@ void UITabSettingsPower::create(lv_obj_t *tab) {
     
     // Set current dim brightness selection (now uses percentages directly)
     uint8_t dim_bright = PowerManager::getDimBrightness();  // 0-100
-    uint16_t bright_idx = 2;  // Default to 25%
-    if (dim_bright <= 5) bright_idx = 0;       // 5%
-    else if (dim_bright <= 10) bright_idx = 1;  // 10%
-    else if (dim_bright <= 25) bright_idx = 2;  // 25%
-    else bright_idx = 3;                        // 50%
+    uint16_t bright_idx = 3;  // Default to 25%
+    if (dim_bright <= 1) bright_idx = 0;        // 0%
+    else if (dim_bright <= 5) bright_idx = 1;   // 5%
+    else if (dim_bright <= 10) bright_idx = 2;  // 10%
+    else if (dim_bright <= 25) bright_idx = 3;  // 25%
+    else bright_idx = 4;                        // 50%
     lv_dropdown_set_selected(dim_brightness_dropdown, bright_idx);
     
     // Deep Sleep label
@@ -252,8 +253,8 @@ static void btn_save_power_event_handler(lv_event_t *e) {
         
         // Get dim brightness from dropdown (now just percentages) (now just percentages)
         uint16_t bright_idx = lv_dropdown_get_selected(dim_brightness_dropdown);
-        uint8_t brightness_values[] = {5, 10, 25, 50};  // 5%, 10%, 25%, 50%
-        if (bright_idx < 4) {
+        uint8_t brightness_values[] = {0, 5, 10, 25, 50};  // 5%, 10%, 25%, 50%
+        if (bright_idx < 5) {
             PowerManager::setDimBrightness(brightness_values[bright_idx]);
         }
         

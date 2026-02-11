@@ -6,6 +6,7 @@
 #include "core/comm_manager.h"
 #include "core/display_driver.h"
 #include "core/power_manager.h"
+#include "core/usb_host_manager.h"
 #include "ui/tabs/control/ui_tab_control_probe.h"
 #include "network/screenshot_server.h"
 #include "config.h"
@@ -49,6 +50,11 @@ lv_obj_t *UICommon::lbl_mpos_label = nullptr;
 lv_obj_t *UICommon::lbl_mpos_x = nullptr;
 lv_obj_t *UICommon::lbl_mpos_y = nullptr;
 lv_obj_t *UICommon::lbl_mpos_z = nullptr;
+lv_obj_t *UICommon::encoder_bind_container = nullptr;
+lv_obj_t *UICommon::encoder_bind_buttons[3] = {nullptr, nullptr, nullptr};
+int UICommon::encoder_bind_axis = 0;
+bool UICommon::encoder_bind_visible = false;
+uint32_t UICommon::last_bind_display_ms = 0;
 
 // Cached values for delta checking
 float UICommon::last_wpos_x = -9999.0f;
@@ -135,6 +141,11 @@ static void status_bar_right_click_handler(lv_event_t *e) {
         }
         UICommon::showConnectionErrorDialog("Connection Lost", error_msg);
     }
+}
+
+static void encoder_bind_button_event_cb(lv_event_t *e) {
+    int index = static_cast<int>(reinterpret_cast<intptr_t>(lv_event_get_user_data(e)));
+    UICommon::setEncoderBindAxis(index, true);
 }
 
 // Event handler for confirming machine selection change
@@ -399,6 +410,12 @@ void UICommon::createMainUI() {
 }
 
 void UICommon::createStatusBar() {
+    constexpr int32_t posx1 = 335;
+    constexpr int32_t posx2 = 400;
+    constexpr int32_t posx3 = 500;
+    constexpr int32_t posx4 = 600;
+    constexpr int32_t encoder_bind_x = 170;
+
     // Create status bar at bottom (always visible) - 2 lines with CNC info
     status_bar = lv_obj_create(lv_screen_active());
     lv_obj_set_size(status_bar, SCREEN_WIDTH, STATUS_BAR_HEIGHT);
@@ -413,7 +430,7 @@ void UICommon::createStatusBar() {
     
     // Create left clickable area (goes to Status tab)
     status_bar_left_area = lv_obj_create(status_bar);
-    lv_obj_set_size(status_bar_left_area, UI_SCALE_X(550), STATUS_BAR_HEIGHT - UI_SCALE_Y(10));  // Left 550px
+    lv_obj_set_size(status_bar_left_area, UI_SCALE_X(160), STATUS_BAR_HEIGHT - UI_SCALE_Y(10));  // Left status area
     lv_obj_align(status_bar_left_area, LV_ALIGN_LEFT_MID, 0, 0);
     lv_obj_set_style_bg_opa(status_bar_left_area, LV_OPA_TRANSP, 0);  // Transparent
     lv_obj_set_style_border_width(status_bar_left_area, 0, 0);
@@ -438,6 +455,41 @@ void UICommon::createStatusBar() {
     lv_obj_set_style_text_color(lbl_status, UITheme::STATE_ALARM, 0);
     lv_obj_align(lbl_status, LV_ALIGN_LEFT_MID, UI_SCALE_X(5), 0);
 
+    // Encoder override buttons (single qtdial)
+    const int bind_btn_size = STATUS_BAR_HEIGHT - 14;
+    const int bind_btn_gap = UI_SCALE_X(6);
+    const int bind_container_w = bind_btn_size * 3 + bind_btn_gap * 2;
+    const int bind_container_y = (STATUS_BAR_HEIGHT - bind_btn_size) / 2;
+
+    encoder_bind_container = lv_obj_create(status_bar);
+    lv_obj_set_size(encoder_bind_container, bind_container_w, STATUS_BAR_HEIGHT);
+    lv_obj_set_pos(encoder_bind_container, UI_SCALE_X(encoder_bind_x), bind_container_y);
+    lv_obj_set_style_bg_opa(encoder_bind_container, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_border_width(encoder_bind_container, 0, 0);
+    lv_obj_set_style_pad_all(encoder_bind_container, 0, 0);
+    lv_obj_clear_flag(encoder_bind_container, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_add_flag(encoder_bind_container, LV_OBJ_FLAG_HIDDEN);
+
+    static const char *kBindLabels[3] = {"X", "Y", "Z"};
+    const int bind_btn_w = bind_btn_size;
+    const int bind_btn_h = bind_btn_size;
+    const int bind_row_y = 0;
+    for (int i = 0; i < 3; ++i) {
+        lv_obj_t *btn = lv_button_create(encoder_bind_container);
+        lv_obj_set_size(btn, bind_btn_w, bind_btn_h);
+        lv_obj_set_pos(btn, i * (bind_btn_w + bind_btn_gap), bind_row_y);
+        lv_obj_add_event_cb(btn, encoder_bind_button_event_cb, LV_EVENT_CLICKED, (void*)(intptr_t)i);
+        encoder_bind_buttons[i] = btn;
+
+        lv_obj_t *lbl = lv_label_create(btn);
+        lv_label_set_text(lbl, kBindLabels[i]);
+        lv_obj_set_style_text_font(lbl, &lv_font_montserrat_14, 0);
+        lv_obj_center(lbl);
+    }
+    updateEncoderBindVisibility();
+    setEncoderBindAxis(encoder_bind_axis, true);
+
+
     // Middle: Work Position (line 1) and Machine Position (line 2)
     // Work Position - Line 1
     lv_obj_t *lbl_wpos_label = lv_label_create(status_bar);
@@ -446,25 +498,25 @@ void UICommon::createStatusBar() {
     lv_obj_set_style_text_color(lbl_wpos_label, UITheme::POS_WORK, 0);  // Orange - primary data
     lv_obj_set_style_text_align(lbl_wpos_label, LV_TEXT_ALIGN_RIGHT, 0);
     lv_obj_set_width(lbl_wpos_label, UI_SCALE_X(60));  // Fixed width for right alignment
-    lv_obj_set_pos(lbl_wpos_label, UI_SCALE_X(200), UI_SCALE_Y(3));  // Top line
+    lv_obj_set_pos(lbl_wpos_label, UI_SCALE_X(posx1), UI_SCALE_Y(3));  // Top line
 
     lbl_wpos_x = lv_label_create(status_bar);
     lv_label_set_text(lbl_wpos_x, "X ----.---");
     lv_obj_set_style_text_font(lbl_wpos_x, &lv_font_montserrat_18, 0);
     lv_obj_set_style_text_color(lbl_wpos_x, UITheme::AXIS_X, 0);
-    lv_obj_set_pos(lbl_wpos_x, UI_SCALE_X(270), UI_SCALE_Y(3));
+    lv_obj_set_pos(lbl_wpos_x, UI_SCALE_X(posx2), UI_SCALE_Y(3));
 
     lbl_wpos_y = lv_label_create(status_bar);
     lv_label_set_text(lbl_wpos_y, "Y ----.---");
     lv_obj_set_style_text_font(lbl_wpos_y, &lv_font_montserrat_18, 0);
     lv_obj_set_style_text_color(lbl_wpos_y, UITheme::AXIS_Y, 0);
-    lv_obj_set_pos(lbl_wpos_y, UI_SCALE_X(380), UI_SCALE_Y(3));
+    lv_obj_set_pos(lbl_wpos_y, UI_SCALE_X(posx3), UI_SCALE_Y(3));
 
     lbl_wpos_z = lv_label_create(status_bar);
     lv_label_set_text(lbl_wpos_z, "Z ----.---");
     lv_obj_set_style_text_font(lbl_wpos_z, &lv_font_montserrat_18, 0);
     lv_obj_set_style_text_color(lbl_wpos_z, UITheme::AXIS_Z, 0);
-    lv_obj_set_pos(lbl_wpos_z, UI_SCALE_X(490), UI_SCALE_Y(3));
+    lv_obj_set_pos(lbl_wpos_z, UI_SCALE_X(posx4), UI_SCALE_Y(3));
 
     // Machine Position - Line 2
     lbl_mpos_label = lv_label_create(status_bar);
@@ -473,25 +525,25 @@ void UICommon::createStatusBar() {
     lv_obj_set_style_text_color(lbl_mpos_label, UITheme::POS_MACHINE, 0);  // Cyan - secondary data
     lv_obj_set_style_text_align(lbl_mpos_label, LV_TEXT_ALIGN_RIGHT, 0);
     lv_obj_set_width(lbl_mpos_label, UI_SCALE_X(60));  // Fixed width for right alignment
-    lv_obj_set_pos(lbl_mpos_label, UI_SCALE_X(200), UI_SCALE_Y(27));  // Bottom line, aligned with WiFi name
+    lv_obj_set_pos(lbl_mpos_label, UI_SCALE_X(posx1), UI_SCALE_Y(27));  // Bottom line, aligned with WiFi name
 
     lbl_mpos_x = lv_label_create(status_bar);
     lv_label_set_text(lbl_mpos_x, "X ----.---");
     lv_obj_set_style_text_font(lbl_mpos_x, &lv_font_montserrat_18, 0);
     lv_obj_set_style_text_color(lbl_mpos_x, UITheme::AXIS_X, 0);
-    lv_obj_set_pos(lbl_mpos_x, UI_SCALE_X(270), UI_SCALE_Y(27));
+    lv_obj_set_pos(lbl_mpos_x, UI_SCALE_X(posx2), UI_SCALE_Y(27));
 
     lbl_mpos_y = lv_label_create(status_bar);
     lv_label_set_text(lbl_mpos_y, "Y ----.---");
     lv_obj_set_style_text_font(lbl_mpos_y, &lv_font_montserrat_18, 0);
     lv_obj_set_style_text_color(lbl_mpos_y, UITheme::AXIS_Y, 0);
-    lv_obj_set_pos(lbl_mpos_y, UI_SCALE_X(380), UI_SCALE_Y(27));
+    lv_obj_set_pos(lbl_mpos_y, UI_SCALE_X(posx3), UI_SCALE_Y(27));
 
     lbl_mpos_z = lv_label_create(status_bar);
     lv_label_set_text(lbl_mpos_z, "Z ----.---");
     lv_obj_set_style_text_font(lbl_mpos_z, &lv_font_montserrat_18, 0);
     lv_obj_set_style_text_color(lbl_mpos_z, UITheme::AXIS_Z, 0);
-    lv_obj_set_pos(lbl_mpos_z, UI_SCALE_X(490), UI_SCALE_Y(27));
+    lv_obj_set_pos(lbl_mpos_z, UI_SCALE_X(posx4), UI_SCALE_Y(27));
 
     // Right side Line 1: Machine name with symbol
     // Get selected machine from config manager
@@ -655,6 +707,9 @@ void UICommon::updateWorkPosition(float x, float y, float z) {
 
 void UICommon::updateMachineState(const char *state) {
     if (status_bar && lbl_status) {
+        updateEncoderBindVisibility();
+        maybeSendEncoderBindDisplay(false);
+
         // Only update if state actually changed
         if (strcmp(state, last_machine_state) == 0) {
             return;  // No change, skip update
@@ -706,6 +761,72 @@ void UICommon::updateConnectionStatus(bool machine_connected, bool wifi_connecte
             wifi_connected ? UITheme::STATE_IDLE : UITheme::STATE_ALARM, 0);
         last_wifi_connected = wifi_connected;
     }
+}
+
+int UICommon::getEncoderBindAxis() {
+    return encoder_bind_axis;
+}
+
+void UICommon::setEncoderBindAxis(int axis, bool force_display) {
+    if (axis < 0) {
+        axis = 0;
+    } else if (axis > 2) {
+        axis = 2;
+    }
+    encoder_bind_axis = axis;
+    for (int i = 0; i < 3; ++i) {
+        if (!encoder_bind_buttons[i]) {
+            continue;
+        }
+        if (i == encoder_bind_axis) {
+            lv_obj_set_style_bg_color(encoder_bind_buttons[i], UITheme::ACCENT_PRIMARY, LV_PART_MAIN | LV_STATE_DEFAULT);
+            lv_obj_set_style_bg_color(encoder_bind_buttons[i], UITheme::ACCENT_PRIMARY_PRESSED, LV_PART_MAIN | LV_STATE_PRESSED);
+        } else {
+            lv_obj_set_style_bg_color(encoder_bind_buttons[i], UITheme::BG_BUTTON, LV_PART_MAIN | LV_STATE_DEFAULT);
+            lv_obj_set_style_bg_color(encoder_bind_buttons[i], UITheme::BORDER_LIGHT, LV_PART_MAIN | LV_STATE_PRESSED);
+        }
+    }
+    maybeSendEncoderBindDisplay(force_display);
+}
+
+bool UICommon::isEncoderBindVisible() {
+    return encoder_bind_visible;
+}
+
+void UICommon::updateEncoderBindVisibility() {
+    bool should_show = UsbHostManager::deviceCount() == 1;
+    if (should_show == encoder_bind_visible) {
+        return;
+    }
+    encoder_bind_visible = should_show;
+    if (!encoder_bind_container) {
+        return;
+    }
+    if (encoder_bind_visible) {
+        lv_obj_clear_flag(encoder_bind_container, LV_OBJ_FLAG_HIDDEN);
+    } else {
+        lv_obj_add_flag(encoder_bind_container, LV_OBJ_FLAG_HIDDEN);
+    }
+}
+
+void UICommon::maybeSendEncoderBindDisplay(bool force_display) {
+    if (!encoder_bind_visible) {
+        return;
+    }
+    const uint32_t now_ms = millis();
+    if (!force_display && (now_ms - last_bind_display_ms) < 250) {
+        return;
+    }
+    const char *axis_text = "X AXIS";
+    if (encoder_bind_axis == 1) {
+        axis_text = "Y AXIS";
+    } else if (encoder_bind_axis == 2) {
+        axis_text = "Z AXIS";
+    }
+    if (UsbHostManager::deviceCount() == 1) {
+        UsbHostManager::sendDisplaySetFieldAll("cnc_axis_title", axis_text);
+    }
+    last_bind_display_ms = now_ms;
 }
 
 void UICommon::showMachineSelectConfirmDialog() {

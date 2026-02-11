@@ -21,6 +21,11 @@ public:
     static void updateWorkPosition(float x, float y, float z);
     static void updateMachineState(const char *state);
     static void updateConnectionStatus(bool machine_connected, bool wifi_connected);
+    static int getEncoderBindAxis();
+    static void setEncoderBindAxis(int axis, bool force_display = false);
+    static bool isEncoderBindVisible();
+    static void updateEncoderBindVisibility();
+    static void maybeSendEncoderBindDisplay(bool force_display = false);
     
     // Dialog functions
     static void showMachineSelectConfirmDialog();
@@ -78,6 +83,12 @@ private:
     static lv_obj_t *lbl_mpos_x;
     static lv_obj_t *lbl_mpos_y;
     static lv_obj_t *lbl_mpos_z;
+
+    static lv_obj_t *encoder_bind_container;
+    static lv_obj_t *encoder_bind_buttons[3];
+    static int encoder_bind_axis;
+    static bool encoder_bind_visible;
+    static uint32_t last_bind_display_ms;
     
     // Cached values for delta checking (prevent unnecessary redraws)
     static float last_wpos_x, last_wpos_y, last_wpos_z;

@@ -5,8 +5,8 @@
 #include <Preferences.h>
 
 // Static member initialization - default values
-float UITabSettingsJog::default_xy_step = 10.0f;
-float UITabSettingsJog::default_z_step = 1.0f;
+float UITabSettingsJog::default_xy_step = 0.01f;
+float UITabSettingsJog::default_z_step = 0.01f;
 int UITabSettingsJog::default_xy_feed = 3000;
 int UITabSettingsJog::default_z_feed = 1000;
 int UITabSettingsJog::max_xy_feed = 3000;
@@ -77,11 +77,11 @@ void UITabSettingsJog::create(lv_obj_t *tab) {
     lv_obj_set_pos(ta_xy_step, col1_field_x, y_pos);
     lv_textarea_set_one_line(ta_xy_step, true);
     lv_textarea_set_max_length(ta_xy_step, 6);
-    lv_textarea_set_accepted_chars(ta_xy_step, "0123456789");
+    lv_textarea_set_accepted_chars(ta_xy_step, "0123456789.");
     lv_obj_set_style_text_font(ta_xy_step, &lv_font_montserrat_18, 0);
     lv_obj_add_event_cb(ta_xy_step, textarea_focused_event_handler, LV_EVENT_FOCUSED, nullptr);
     char buf[16];
-    snprintf(buf, sizeof(buf), "%.0f", default_xy_step);
+    snprintf(buf, sizeof(buf), "%.2f", default_xy_step);
     lv_textarea_set_text(ta_xy_step, buf);
     
     // === Max XY Feed (Column 2) ===
@@ -115,10 +115,10 @@ void UITabSettingsJog::create(lv_obj_t *tab) {
     lv_obj_set_pos(ta_z_step, col1_field_x, y_pos);
     lv_textarea_set_one_line(ta_z_step, true);
     lv_textarea_set_max_length(ta_z_step, 6);
-    lv_textarea_set_accepted_chars(ta_z_step, "0123456789");
+    lv_textarea_set_accepted_chars(ta_z_step, "0123456789.");
     lv_obj_set_style_text_font(ta_z_step, &lv_font_montserrat_18, 0);
     lv_obj_add_event_cb(ta_z_step, textarea_focused_event_handler, LV_EVENT_FOCUSED, nullptr);
-    snprintf(buf, sizeof(buf), "%.0f", default_z_step);
+    snprintf(buf, sizeof(buf), "%.2f", default_z_step);
     lv_textarea_set_text(ta_z_step, buf);
     
     // === Max Z Feed (Column 2) ===
@@ -223,8 +223,8 @@ void UITabSettingsJog::loadPreferences() {
         max_z_feed = config.jog_max_z_feed;
         
         Serial.printf("Jog settings loaded for machine %d:\n", machineIndex);
-        Serial.printf("  XY Step: %.0f mm\n", default_xy_step);
-        Serial.printf("  Z Step: %.0f mm\n", default_z_step);
+        Serial.printf("  XY Step: %.2f mm\n", default_xy_step);
+        Serial.printf("  Z Step: %.2f mm\n", default_z_step);
         Serial.printf("  XY Feed: %d mm/min\n", default_xy_feed);
         Serial.printf("  Z Feed: %d mm/min\n", default_z_feed);
         Serial.printf("  Max XY Feed: %d mm/min\n", max_xy_feed);
@@ -361,9 +361,9 @@ static void btn_save_jog_event_handler(lv_event_t *e) {
         int max_z_feed_val = atoi(max_z_feed_text);
         
         // Clamp to reasonable ranges
-        if (xy_step_val < 0.1f) xy_step_val = 0.1f;
+        if (xy_step_val < 0.01f) xy_step_val = 0.01f;
         if (xy_step_val > 500.0f) xy_step_val = 500.0f;
-        if (z_step_val < 0.1f) z_step_val = 0.1f;
+        if (z_step_val < 0.01f) z_step_val = 0.01f;
         if (z_step_val > 100.0f) z_step_val = 100.0f;
         if (xy_feed_val < 100) xy_feed_val = 100;
         if (xy_feed_val > 10000) xy_feed_val = 10000;
@@ -396,8 +396,8 @@ static void btn_reset_event_handler(lv_event_t *e) {
     lv_event_code_t code = lv_event_get_code(e);
     if (code == LV_EVENT_CLICKED) {
         // Reset to hardcoded defaults
-        lv_textarea_set_text(ta_xy_step, "10.0");
-        lv_textarea_set_text(ta_z_step, "1.0");
+        lv_textarea_set_text(ta_xy_step, "0.01");
+        lv_textarea_set_text(ta_z_step, "0.01");
         lv_textarea_set_text(ta_xy_feed, "3000");
         lv_textarea_set_text(ta_z_feed, "1000");
         lv_textarea_set_text(ta_max_xy_feed, "8000");

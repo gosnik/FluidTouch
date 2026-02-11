@@ -775,6 +775,33 @@ bool UsbHostManager::getRoleCount(uint8_t role_id, int32_t *count_out)
 #endif
 }
 
+bool UsbHostManager::getSingleDeviceCount(int32_t *count_out)
+{
+#if defined(CONFIG_IDF_TARGET_ESP32P4)
+    if (!count_out) {
+        return false;
+    }
+    int slot = -1;
+    for (int i = 0; i < kMaxQtdialDevices; ++i) {
+        if (!g_state.devices[i].in_use) {
+            continue;
+        }
+        if (slot >= 0) {
+            return false;
+        }
+        slot = i;
+    }
+    if (slot < 0) {
+        return false;
+    }
+    *count_out = g_state.devices[slot].count;
+    return true;
+#else
+    (void)count_out;
+    return false;
+#endif
+}
+
 int UsbHostManager::deviceCount()
 {
 #if defined(CONFIG_IDF_TARGET_ESP32P4)

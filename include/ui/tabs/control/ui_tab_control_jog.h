@@ -16,8 +16,12 @@ private:
     static lv_obj_t *z_step_buttons[6];
     static lv_obj_t *xy_feedrate_label;
     static lv_obj_t *z_feedrate_label;
+    static lv_obj_t *encoder_bind_container;
+    static lv_obj_t *encoder_bind_buttons[3];
     static lv_timer_t *encoder_timer;
     static int16_t last_encoder_counts[3];
+    static int32_t last_override_count;
+    static bool last_override_count_valid;
     static float x_current_step;
     static float y_current_step;
     static float z_current_step;
@@ -39,6 +43,9 @@ private:
     static void update_x_step_button_styles();
     static void update_y_step_button_styles();
     static void update_z_step_button_styles();
+    static void encoder_bind_button_event_cb(lv_event_t *e);
+    static void update_encoder_bind_button_styles();
+    static void reset_override_encoder_count();
     static void encoderTimerCb(lv_timer_t *timer);
     
     // Jog button event handlers

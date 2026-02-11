@@ -36,7 +36,7 @@ struct MachineConfig {
     
     // Constructor with defaults
     MachineConfig() : connection_type(CONN_WIRELESS), websocket_port(81), is_configured(false),
-                      jog_xy_step(10.0f), jog_z_step(1.0f), 
+                      jog_xy_step(0.01f), jog_z_step(0.01f), 
                       jog_xy_feed(3000), jog_z_feed(1000),
                       jog_max_xy_feed(3000), jog_max_z_feed(1000),
                       probe_feed_rate(100), probe_max_distance(10),
