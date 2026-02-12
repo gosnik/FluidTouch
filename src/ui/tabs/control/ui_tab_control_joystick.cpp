@@ -181,11 +181,7 @@ static void xy_joystick_event_handler(lv_event_t *e) {
                 float x_distance = v_x_mm_per_sec * actual_dt;
                 float y_distance = v_y_mm_per_sec * actual_dt;
                 
-                // Build and send jog command: $J=G91 X[dist] Y[dist] F[rate]
-                char jog_cmd[64];
-                snprintf(jog_cmd, sizeof(jog_cmd), "$J=G91 X%.4f Y%.4f F%.0f\n", 
-                         x_distance, y_distance, feed_rate);
-                CommManager::sendCommand(jog_cmd);
+                CommManager::sendJogRelative(x_distance, y_distance, 0.0f, feed_rate);
                 
                 xy_jogging = true;
                 last_jog_time = current_time;
@@ -309,11 +305,7 @@ static void z_joystick_event_handler(lv_event_t *e) {
                 float v_z_mm_per_sec = v_z / 60.0f;
                 float z_distance = v_z_mm_per_sec * actual_dt;
                 
-                // Build and send jog command: $J=G91 Z[dist] F[rate]
-                char jog_cmd[64];
-                snprintf(jog_cmd, sizeof(jog_cmd), "$J=G91 Z%.4f F%.0f\n", 
-                         z_distance, feed_rate);
-                CommManager::sendCommand(jog_cmd);
+                CommManager::sendJogRelative(0.0f, 0.0f, z_distance, feed_rate);
                 
                 z_jogging = true;
                 last_jog_time = current_time;
@@ -409,9 +401,7 @@ static void x_joystick_event_handler(lv_event_t *e) {
                 float v_x_mm_per_sec = v_x / 60.0f;
                 float x_distance = v_x_mm_per_sec * actual_dt;
                 
-                char jog_cmd[64];
-                snprintf(jog_cmd, sizeof(jog_cmd), "$J=G91 X%.4f F%.0f\n", x_distance, feed_rate);
-                CommManager::sendCommand(jog_cmd);
+                CommManager::sendJogRelative(x_distance, 0.0f, 0.0f, feed_rate);
                 
                 xy_jogging = true;
                 last_jog_time = current_time;
@@ -493,9 +483,7 @@ static void y_joystick_event_handler(lv_event_t *e) {
                 float v_y_mm_per_sec = v_y / 60.0f;
                 float y_distance = v_y_mm_per_sec * actual_dt;
                 
-                char jog_cmd[64];
-                snprintf(jog_cmd, sizeof(jog_cmd), "$J=G91 Y%.4f F%.0f\n", y_distance, feed_rate);
-                CommManager::sendCommand(jog_cmd);
+                CommManager::sendJogRelative(0.0f, y_distance, 0.0f, feed_rate);
                 
                 xy_jogging = true;
                 last_jog_time = current_time;

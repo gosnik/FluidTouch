@@ -196,9 +196,17 @@ void UITabControlRotaryTable::onApplyRadiusPressed(lv_event_t *e) {
     int feed = parseFeed(ta_feed);
     const FluidNCStatus &status = CommManager::getStatus();
     const char *units = status.modal_units[0] != '\0' ? status.modal_units : "G21";
-    char cmd[128];
-    snprintf(cmd, sizeof(cmd), "$J=%sG90 X%.3f Y%.3f F%d\n", units, current_x, current_y, feed);
-    CommManager::sendCommand(cmd);
+    CommManager::JogCommand jog{};
+    jog.absolute = true;
+    jog.has_x = true;
+    jog.has_y = true;
+    jog.has_z = false;
+    jog.x = static_cast<float>(current_x);
+    jog.y = static_cast<float>(current_y);
+    jog.z = 0.0f;
+    jog.feedrate = static_cast<float>(feed);
+    jog.units = units;
+    CommManager::sendJog(jog);
     setStatus("Radius move sent.", UITheme::STATE_IDLE);
 }
 
@@ -252,9 +260,17 @@ void UITabControlRotaryTable::onApplyZPressed(lv_event_t *e) {
     int feed = parseFeed(ta_feed);
     const FluidNCStatus &status = CommManager::getStatus();
     const char *units = status.modal_units[0] != '\0' ? status.modal_units : "G21";
-    char cmd[96];
-    snprintf(cmd, sizeof(cmd), "$J=%sG91 Z%.3f F%d\n", units, z_delta, feed);
-    CommManager::sendCommand(cmd);
+    CommManager::JogCommand jog{};
+    jog.absolute = false;
+    jog.has_x = false;
+    jog.has_y = false;
+    jog.has_z = true;
+    jog.x = 0.0f;
+    jog.y = 0.0f;
+    jog.z = static_cast<float>(z_delta);
+    jog.feedrate = static_cast<float>(feed);
+    jog.units = units;
+    CommManager::sendJog(jog);
     setStatus("Z jog sent.", UITheme::STATE_IDLE);
 }
 

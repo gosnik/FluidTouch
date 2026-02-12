@@ -44,6 +44,17 @@ void MachineConfigManager::loadMachines(MachineConfig machines[MAX_MACHINES]) {
             machines[i].jog_z_feed = prefs.getInt((prefix + "jz_fd").c_str(), 1000);
             machines[i].jog_max_xy_feed = prefs.getInt((prefix + "jxy_mx").c_str(), 3000);
             machines[i].jog_max_z_feed = prefs.getInt((prefix + "jz_mx").c_str(), 1000);
+
+            // Load jog soft limits (with defaults if not present)
+            machines[i].soft_limit_x_enabled = prefs.getBool((prefix + "slx_en").c_str(), false);
+            machines[i].soft_limit_y_enabled = prefs.getBool((prefix + "sly_en").c_str(), false);
+            machines[i].soft_limit_z_enabled = prefs.getBool((prefix + "slz_en").c_str(), false);
+            machines[i].soft_limit_x_min = prefs.getFloat((prefix + "slx_min").c_str(), 0.0f);
+            machines[i].soft_limit_x_max = prefs.getFloat((prefix + "slx_max").c_str(), 0.0f);
+            machines[i].soft_limit_y_min = prefs.getFloat((prefix + "sly_min").c_str(), 0.0f);
+            machines[i].soft_limit_y_max = prefs.getFloat((prefix + "sly_max").c_str(), 0.0f);
+            machines[i].soft_limit_z_min = prefs.getFloat((prefix + "slz_min").c_str(), 0.0f);
+            machines[i].soft_limit_z_max = prefs.getFloat((prefix + "slz_max").c_str(), 0.0f);
             
             // Load probe settings (with defaults if not present)
             machines[i].probe_feed_rate = prefs.getInt((prefix + "p_feed").c_str(), 100);
@@ -90,6 +101,17 @@ void MachineConfigManager::saveMachines(const MachineConfig machines[MAX_MACHINE
             prefs.putInt((prefix + "jz_fd").c_str(), machines[i].jog_z_feed);
             prefs.putInt((prefix + "jxy_mx").c_str(), machines[i].jog_max_xy_feed);
             prefs.putInt((prefix + "jz_mx").c_str(), machines[i].jog_max_z_feed);
+
+            // Save jog soft limits
+            prefs.putBool((prefix + "slx_en").c_str(), machines[i].soft_limit_x_enabled);
+            prefs.putBool((prefix + "sly_en").c_str(), machines[i].soft_limit_y_enabled);
+            prefs.putBool((prefix + "slz_en").c_str(), machines[i].soft_limit_z_enabled);
+            prefs.putFloat((prefix + "slx_min").c_str(), machines[i].soft_limit_x_min);
+            prefs.putFloat((prefix + "slx_max").c_str(), machines[i].soft_limit_x_max);
+            prefs.putFloat((prefix + "sly_min").c_str(), machines[i].soft_limit_y_min);
+            prefs.putFloat((prefix + "sly_max").c_str(), machines[i].soft_limit_y_max);
+            prefs.putFloat((prefix + "slz_min").c_str(), machines[i].soft_limit_z_min);
+            prefs.putFloat((prefix + "slz_max").c_str(), machines[i].soft_limit_z_max);
             
             // Save probe settings
             prefs.putInt((prefix + "p_feed").c_str(), machines[i].probe_feed_rate);

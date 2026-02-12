@@ -2,12 +2,14 @@
 #include "ui/tabs/settings/ui_tab_settings_jog.h"
 #include "ui/ui_theme.h"
 #include "ui/ui_common.h"
+#include "ui/machine_config.h"
 #include "core/comm_manager.h"
 #include "core/encoder.h"
 #include "core/power_manager.h"
 #include "core/usb_host_manager.h"
 #include "config.h"
 #include <Arduino.h>
+#include <cstdlib>
 
 // Static member initialization
 lv_obj_t *UITabControlJog::parent_tab = nullptr;
@@ -21,6 +23,20 @@ lv_obj_t *UITabControlJog::z_feedrate_label = nullptr;
 lv_obj_t *UITabControlJog::encoder_bind_container = nullptr;
 lv_obj_t *UITabControlJog::encoder_bind_buttons[3] = {nullptr, nullptr, nullptr};
 lv_timer_t *UITabControlJog::encoder_timer = nullptr;
+lv_obj_t *UITabControlJog::soft_limits_button = nullptr;
+lv_obj_t *UITabControlJog::soft_limits_overlay = nullptr;
+lv_obj_t *UITabControlJog::soft_limits_panel = nullptr;
+lv_obj_t *UITabControlJog::soft_limits_keyboard = nullptr;
+lv_obj_t *UITabControlJog::soft_limits_active_ta = nullptr;
+lv_obj_t *UITabControlJog::soft_limits_switch_x = nullptr;
+lv_obj_t *UITabControlJog::soft_limits_switch_y = nullptr;
+lv_obj_t *UITabControlJog::soft_limits_switch_z = nullptr;
+lv_obj_t *UITabControlJog::soft_limits_x_min_ta = nullptr;
+lv_obj_t *UITabControlJog::soft_limits_x_max_ta = nullptr;
+lv_obj_t *UITabControlJog::soft_limits_y_min_ta = nullptr;
+lv_obj_t *UITabControlJog::soft_limits_y_max_ta = nullptr;
+lv_obj_t *UITabControlJog::soft_limits_z_min_ta = nullptr;
+lv_obj_t *UITabControlJog::soft_limits_z_max_ta = nullptr;
 int16_t UITabControlJog::last_encoder_counts[3] = {0, 0, 0};
 int32_t UITabControlJog::last_override_count = 0;
 bool UITabControlJog::last_override_count_valid = false;
@@ -32,6 +48,15 @@ int UITabControlJog::y_current_step_index = 0;      // Will be recalculated
 int UITabControlJog::z_current_step_index = 0;      // Will be recalculated
 int UITabControlJog::xy_current_feed = 300;        // Will be loaded from settings
 int UITabControlJog::z_current_feed = 100;         // Will be loaded from settings
+bool UITabControlJog::soft_limit_x_enabled = false;
+bool UITabControlJog::soft_limit_y_enabled = false;
+bool UITabControlJog::soft_limit_z_enabled = false;
+float UITabControlJog::soft_limit_x_min = 0.0f;
+float UITabControlJog::soft_limit_x_max = 0.0f;
+float UITabControlJog::soft_limit_y_min = 0.0f;
+float UITabControlJog::soft_limit_y_max = 0.0f;
+float UITabControlJog::soft_limit_z_min = 0.0f;
+float UITabControlJog::soft_limit_z_max = 0.0f;
 
 void UITabControlJog::create(lv_obj_t *tab) {
     parent_tab = tab;
@@ -42,6 +67,7 @@ void UITabControlJog::create(lv_obj_t *tab) {
     z_current_step = UITabSettingsJog::getDefaultZStep();
     xy_current_feed = UITabSettingsJog::getDefaultXYFeed();
     z_current_feed = UITabSettingsJog::getDefaultZFeed();
+    loadSoftLimitsFromConfig();
     
     // Find closest X step index
     x_current_step_index = 2;  // Default to 10mm
@@ -335,6 +361,16 @@ void UITabControlJog::create(lv_obj_t *tab) {
     lv_label_set_text(lbl_z_plus1000, "+1000");
     lv_obj_set_style_text_font(lbl_z_plus1000, &lv_font_montserrat_14, 0);
     lv_obj_center(lbl_z_plus1000);
+
+    // Soft limits button (opens modal editor)
+    soft_limits_button = lv_button_create(tab);
+    lv_obj_set_size(soft_limits_button, UI_SCALE_X(140), UI_SCALE_Y(40));
+    lv_obj_set_pos(soft_limits_button, UI_SCALE_X(360), UI_SCALE_Y(210));
+    lv_obj_add_event_cb(soft_limits_button, soft_limits_button_event_cb, LV_EVENT_CLICKED, nullptr);
+    lv_obj_t *lbl_soft_limits = lv_label_create(soft_limits_button);
+    lv_label_set_text(lbl_soft_limits, "Soft Limits");
+    lv_obj_set_style_text_font(lbl_soft_limits, &lv_font_montserrat_16, 0);
+    lv_obj_center(lbl_soft_limits);
     
     // ========== Cancel Jog Button (Upper Right) ==========
     // Create a container for the octagon stop button
@@ -365,6 +401,123 @@ void UITabControlJog::create(lv_obj_t *tab) {
         last_encoder_counts[i] = get_encoder_value(i);
     }
     reset_override_encoder_count();
+
+    if (!soft_limits_overlay) {
+        soft_limits_overlay = lv_obj_create(lv_scr_act());
+        lv_obj_set_size(soft_limits_overlay, SCREEN_WIDTH, SCREEN_HEIGHT);
+        lv_obj_set_style_bg_color(soft_limits_overlay, lv_color_black(), 0);
+        lv_obj_set_style_bg_opa(soft_limits_overlay, LV_OPA_60, 0);
+        lv_obj_clear_flag(soft_limits_overlay, LV_OBJ_FLAG_SCROLLABLE);
+        lv_obj_add_flag(soft_limits_overlay, LV_OBJ_FLAG_HIDDEN);
+
+        soft_limits_panel = lv_obj_create(soft_limits_overlay);
+        lv_obj_set_size(soft_limits_panel, UI_SCALE_X(720), UI_SCALE_Y(360));
+        lv_obj_center(soft_limits_panel);
+        lv_obj_set_style_bg_color(soft_limits_panel, UITheme::BG_MEDIUM, 0);
+        lv_obj_set_style_border_width(soft_limits_panel, 2, 0);
+        lv_obj_set_style_border_color(soft_limits_panel, UITheme::BORDER_LIGHT, 0);
+        lv_obj_set_style_pad_all(soft_limits_panel, UI_SCALE_X(12), 0);
+        lv_obj_clear_flag(soft_limits_panel, LV_OBJ_FLAG_SCROLLABLE);
+
+        lv_obj_t *title = lv_label_create(soft_limits_panel);
+        lv_label_set_text(title, "SOFT LIMITS (WORK POSITION)");
+        lv_obj_set_style_text_font(title, &lv_font_montserrat_18, 0);
+        lv_obj_set_style_text_color(title, UITheme::TEXT_DISABLED, 0);
+        lv_obj_set_pos(title, UI_SCALE_X(10), UI_SCALE_Y(5));
+
+        lv_obj_t *btn_close = lv_button_create(soft_limits_panel);
+        lv_obj_set_size(btn_close, UI_SCALE_X(40), UI_SCALE_Y(32));
+        lv_obj_set_pos(btn_close, UI_SCALE_X(660), UI_SCALE_Y(5));
+        lv_obj_add_event_cb(btn_close, soft_limits_close_event_cb, LV_EVENT_CLICKED, nullptr);
+        lv_obj_t *lbl_close = lv_label_create(btn_close);
+        lv_label_set_text(lbl_close, "X");
+        lv_obj_set_style_text_font(lbl_close, &lv_font_montserrat_16, 0);
+        lv_obj_center(lbl_close);
+
+        const lv_coord_t row_start_y = UI_SCALE_Y(60);
+        const lv_coord_t row_gap = UI_SCALE_Y(70);
+        const lv_coord_t axis_x = UI_SCALE_X(10);
+        const lv_coord_t switch_x = UI_SCALE_X(60);
+        const lv_coord_t min_label_x = UI_SCALE_X(180);
+        const lv_coord_t min_field_x = UI_SCALE_X(240);
+        const lv_coord_t max_label_x = UI_SCALE_X(400);
+        const lv_coord_t max_field_x = UI_SCALE_X(460);
+        const lv_coord_t field_w = UI_SCALE_X(140);
+        const lv_coord_t field_h = UI_SCALE_Y(40);
+
+        auto make_axis_row = [&](const char *axis,
+                                 lv_coord_t y,
+                                 lv_obj_t **sw_out,
+                                 lv_obj_t **min_out,
+                                 lv_obj_t **max_out) {
+            lv_obj_t *lbl_axis = lv_label_create(soft_limits_panel);
+            lv_label_set_text(lbl_axis, axis);
+            lv_obj_set_style_text_font(lbl_axis, &lv_font_montserrat_18, 0);
+            lv_obj_set_style_text_color(lbl_axis, UITheme::TEXT_LIGHT, 0);
+            lv_obj_set_pos(lbl_axis, axis_x, y + UI_SCALE_Y(8));
+
+            lv_obj_t *sw = lv_switch_create(soft_limits_panel);
+            lv_obj_set_pos(sw, switch_x, y);
+            *sw_out = sw;
+
+            lv_obj_t *lbl_min = lv_label_create(soft_limits_panel);
+            lv_label_set_text(lbl_min, "Min:");
+            lv_obj_set_style_text_font(lbl_min, &lv_font_montserrat_16, 0);
+            lv_obj_set_style_text_color(lbl_min, UITheme::TEXT_MEDIUM, 0);
+            lv_obj_set_pos(lbl_min, min_label_x, y + UI_SCALE_Y(10));
+
+            lv_obj_t *ta_min = lv_textarea_create(soft_limits_panel);
+            lv_obj_set_size(ta_min, field_w, field_h);
+            lv_obj_set_pos(ta_min, min_field_x, y);
+            lv_textarea_set_one_line(ta_min, true);
+            lv_textarea_set_max_length(ta_min, 10);
+            lv_textarea_set_accepted_chars(ta_min, "0123456789.-");
+            lv_obj_set_style_text_font(ta_min, &lv_font_montserrat_18, 0);
+            lv_obj_add_event_cb(ta_min, soft_limits_textarea_focused_event_cb, LV_EVENT_FOCUSED, nullptr);
+            *min_out = ta_min;
+
+            lv_obj_t *lbl_max = lv_label_create(soft_limits_panel);
+            lv_label_set_text(lbl_max, "Max:");
+            lv_obj_set_style_text_font(lbl_max, &lv_font_montserrat_16, 0);
+            lv_obj_set_style_text_color(lbl_max, UITheme::TEXT_MEDIUM, 0);
+            lv_obj_set_pos(lbl_max, max_label_x, y + UI_SCALE_Y(10));
+
+            lv_obj_t *ta_max = lv_textarea_create(soft_limits_panel);
+            lv_obj_set_size(ta_max, field_w, field_h);
+            lv_obj_set_pos(ta_max, max_field_x, y);
+            lv_textarea_set_one_line(ta_max, true);
+            lv_textarea_set_max_length(ta_max, 10);
+            lv_textarea_set_accepted_chars(ta_max, "0123456789.-");
+            lv_obj_set_style_text_font(ta_max, &lv_font_montserrat_18, 0);
+            lv_obj_add_event_cb(ta_max, soft_limits_textarea_focused_event_cb, LV_EVENT_FOCUSED, nullptr);
+            *max_out = ta_max;
+        };
+
+        make_axis_row("X", row_start_y, &soft_limits_switch_x, &soft_limits_x_min_ta, &soft_limits_x_max_ta);
+        make_axis_row("Y", row_start_y + row_gap, &soft_limits_switch_y, &soft_limits_y_min_ta, &soft_limits_y_max_ta);
+        make_axis_row("Z", row_start_y + 2 * row_gap, &soft_limits_switch_z, &soft_limits_z_min_ta, &soft_limits_z_max_ta);
+
+        lv_obj_t *btn_save = lv_button_create(soft_limits_panel);
+        lv_obj_set_size(btn_save, UI_SCALE_X(150), UI_SCALE_Y(44));
+        lv_obj_set_pos(btn_save, UI_SCALE_X(470), UI_SCALE_Y(300));
+        lv_obj_set_style_bg_color(btn_save, UITheme::ACCENT_PRIMARY, 0);
+        lv_obj_add_event_cb(btn_save, soft_limits_save_event_cb, LV_EVENT_CLICKED, nullptr);
+        lv_obj_t *lbl_save = lv_label_create(btn_save);
+        lv_label_set_text(lbl_save, "Save");
+        lv_obj_set_style_text_font(lbl_save, &lv_font_montserrat_18, 0);
+        lv_obj_center(lbl_save);
+
+        lv_obj_t *btn_cancel = lv_button_create(soft_limits_panel);
+        lv_obj_set_size(btn_cancel, UI_SCALE_X(150), UI_SCALE_Y(44));
+        lv_obj_set_pos(btn_cancel, UI_SCALE_X(300), UI_SCALE_Y(300));
+        lv_obj_add_event_cb(btn_cancel, soft_limits_close_event_cb, LV_EVENT_CLICKED, nullptr);
+        lv_obj_t *lbl_cancel = lv_label_create(btn_cancel);
+        lv_label_set_text(lbl_cancel, "Close");
+        lv_obj_set_style_text_font(lbl_cancel, &lv_font_montserrat_18, 0);
+        lv_obj_center(lbl_cancel);
+
+        syncSoftLimitsUI();
+    }
 }
 
 // X Step button event handler
@@ -504,6 +657,158 @@ void UITabControlJog::reset_override_encoder_count() {
     }
 }
 
+void UITabControlJog::soft_limits_button_event_cb(lv_event_t *e) {
+    LV_UNUSED(e);
+    loadSoftLimitsFromConfig();
+    syncSoftLimitsUI();
+    if (soft_limits_overlay) {
+        lv_obj_clear_flag(soft_limits_overlay, LV_OBJ_FLAG_HIDDEN);
+    }
+}
+
+void UITabControlJog::soft_limits_close_event_cb(lv_event_t *e) {
+    LV_UNUSED(e);
+    hideSoftLimitsKeyboard();
+    if (soft_limits_overlay) {
+        lv_obj_add_flag(soft_limits_overlay, LV_OBJ_FLAG_HIDDEN);
+    }
+}
+
+void UITabControlJog::soft_limits_save_event_cb(lv_event_t *e) {
+    LV_UNUSED(e);
+    storeSoftLimitsFromUI();
+    saveSoftLimitsToConfig();
+    CommManager::setJogSoftLimits(soft_limit_x_enabled,
+                                  soft_limit_y_enabled,
+                                  soft_limit_z_enabled,
+                                  soft_limit_x_min,
+                                  soft_limit_x_max,
+                                  soft_limit_y_min,
+                                  soft_limit_y_max,
+                                  soft_limit_z_min,
+                                  soft_limit_z_max);
+    hideSoftLimitsKeyboard();
+    if (soft_limits_overlay) {
+        lv_obj_add_flag(soft_limits_overlay, LV_OBJ_FLAG_HIDDEN);
+    }
+}
+
+void UITabControlJog::soft_limits_textarea_focused_event_cb(lv_event_t *e) {
+    lv_obj_t *ta = (lv_obj_t *)lv_event_get_target(e);
+    showSoftLimitsKeyboard(ta);
+}
+
+void UITabControlJog::showSoftLimitsKeyboard(lv_obj_t *ta) {
+    soft_limits_active_ta = ta;
+    if (!soft_limits_keyboard) {
+        soft_limits_keyboard = lv_keyboard_create(lv_scr_act());
+        lv_obj_set_size(soft_limits_keyboard, SCREEN_WIDTH, UI_SCALE_Y(220));
+        lv_obj_align(soft_limits_keyboard, LV_ALIGN_BOTTOM_MID, 0, 0);
+        lv_obj_set_style_text_font(soft_limits_keyboard, &lv_font_montserrat_20, 0);
+        lv_keyboard_set_mode(soft_limits_keyboard, LV_KEYBOARD_MODE_NUMBER);
+        lv_obj_add_event_cb(soft_limits_keyboard, [](lv_event_t *e) { UITabControlJog::hideSoftLimitsKeyboard(); }, LV_EVENT_READY, nullptr);
+        lv_obj_add_event_cb(soft_limits_keyboard, [](lv_event_t *e) { UITabControlJog::hideSoftLimitsKeyboard(); }, LV_EVENT_CANCEL, nullptr);
+    }
+    lv_keyboard_set_textarea(soft_limits_keyboard, ta);
+    lv_obj_clear_flag(soft_limits_keyboard, LV_OBJ_FLAG_HIDDEN);
+}
+
+void UITabControlJog::hideSoftLimitsKeyboard() {
+    if (soft_limits_keyboard) {
+        lv_obj_add_flag(soft_limits_keyboard, LV_OBJ_FLAG_HIDDEN);
+    }
+}
+
+void UITabControlJog::loadSoftLimitsFromConfig() {
+    MachineConfig config;
+    if (MachineConfigManager::getSelectedMachine(config)) {
+        soft_limit_x_enabled = config.soft_limit_x_enabled;
+        soft_limit_y_enabled = config.soft_limit_y_enabled;
+        soft_limit_z_enabled = config.soft_limit_z_enabled;
+        soft_limit_x_min = config.soft_limit_x_min;
+        soft_limit_x_max = config.soft_limit_x_max;
+        soft_limit_y_min = config.soft_limit_y_min;
+        soft_limit_y_max = config.soft_limit_y_max;
+        soft_limit_z_min = config.soft_limit_z_min;
+        soft_limit_z_max = config.soft_limit_z_max;
+    }
+}
+
+void UITabControlJog::saveSoftLimitsToConfig() {
+    int index = MachineConfigManager::getSelectedMachineIndex();
+    if (index < 0 || index >= MAX_MACHINES) {
+        return;
+    }
+    MachineConfig config;
+    if (!MachineConfigManager::getMachine(index, config)) {
+        return;
+    }
+    config.soft_limit_x_enabled = soft_limit_x_enabled;
+    config.soft_limit_y_enabled = soft_limit_y_enabled;
+    config.soft_limit_z_enabled = soft_limit_z_enabled;
+    config.soft_limit_x_min = soft_limit_x_min;
+    config.soft_limit_x_max = soft_limit_x_max;
+    config.soft_limit_y_min = soft_limit_y_min;
+    config.soft_limit_y_max = soft_limit_y_max;
+    config.soft_limit_z_min = soft_limit_z_min;
+    config.soft_limit_z_max = soft_limit_z_max;
+    MachineConfigManager::saveMachine(index, config);
+}
+
+void UITabControlJog::syncSoftLimitsUI() {
+    if (soft_limits_switch_x) {
+        if (soft_limit_x_enabled) lv_obj_add_state(soft_limits_switch_x, LV_STATE_CHECKED);
+        else lv_obj_clear_state(soft_limits_switch_x, LV_STATE_CHECKED);
+    }
+    if (soft_limits_switch_y) {
+        if (soft_limit_y_enabled) lv_obj_add_state(soft_limits_switch_y, LV_STATE_CHECKED);
+        else lv_obj_clear_state(soft_limits_switch_y, LV_STATE_CHECKED);
+    }
+    if (soft_limits_switch_z) {
+        if (soft_limit_z_enabled) lv_obj_add_state(soft_limits_switch_z, LV_STATE_CHECKED);
+        else lv_obj_clear_state(soft_limits_switch_z, LV_STATE_CHECKED);
+    }
+
+    char buf[32];
+    if (soft_limits_x_min_ta) {
+        snprintf(buf, sizeof(buf), "%.3f", soft_limit_x_min);
+        lv_textarea_set_text(soft_limits_x_min_ta, buf);
+    }
+    if (soft_limits_x_max_ta) {
+        snprintf(buf, sizeof(buf), "%.3f", soft_limit_x_max);
+        lv_textarea_set_text(soft_limits_x_max_ta, buf);
+    }
+    if (soft_limits_y_min_ta) {
+        snprintf(buf, sizeof(buf), "%.3f", soft_limit_y_min);
+        lv_textarea_set_text(soft_limits_y_min_ta, buf);
+    }
+    if (soft_limits_y_max_ta) {
+        snprintf(buf, sizeof(buf), "%.3f", soft_limit_y_max);
+        lv_textarea_set_text(soft_limits_y_max_ta, buf);
+    }
+    if (soft_limits_z_min_ta) {
+        snprintf(buf, sizeof(buf), "%.3f", soft_limit_z_min);
+        lv_textarea_set_text(soft_limits_z_min_ta, buf);
+    }
+    if (soft_limits_z_max_ta) {
+        snprintf(buf, sizeof(buf), "%.3f", soft_limit_z_max);
+        lv_textarea_set_text(soft_limits_z_max_ta, buf);
+    }
+}
+
+void UITabControlJog::storeSoftLimitsFromUI() {
+    if (soft_limits_switch_x) soft_limit_x_enabled = lv_obj_has_state(soft_limits_switch_x, LV_STATE_CHECKED);
+    if (soft_limits_switch_y) soft_limit_y_enabled = lv_obj_has_state(soft_limits_switch_y, LV_STATE_CHECKED);
+    if (soft_limits_switch_z) soft_limit_z_enabled = lv_obj_has_state(soft_limits_switch_z, LV_STATE_CHECKED);
+
+    if (soft_limits_x_min_ta) soft_limit_x_min = strtof(lv_textarea_get_text(soft_limits_x_min_ta), nullptr);
+    if (soft_limits_x_max_ta) soft_limit_x_max = strtof(lv_textarea_get_text(soft_limits_x_max_ta), nullptr);
+    if (soft_limits_y_min_ta) soft_limit_y_min = strtof(lv_textarea_get_text(soft_limits_y_min_ta), nullptr);
+    if (soft_limits_y_max_ta) soft_limit_y_max = strtof(lv_textarea_get_text(soft_limits_y_max_ta), nullptr);
+    if (soft_limits_z_min_ta) soft_limit_z_min = strtof(lv_textarea_get_text(soft_limits_z_min_ta), nullptr);
+    if (soft_limits_z_max_ta) soft_limit_z_max = strtof(lv_textarea_get_text(soft_limits_z_max_ta), nullptr);
+}
+
 
 // XY Feedrate adjustment button event handler
 void UITabControlJog::xy_feedrate_adj_event_cb(lv_event_t *e) {
@@ -600,22 +905,8 @@ void UITabControlJog::xy_jog_button_event_cb(lv_event_t *e) {
             y_move = -y_current_step;
             break;
     }
-    
-    // Build jog command: $J=G91 X[x] Y[y] F[feedrate]
-    char jog_cmd[64];
-    if (x_move != 0 && y_move != 0) {
-        // Diagonal move
-        snprintf(jog_cmd, sizeof(jog_cmd), "$J=G91 X%.3f Y%.3f F%d\n", x_move, y_move, feedrate);
-    } else if (x_move != 0) {
-        // X only
-        snprintf(jog_cmd, sizeof(jog_cmd), "$J=G91 X%.3f F%d\n", x_move, feedrate);
-    } else if (y_move != 0) {
-        // Y only
-        snprintf(jog_cmd, sizeof(jog_cmd), "$J=G91 Y%.3f F%d\n", y_move, feedrate);
-    }
-    
-    Serial.printf("[Jog] XY Jog: %s", jog_cmd);
-    CommManager::sendCommand(jog_cmd);
+
+    CommManager::sendJogRelative(x_move, y_move, 0.0f, static_cast<float>(feedrate));
 }
 
 // Z Jog button event handler
@@ -633,13 +924,8 @@ void UITabControlJog::z_jog_button_event_cb(lv_event_t *e) {
     
     // Calculate Z movement
     float z_move = z_current_step * direction;
-    
-    // Build jog command: $J=G91 Z[z] F[feedrate]
-    char jog_cmd[64];
-    snprintf(jog_cmd, sizeof(jog_cmd), "$J=G91 Z%.3f F%d\n", z_move, feedrate);
-    
-    Serial.printf("[Jog] Z Jog: %s", jog_cmd);
-    CommManager::sendCommand(jog_cmd);
+
+    CommManager::sendJogRelative(0.0f, 0.0f, z_move, static_cast<float>(feedrate));
 }
 
 // Draw octagon shape for stop button
@@ -807,11 +1093,7 @@ void UITabControlJog::encoderTimerCb(lv_timer_t *timer) {
             if (delta != 0) {
                 const AxisCmd &axis = axes[UICommon::getEncoderBindAxis()];
                 float move = axis.step * static_cast<float>(delta);
-                char jog_cmd[64];
-                snprintf(jog_cmd, sizeof(jog_cmd), "$J=G91 %c%.3f F%d\n",
-                         axis.axis, move, axis.feedrate);
-                ESP_LOGI("UI", "[Jog] Encoder bind %c jog: %s", axis.axis, jog_cmd);
-                CommManager::sendCommand(jog_cmd);
+                CommManager::sendJogRelativeAxis(axis.axis, move, static_cast<float>(axis.feedrate));
                 PowerManager::onUserActivity();
             }
             UICommon::maybeSendEncoderBindDisplay(false);
@@ -828,11 +1110,7 @@ void UITabControlJog::encoderTimerCb(lv_timer_t *timer) {
         }
 
         float move = axes[i].step * static_cast<float>(delta);
-        char jog_cmd[64];
-        snprintf(jog_cmd, sizeof(jog_cmd), "$J=G91 %c%.3f F%d\n",
-                 axes[i].axis, move, axes[i].feedrate);
-        ESP_LOGI("UI", "[Jog] Encoder %u jog: %s", static_cast<unsigned>(i + 1), jog_cmd);
-        CommManager::sendCommand(jog_cmd);
+        CommManager::sendJogRelativeAxis(axes[i].axis, move, static_cast<float>(axes[i].feedrate));
         PowerManager::onUserActivity();
     }
 }

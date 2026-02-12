@@ -26,6 +26,18 @@ public:
         ProbeResult probe;
     };
 
+    struct JogCommand {
+        bool absolute;
+        bool has_x;
+        bool has_y;
+        bool has_z;
+        float x;
+        float y;
+        float z;
+        float feedrate;
+        const char *units;
+    };
+
     using EventCallback = std::function<void(const Event &event)>;
 
     static void init();
@@ -37,6 +49,13 @@ public:
     static void loop();
     static const FluidNCStatus& getStatus();
     static void sendCommand(const char* command);
+    static bool sendJog(const JogCommand &cmd);
+    static bool sendJogRelative(float x, float y, float z, float feedrate);
+    static bool sendJogRelativeAxis(char axis, float delta, float feedrate);
+    static void setJogSoftLimits(bool x_enabled, bool y_enabled, bool z_enabled,
+                                 float x_min, float x_max,
+                                 float y_min, float y_max,
+                                 float z_min, float z_max);
     static void requestStatusReport();
     static String getMachineIP();
     static void setMessageCallback(MessageCallback callback);
@@ -58,9 +77,29 @@ private:
     static MessageCallback messageCallback;
     static MessageCallback terminalCallback;
     static EventCallback eventCallback;
+    static bool jog_soft_limit_x_enabled;
+    static bool jog_soft_limit_y_enabled;
+    static bool jog_soft_limit_z_enabled;
+    static float jog_soft_limit_x_min;
+    static float jog_soft_limit_x_max;
+    static float jog_soft_limit_y_min;
+    static float jog_soft_limit_y_max;
+    static float jog_soft_limit_z_min;
+    static float jog_soft_limit_z_max;
+    static bool jog_pending_valid;
+    static float jog_pending_x;
+    static float jog_pending_y;
+    static float jog_pending_z;
+    static float jog_last_reported_x;
+    static float jog_last_reported_y;
+    static float jog_last_reported_z;
 
     static bool useGrbl();
     static void applyCallbacks();
+    static void resetJogTracking();
+    static void updateJogTrackingFromStatus(const FluidNCStatus &status);
+    static void getPredictedWpos(const FluidNCStatus &status, float &x, float &y, float &z);
+    static float clampJogTarget(float target, bool enabled, float min_limit, float max_limit);
 };
 
 #endif // COMM_MANAGER_H

@@ -59,6 +59,16 @@ bool SettingsManager::exportSettings(const char* filepath) {
         jog["z_feed_rate"] = machine_configs[i].jog_z_feed;
         jog["xy_step"] = machine_configs[i].jog_xy_step;
         jog["z_step"] = machine_configs[i].jog_z_step;
+        JsonObject soft_limits = jog["soft_limits"].to<JsonObject>();
+        soft_limits["x_enabled"] = machine_configs[i].soft_limit_x_enabled;
+        soft_limits["y_enabled"] = machine_configs[i].soft_limit_y_enabled;
+        soft_limits["z_enabled"] = machine_configs[i].soft_limit_z_enabled;
+        soft_limits["x_min"] = machine_configs[i].soft_limit_x_min;
+        soft_limits["x_max"] = machine_configs[i].soft_limit_x_max;
+        soft_limits["y_min"] = machine_configs[i].soft_limit_y_min;
+        soft_limits["y_max"] = machine_configs[i].soft_limit_y_max;
+        soft_limits["z_min"] = machine_configs[i].soft_limit_z_min;
+        soft_limits["z_max"] = machine_configs[i].soft_limit_z_max;
         
         // Probe settings
         JsonObject probe = machine["probe"].to<JsonObject>();
@@ -214,6 +224,16 @@ bool SettingsManager::importSettings(const char* filepath) {
             machine_configs[machine_index].jog_z_feed = jog["z_feed_rate"] | 500;
             machine_configs[machine_index].jog_xy_step = jog["xy_step"] | 0.01f;
             machine_configs[machine_index].jog_z_step = jog["z_step"] | 0.01f;
+            JsonObject soft_limits = jog["soft_limits"];
+            machine_configs[machine_index].soft_limit_x_enabled = soft_limits["x_enabled"] | false;
+            machine_configs[machine_index].soft_limit_y_enabled = soft_limits["y_enabled"] | false;
+            machine_configs[machine_index].soft_limit_z_enabled = soft_limits["z_enabled"] | false;
+            machine_configs[machine_index].soft_limit_x_min = soft_limits["x_min"] | 0.0f;
+            machine_configs[machine_index].soft_limit_x_max = soft_limits["x_max"] | 0.0f;
+            machine_configs[machine_index].soft_limit_y_min = soft_limits["y_min"] | 0.0f;
+            machine_configs[machine_index].soft_limit_y_max = soft_limits["y_max"] | 0.0f;
+            machine_configs[machine_index].soft_limit_z_min = soft_limits["z_min"] | 0.0f;
+            machine_configs[machine_index].soft_limit_z_max = soft_limits["z_max"] | 0.0f;
             
             // Probe settings
             JsonObject probe = machine["probe"];

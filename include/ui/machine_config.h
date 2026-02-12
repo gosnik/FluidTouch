@@ -27,6 +27,17 @@ struct MachineConfig {
     int jog_z_feed;          // Default Z feed rate (mm/min)
     int jog_max_xy_feed;     // Max XY feed for joystick (mm/min)
     int jog_max_z_feed;      // Max Z feed for joystick (mm/min)
+
+    // Jog soft limits (work position)
+    bool soft_limit_x_enabled;
+    bool soft_limit_y_enabled;
+    bool soft_limit_z_enabled;
+    float soft_limit_x_min;
+    float soft_limit_x_max;
+    float soft_limit_y_min;
+    float soft_limit_y_max;
+    float soft_limit_z_min;
+    float soft_limit_z_max;
     
     // Probe control defaults
     int probe_feed_rate;     // Default probe feed rate (mm/min)
@@ -39,6 +50,10 @@ struct MachineConfig {
                       jog_xy_step(0.01f), jog_z_step(0.01f), 
                       jog_xy_feed(3000), jog_z_feed(1000),
                       jog_max_xy_feed(3000), jog_max_z_feed(1000),
+                      soft_limit_x_enabled(false), soft_limit_y_enabled(false), soft_limit_z_enabled(false),
+                      soft_limit_x_min(0.0f), soft_limit_x_max(0.0f),
+                      soft_limit_y_min(0.0f), soft_limit_y_max(0.0f),
+                      soft_limit_z_min(0.0f), soft_limit_z_max(0.0f),
                       probe_feed_rate(100), probe_max_distance(10),
                       probe_retract(2), probe_thickness(0.0f) {
         name[0] = '\0';

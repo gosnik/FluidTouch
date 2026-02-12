@@ -177,15 +177,18 @@ void UITabControlPowerFeed::onGoPressed(lv_event_t *e) {
     const char *units = status.modal_units[0] != '\0' ? status.modal_units : "G21";
     bool absolute = lv_obj_has_state(mode_switch, LV_STATE_CHECKED);
 
-    char cmd[128];
-    size_t len = 0;
-    len += snprintf(cmd + len, sizeof(cmd) - len, "$J=%s%s", units, absolute ? "G90" : "G91");
-    if (x_text[0] != '\0') len += snprintf(cmd + len, sizeof(cmd) - len, " X%s", x_text);
-    if (y_text[0] != '\0') len += snprintf(cmd + len, sizeof(cmd) - len, " Y%s", y_text);
-    if (z_text[0] != '\0') len += snprintf(cmd + len, sizeof(cmd) - len, " Z%s", z_text);
-    snprintf(cmd + len, sizeof(cmd) - len, " F%d\n", feed);
+    CommManager::JogCommand cmd{};
+    cmd.absolute = absolute;
+    cmd.has_x = (x_text[0] != '\0');
+    cmd.has_y = (y_text[0] != '\0');
+    cmd.has_z = (z_text[0] != '\0');
+    cmd.x = cmd.has_x ? strtof(x_text, nullptr) : 0.0f;
+    cmd.y = cmd.has_y ? strtof(y_text, nullptr) : 0.0f;
+    cmd.z = cmd.has_z ? strtof(z_text, nullptr) : 0.0f;
+    cmd.feedrate = static_cast<float>(feed);
+    cmd.units = units;
 
-    CommManager::sendCommand(cmd);
+    CommManager::sendJog(cmd);
     setStatus("Command sent.", UITheme::STATE_IDLE);
 }
 
