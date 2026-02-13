@@ -25,6 +25,7 @@ void sync_hid_axis_screens(uint32_t active_tab);
 
 // Create main tabview and all tabs
 void UITabs::createTabs() {
+    Serial.println("UITabs: createTabs start");
     // Create tabview
     tabview = lv_tabview_create(lv_screen_active());
     lv_obj_set_size(tabview, SCREEN_WIDTH, SCREEN_HEIGHT - STATUS_BAR_HEIGHT);
@@ -77,6 +78,7 @@ void UITabs::createTabs() {
     lv_obj_add_event_cb(tabview, tab_changed_event_cb, LV_EVENT_VALUE_CHANGED, nullptr);
 
     sync_hid_axis_screens(0);
+    Serial.println("UITabs: createTabs done");
 }
 
 namespace {

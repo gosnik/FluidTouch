@@ -2,6 +2,7 @@
 #include "ui/ui_theme.h"
 #include "config.h"
 #include <Arduino.h>
+#include <cmath>
 #include <cstring>
 #include <stdio.h>
 

@@ -2,8 +2,17 @@
 #include "ui/ui_theme.h"
 #include "ui/images/fluidnc_logo.h"
 #include "config.h"
+#if defined(FT_PLATFORM_PC)
+#define SDL_MAIN_HANDLED
+#include <SDL2/SDL.h>
+#endif
 
 void UISplash::show(lv_display_t *disp) {
+#if defined(FT_PLATFORM_PC)
+    LV_UNUSED(disp);
+    // Skip splash on emulator to avoid blocking window event processing.
+    return;
+#endif
     lv_obj_t *splash = lv_obj_create(lv_screen_active());
     lv_obj_set_size(splash, SCREEN_WIDTH, SCREEN_HEIGHT);
     lv_obj_set_style_bg_color(splash, UITheme::BG_DARKER, 0);
@@ -40,7 +49,25 @@ void UISplash::show(lv_display_t *disp) {
     lv_refr_now(disp);
     
     // Display splash for configured duration
+#if defined(FT_PLATFORM_PC)
+    uint32_t start = SDL_GetTicks();
+    uint32_t last_tick = start;
+    SDL_Event event;
+    while (SDL_GetTicks() - start < SPLASH_DURATION_MS) {
+        while (SDL_PollEvent(&event)) {
+            if (event.type == SDL_QUIT) {
+                exit(0);
+            }
+        }
+        SDL_Delay(5);
+        uint32_t now = SDL_GetTicks();
+        lv_tick_inc(now - last_tick);
+        last_tick = now;
+        lv_timer_handler();
+    }
+#else
     delay(SPLASH_DURATION_MS);
+#endif
     
     // Delete splash screen
     lv_obj_del(splash);

@@ -11,7 +11,7 @@ lv_obj_t* UITabControlOverride::lbl_spindle_value = nullptr;
 // Feed override event handlers
 static void feed_coarse_plus_handler(lv_event_t* e) {
     if (lv_event_get_code(e) == LV_EVENT_CLICKED) {
-        char cmd[2] = {0x91, 0};  // FeedOvrCoarsePlus (+10%)
+        char cmd[2] = {static_cast<char>(0x91), 0};  // FeedOvrCoarsePlus (+10%)
         CommManager::sendCommand(cmd);
         Serial.println("Feed Override: +10%");
     }
@@ -19,7 +19,7 @@ static void feed_coarse_plus_handler(lv_event_t* e) {
 
 static void feed_coarse_minus_handler(lv_event_t* e) {
     if (lv_event_get_code(e) == LV_EVENT_CLICKED) {
-        char cmd[2] = {0x92, 0};  // FeedOvrCoarseMinus (-10%)
+        char cmd[2] = {static_cast<char>(0x92), 0};  // FeedOvrCoarseMinus (-10%)
         CommManager::sendCommand(cmd);
         Serial.println("Feed Override: -10%");
     }
@@ -27,7 +27,7 @@ static void feed_coarse_minus_handler(lv_event_t* e) {
 
 static void feed_fine_plus_handler(lv_event_t* e) {
     if (lv_event_get_code(e) == LV_EVENT_CLICKED) {
-        char cmd[2] = {0x93, 0};  // FeedOvrFinePlus (+1%)
+        char cmd[2] = {static_cast<char>(0x93), 0};  // FeedOvrFinePlus (+1%)
         CommManager::sendCommand(cmd);
         Serial.println("Feed Override: +1%");
     }
@@ -35,7 +35,7 @@ static void feed_fine_plus_handler(lv_event_t* e) {
 
 static void feed_fine_minus_handler(lv_event_t* e) {
     if (lv_event_get_code(e) == LV_EVENT_CLICKED) {
-        char cmd[2] = {0x94, 0};  // FeedOvrFineMinus (-1%)
+        char cmd[2] = {static_cast<char>(0x94), 0};  // FeedOvrFineMinus (-1%)
         CommManager::sendCommand(cmd);
         Serial.println("Feed Override: -1%");
     }
@@ -43,7 +43,7 @@ static void feed_fine_minus_handler(lv_event_t* e) {
 
 static void feed_reset_handler(lv_event_t* e) {
     if (lv_event_get_code(e) == LV_EVENT_CLICKED) {
-        char cmd[2] = {0x90, 0};  // FeedOvrReset (100%)
+        char cmd[2] = {static_cast<char>(0x90), 0};  // FeedOvrReset (100%)
         CommManager::sendCommand(cmd);
         Serial.println("Feed Override: Reset to 100%");
     }
@@ -52,7 +52,7 @@ static void feed_reset_handler(lv_event_t* e) {
 // Rapid override event handlers
 static void rapid_100_handler(lv_event_t* e) {
     if (lv_event_get_code(e) == LV_EVENT_CLICKED) {
-        char cmd[2] = {0x95, 0};  // RapidOvrReset (100%)
+        char cmd[2] = {static_cast<char>(0x95), 0};  // RapidOvrReset (100%)
         CommManager::sendCommand(cmd);
         Serial.println("Rapid Override: 100%");
     }
@@ -60,7 +60,7 @@ static void rapid_100_handler(lv_event_t* e) {
 
 static void rapid_50_handler(lv_event_t* e) {
     if (lv_event_get_code(e) == LV_EVENT_CLICKED) {
-        char cmd[2] = {0x96, 0};  // RapidOvrMedium (50%)
+        char cmd[2] = {static_cast<char>(0x96), 0};  // RapidOvrMedium (50%)
         CommManager::sendCommand(cmd);
         Serial.println("Rapid Override: 50%");
     }
@@ -68,7 +68,7 @@ static void rapid_50_handler(lv_event_t* e) {
 
 static void rapid_25_handler(lv_event_t* e) {
     if (lv_event_get_code(e) == LV_EVENT_CLICKED) {
-        char cmd[2] = {0x97, 0};  // RapidOvrLow (25%)
+        char cmd[2] = {static_cast<char>(0x97), 0};  // RapidOvrLow (25%)
         CommManager::sendCommand(cmd);
         Serial.println("Rapid Override: 25%");
     }
@@ -77,7 +77,7 @@ static void rapid_25_handler(lv_event_t* e) {
 // Spindle override event handlers
 static void spindle_coarse_plus_handler(lv_event_t* e) {
     if (lv_event_get_code(e) == LV_EVENT_CLICKED) {
-        char cmd[2] = {0x9A, 0};  // SpindleOvrCoarsePlus (+10%)
+        char cmd[2] = {static_cast<char>(0x9A), 0};  // SpindleOvrCoarsePlus (+10%)
         CommManager::sendCommand(cmd);
         Serial.println("Spindle Override: +10%");
     }
@@ -85,7 +85,7 @@ static void spindle_coarse_plus_handler(lv_event_t* e) {
 
 static void spindle_coarse_minus_handler(lv_event_t* e) {
     if (lv_event_get_code(e) == LV_EVENT_CLICKED) {
-        char cmd[2] = {0x9B, 0};  // SpindleOvrCoarseMinus (-10%)
+        char cmd[2] = {static_cast<char>(0x9B), 0};  // SpindleOvrCoarseMinus (-10%)
         CommManager::sendCommand(cmd);
         Serial.println("Spindle Override: -10%");
     }
@@ -93,7 +93,7 @@ static void spindle_coarse_minus_handler(lv_event_t* e) {
 
 static void spindle_fine_plus_handler(lv_event_t* e) {
     if (lv_event_get_code(e) == LV_EVENT_CLICKED) {
-        char cmd[2] = {0x9C, 0};  // SpindleOvrFinePlus (+1%)
+        char cmd[2] = {static_cast<char>(0x9C), 0};  // SpindleOvrFinePlus (+1%)
         CommManager::sendCommand(cmd);
         Serial.println("Spindle Override: +1%");
     }
@@ -101,7 +101,7 @@ static void spindle_fine_plus_handler(lv_event_t* e) {
 
 static void spindle_fine_minus_handler(lv_event_t* e) {
     if (lv_event_get_code(e) == LV_EVENT_CLICKED) {
-        char cmd[2] = {0x9D, 0};  // SpindleOvrFineMinus (-1%)
+        char cmd[2] = {static_cast<char>(0x9D), 0};  // SpindleOvrFineMinus (-1%)
         CommManager::sendCommand(cmd);
         Serial.println("Spindle Override: -1%");
     }
@@ -109,7 +109,7 @@ static void spindle_fine_minus_handler(lv_event_t* e) {
 
 static void spindle_reset_handler(lv_event_t* e) {
     if (lv_event_get_code(e) == LV_EVENT_CLICKED) {
-        char cmd[2] = {0x99, 0};  // SpindleOvrReset (100%)
+        char cmd[2] = {static_cast<char>(0x99), 0};  // SpindleOvrReset (100%)
         CommManager::sendCommand(cmd);
         Serial.println("Spindle Override: Reset to 100%");
     }

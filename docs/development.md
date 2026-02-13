@@ -127,6 +127,34 @@ platformio device monitor -b 115200
 
 ---
 
+## PC Emulator
+
+FluidTouch can run as a native desktop app using the `emulator_64bits` PlatformIO
+environment. This uses SDL2 and the LVGL SDL driver (mirroring `lv_platformio`).
+
+### Requirements
+
+- SDL2 development libraries
+  - macOS (Homebrew): `brew install sdl2`
+  - Ubuntu/Debian: `sudo apt-get install libsdl2-dev`
+  - Windows: install SDL2 dev packages and ensure the include/lib paths are visible
+
+### Build/Run
+
+```bash
+# Build
+platformio run -e emulator_64bits
+
+# Run (output binary name varies by platform)
+./.pio/build/emulator_64bits/program
+```
+
+Notes:
+- WiFi and hardware-specific drivers are stubbed for the emulator build.
+- If no machines are configured, a default `Simulator` machine is created automatically.
+
+---
+
 ## Project Architecture
 
 ### Directory Structure

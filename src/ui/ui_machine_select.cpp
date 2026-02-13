@@ -678,6 +678,7 @@ void UIMachineSelect::showConfigDialog(int index) {
     lv_obj_t *lbl_name = lv_label_create(left_col);
     lv_label_set_text(lbl_name, "Name:");
     lv_obj_set_style_text_font(lbl_name, &lv_font_montserrat_18, 0);
+    lv_obj_set_style_text_color(lbl_name, UITheme::TEXT_DISABLED, 0);
     
     ta_name = lv_textarea_create(left_col);
     lv_obj_set_width(ta_name, LV_PCT(100));
@@ -692,7 +693,8 @@ void UIMachineSelect::showConfigDialog(int index) {
     lv_obj_t *lbl_ssid = lv_label_create(left_col);
     lv_label_set_text(lbl_ssid, "WiFi SSID:");
     lv_obj_set_style_text_font(lbl_ssid, &lv_font_montserrat_18, 0);
-    
+    lv_obj_set_style_text_color(lbl_ssid, UITheme::TEXT_DISABLED, 0);
+
     ta_ssid = lv_textarea_create(left_col);
     lv_obj_set_width(ta_ssid, LV_PCT(100));
     lv_obj_set_height(ta_ssid, UI_SCALE_Y(40));
@@ -706,6 +708,7 @@ void UIMachineSelect::showConfigDialog(int index) {
     lv_obj_t *lbl_url = lv_label_create(left_col);
     lv_label_set_text(lbl_url, "FluidNC URL:");
     lv_obj_set_style_text_font(lbl_url, &lv_font_montserrat_18, 0);
+    lv_obj_set_style_text_color(lbl_url, UITheme::TEXT_DISABLED, 0);
     
     ta_url = lv_textarea_create(left_col);
     lv_obj_set_width(ta_url, LV_PCT(100));
@@ -734,6 +737,7 @@ void UIMachineSelect::showConfigDialog(int index) {
     lv_obj_t *lbl_type = lv_label_create(right_col);
     lv_label_set_text(lbl_type, "Connection:");
     lv_obj_set_style_text_font(lbl_type, &lv_font_montserrat_18, 0);
+    lv_obj_set_style_text_color(lbl_type, UITheme::TEXT_DISABLED, 0);
     
     dd_connection_type = lv_dropdown_create(right_col);
     lv_obj_set_width(dd_connection_type, LV_PCT(100));
@@ -756,6 +760,7 @@ void UIMachineSelect::showConfigDialog(int index) {
     lv_obj_t *lbl_pwd = lv_label_create(right_col);
     lv_label_set_text(lbl_pwd, "Password:");
     lv_obj_set_style_text_font(lbl_pwd, &lv_font_montserrat_18, 0);
+    lv_obj_set_style_text_color(lbl_pwd, UITheme::TEXT_DISABLED, 0);
     
     ta_password = lv_textarea_create(right_col);
     lv_obj_set_width(ta_password, LV_PCT(100));
@@ -771,6 +776,7 @@ void UIMachineSelect::showConfigDialog(int index) {
     lv_obj_t *lbl_port = lv_label_create(right_col);
     lv_label_set_text(lbl_port, "Port:");
     lv_obj_set_style_text_font(lbl_port, &lv_font_montserrat_18, 0);
+    lv_obj_set_style_text_color(lbl_port, UITheme::TEXT_DISABLED, 0);
     
     ta_port = lv_textarea_create(right_col);
     lv_obj_set_width(ta_port, LV_PCT(100));

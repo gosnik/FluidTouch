@@ -252,9 +252,25 @@ void UICommon::createMainUI() {
     // Get selected machine configuration
     MachineConfig config;
     if (!MachineConfigManager::getSelectedMachine(config)) {
+#if defined(FT_PLATFORM_PC)
+        Serial.println("UICommon: No machine selected, creating simulator config");
+        std::strncpy(config.name, "Simulator", sizeof(config.name) - 1);
+        std::strncpy(config.fluidnc_url, "localhost", sizeof(config.fluidnc_url) - 1);
+        config.connection_type = CONN_WIRED;
+        config.websocket_port = 81;
+        config.is_configured = true;
+        MachineConfigManager::saveMachine(0, config);
+        MachineConfigManager::setSelectedMachineIndex(0);
+#else
         Serial.println("UICommon: ERROR - No machine selected!");
         return;
+#endif
     }
+
+#if defined(FT_PLATFORM_PC)
+    // Emulator build: force wired path to avoid WiFi-only flow.
+    config.connection_type = CONN_WIRED;
+#endif
     
     // Create main screen first
     lv_obj_t *main_screen = lv_obj_create(nullptr);
@@ -265,6 +281,7 @@ void UICommon::createMainUI() {
     
     // Show connecting popup BEFORE creating UI (faster response)
     // This gives immediate visual feedback while UI is being built
+#if !defined(FT_PLATFORM_PC)
     if (config.connection_type == CONN_WIRELESS && strlen(config.ssid) > 0) {
         showConnectingPopup(config.name, config.ssid);
         lv_refr_now(nullptr);  // Force immediate display update
@@ -272,16 +289,21 @@ void UICommon::createMainUI() {
         showConnectingPopup(config.name, nullptr);
         lv_refr_now(nullptr);  // Force immediate display update
     }
+#endif
 
     // Reset connection state for a new machine selection
     ever_connected_successfully = false;
     connection_error_shown = false;
     
     // Create status bar
+    Serial.println("UICommon: Creating status bar");
     createStatusBar();
+    Serial.println("UICommon: Status bar created");
     
     // Create all tabs
+    Serial.println("UICommon: Creating tabs");
     UITabs::createTabs();
+    Serial.println("UICommon: Tabs created");
 
     if (!comm_events_registered) {
         CommManager::setEventCallback([](const CommManager::Event &event) {
@@ -400,16 +422,26 @@ void UICommon::createMainUI() {
                      config.fluidnc_url, config.websocket_port);
     }
     CommManager::connect(config);
+
+#if defined(FT_PLATFORM_PC)
+    // Emulator: ensure the connecting popup goes away immediately.
+    hideConnectingPopup();
+#endif
     
     // Start connection timeout monitoring (10 seconds)
+#if !defined(FT_PLATFORM_PC)
     connection_timeout_start = millis();
     connection_timeout_active = true;
     connection_error_shown = false;
+#else
+    connection_timeout_active = false;
+#endif
     
     Serial.println("UICommon: Main UI created");
 }
 
 void UICommon::createStatusBar() {
+    Serial.println("UICommon: createStatusBar start");
     constexpr int32_t posx1 = 335;
     constexpr int32_t posx2 = 400;
     constexpr int32_t posx3 = 500;
@@ -790,7 +822,8 @@ void UICommon::setEncoderBindAxis(int axis, bool force_display) {
 }
 
 bool UICommon::isEncoderBindVisible() {
-    return encoder_bind_visible;
+    return true;
+    //FIXME return encoder_bind_visible;
 }
 
 void UICommon::updateEncoderBindVisibility() {

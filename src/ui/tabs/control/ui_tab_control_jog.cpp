@@ -9,6 +9,7 @@
 #include "core/usb_host_manager.h"
 #include "config.h"
 #include <Arduino.h>
+#include <cmath>
 #include <cstdlib>
 
 // Static member initialization
@@ -24,7 +25,6 @@ lv_obj_t *UITabControlJog::encoder_bind_container = nullptr;
 lv_obj_t *UITabControlJog::encoder_bind_buttons[3] = {nullptr, nullptr, nullptr};
 lv_timer_t *UITabControlJog::encoder_timer = nullptr;
 lv_obj_t *UITabControlJog::soft_limits_button = nullptr;
-lv_obj_t *UITabControlJog::soft_limits_overlay = nullptr;
 lv_obj_t *UITabControlJog::soft_limits_panel = nullptr;
 lv_obj_t *UITabControlJog::soft_limits_keyboard = nullptr;
 lv_obj_t *UITabControlJog::soft_limits_active_ta = nullptr;
@@ -93,13 +93,6 @@ void UITabControlJog::create(lv_obj_t *tab) {
     
     // ========== XY Section (Left side) ==========
     
-    // XY header
-    lv_obj_t *xy_jog_header = lv_label_create(tab);
-    lv_label_set_text(xy_jog_header, "XY STEP");
-    lv_obj_set_style_text_font(xy_jog_header, &lv_font_montserrat_18, 0);
-    lv_obj_set_style_text_color(xy_jog_header, UITheme::AXIS_XY, 0);
-    lv_obj_set_pos(xy_jog_header, UI_SCALE_X(120), UI_SCALE_Y(5));
-    
     // X Step size selection
     lv_obj_t *x_step_label = lv_label_create(tab);
     lv_label_set_text(x_step_label, "X Step");
@@ -159,10 +152,39 @@ void UITabControlJog::create(lv_obj_t *tab) {
     }
     update_y_step_button_styles();
 
+    // Z Step size selection
+    lv_obj_t *z_step_label = lv_label_create(tab);
+    lv_label_set_text(z_step_label, "Z Step");
+    lv_obj_set_style_text_font(z_step_label, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_color(z_step_label, UITheme::AXIS_XY, 0);
+    lv_obj_set_pos(z_step_label, UI_SCALE_X(5), UI_SCALE_Y(139));
+
+    const int z_step_row_start_x = UI_SCALE_X(5);
+    const int z_step_row_y = UI_SCALE_Y(159);
+
+    // Z Step size buttons - horizontal row, smallest to largest (left to right)
+    for (int display_index = 0; display_index < UITheme::Z_STEP_COUNT; display_index++) {
+        int value_index = UITheme::Z_STEP_COUNT - 1 - display_index;
+        lv_obj_t *btn_step = lv_button_create(tab);
+        lv_obj_set_size(btn_step, step_btn_width, step_btn_height);
+        lv_obj_set_pos(btn_step,
+                       z_step_row_start_x + display_index * (step_btn_width + step_btn_gap),
+                       z_step_row_y);
+        lv_obj_add_event_cb(btn_step, z_step_button_event_cb, LV_EVENT_CLICKED, (void*)(intptr_t)value_index);
+
+        z_step_buttons[value_index] = btn_step;
+
+        lv_obj_t *lbl = lv_label_create(btn_step);
+        lv_label_set_text(lbl, UITheme::Z_STEP_LABELS[value_index]);
+        lv_obj_set_style_text_font(lbl, &lv_font_montserrat_14, 0);
+        lv_obj_center(lbl);
+    }
+    update_z_step_button_styles();
+
     // Encoder binding override (single qtdial only)
     encoder_bind_container = lv_obj_create(tab);
-    lv_obj_set_size(encoder_bind_container, UI_SCALE_X(210), UI_SCALE_Y(60));
-    lv_obj_set_pos(encoder_bind_container, UI_SCALE_X(5), UI_SCALE_Y(140));
+    lv_obj_set_size(encoder_bind_container, UI_SCALE_X(80), UI_SCALE_Y(210));
+    lv_obj_set_pos(encoder_bind_container, UI_SCALE_X(265), UI_SCALE_Y(9));
     lv_obj_set_style_bg_opa(encoder_bind_container, LV_OPA_TRANSP, 0);
     lv_obj_set_style_border_width(encoder_bind_container, 0, 0);
     lv_obj_set_style_pad_all(encoder_bind_container, 0, 0);
@@ -176,14 +198,14 @@ void UITabControlJog::create(lv_obj_t *tab) {
     lv_obj_set_pos(encoder_bind_label, 0, 0);
 
     static const char *kBindLabels[3] = {"X", "Y", "Z"};
-    const int bind_btn_w = UI_SCALE_X(45);
-    const int bind_btn_h = UI_SCALE_Y(36);
-    const int bind_btn_gap = UI_SCALE_X(6);
+    const int bind_btn_w = UI_SCALE_X(40);
+    const int bind_btn_h = UI_SCALE_Y(40);
+    const int bind_btn_gap = UI_SCALE_Y(25);
     const int bind_row_y = UI_SCALE_Y(20);
     for (int i = 0; i < 3; ++i) {
         lv_obj_t *btn = lv_button_create(encoder_bind_container);
         lv_obj_set_size(btn, bind_btn_w, bind_btn_h);
-        lv_obj_set_pos(btn, i * (bind_btn_w + bind_btn_gap), bind_row_y);
+        lv_obj_set_pos(btn, bind_btn_w, bind_row_y + i * (bind_btn_h + bind_btn_gap));
         lv_obj_add_event_cb(btn, encoder_bind_button_event_cb, LV_EVENT_CLICKED, (void*)(intptr_t)i);
         encoder_bind_buttons[i] = btn;
 
@@ -207,7 +229,7 @@ void UITabControlJog::create(lv_obj_t *tab) {
     lv_label_set_text(xy_feed_label, "XY Feed:");
     lv_obj_set_style_text_font(xy_feed_label, &lv_font_montserrat_14, 0);
     lv_obj_set_style_text_color(xy_feed_label, UITheme::AXIS_XY, 0);
-    lv_obj_set_pos(xy_feed_label, UI_SCALE_X(5), UI_SCALE_Y(250));
+    lv_obj_set_pos(xy_feed_label, UI_SCALE_X(5), UI_SCALE_Y(210));
     
     // XY Feedrate value (plain text label) - load from settings
     xy_feedrate_label = lv_label_create(tab);
@@ -216,7 +238,7 @@ void UITabControlJog::create(lv_obj_t *tab) {
     lv_label_set_text(xy_feedrate_label, xy_feed_buf);
     lv_obj_set_style_text_font(xy_feedrate_label, &lv_font_montserrat_14, 0);
     lv_obj_set_style_text_color(xy_feedrate_label, UITheme::TEXT_MEDIUM, 0);
-    lv_obj_set_pos(xy_feedrate_label, UI_SCALE_X(75), UI_SCALE_Y(250));
+    lv_obj_set_pos(xy_feedrate_label, UI_SCALE_X(75), UI_SCALE_Y(210));
     
     // Now update XY step display (after feedrate label exists)
     update_xy_step_display();
@@ -224,12 +246,13 @@ void UITabControlJog::create(lv_obj_t *tab) {
     lv_obj_t *xy_feed_unit = lv_label_create(tab);
     lv_label_set_text(xy_feed_unit, "mm/min");
     lv_obj_set_style_text_font(xy_feed_unit, &lv_font_montserrat_14, 0);
-    lv_obj_set_pos(xy_feed_unit, UI_SCALE_X(240), UI_SCALE_Y(250));
+    lv_obj_set_style_text_color(xy_feed_unit, UITheme::TEXT_MEDIUM, 0);
+    lv_obj_set_pos(xy_feed_unit, UI_SCALE_X(115), UI_SCALE_Y(210));
     
     // XY Feedrate adjustment buttons - all on one line: -1000, -100, +100, +1000
     lv_obj_t *btn_xy_minus1000 = lv_button_create(tab);
     lv_obj_set_size(btn_xy_minus1000, UI_SCALE_X(55), UI_SCALE_Y(45));
-    lv_obj_set_pos(btn_xy_minus1000, UI_SCALE_X(120), UI_SCALE_Y(270));
+    lv_obj_set_pos(btn_xy_minus1000, UI_SCALE_X(5), UI_SCALE_Y(230));
     lv_obj_add_event_cb(btn_xy_minus1000, xy_feedrate_adj_event_cb, LV_EVENT_CLICKED, (void*)(intptr_t)-1000);
     lv_obj_t *lbl_xy_minus1000 = lv_label_create(btn_xy_minus1000);
     lv_label_set_text(lbl_xy_minus1000, "-1000");
@@ -238,7 +261,7 @@ void UITabControlJog::create(lv_obj_t *tab) {
     
     lv_obj_t *btn_xy_minus100 = lv_button_create(tab);
     lv_obj_set_size(btn_xy_minus100, UI_SCALE_X(55), UI_SCALE_Y(45));
-    lv_obj_set_pos(btn_xy_minus100, UI_SCALE_X(180), UI_SCALE_Y(270));
+    lv_obj_set_pos(btn_xy_minus100, UI_SCALE_X(5+(1*60)), UI_SCALE_Y(230));
     lv_obj_add_event_cb(btn_xy_minus100, xy_feedrate_adj_event_cb, LV_EVENT_CLICKED, (void*)(intptr_t)-100);
     lv_obj_t *lbl_xy_minus100 = lv_label_create(btn_xy_minus100);
     lv_label_set_text(lbl_xy_minus100, "-100");
@@ -247,7 +270,7 @@ void UITabControlJog::create(lv_obj_t *tab) {
     
     lv_obj_t *btn_xy_plus100 = lv_button_create(tab);
     lv_obj_set_size(btn_xy_plus100, UI_SCALE_X(55), UI_SCALE_Y(45));
-    lv_obj_set_pos(btn_xy_plus100, UI_SCALE_X(240), UI_SCALE_Y(270));
+    lv_obj_set_pos(btn_xy_plus100, UI_SCALE_X(5+(2*60)), UI_SCALE_Y(230));
     lv_obj_add_event_cb(btn_xy_plus100, xy_feedrate_adj_event_cb, LV_EVENT_CLICKED, (void*)(intptr_t)100);
     lv_obj_t *lbl_xy_plus100 = lv_label_create(btn_xy_plus100);
     lv_label_set_text(lbl_xy_plus100, "+100");
@@ -256,50 +279,12 @@ void UITabControlJog::create(lv_obj_t *tab) {
     
     lv_obj_t *btn_xy_plus1000 = lv_button_create(tab);
     lv_obj_set_size(btn_xy_plus1000, UI_SCALE_X(55), UI_SCALE_Y(45));
-    lv_obj_set_pos(btn_xy_plus1000, UI_SCALE_X(300), UI_SCALE_Y(270));
+    lv_obj_set_pos(btn_xy_plus1000, UI_SCALE_X(5+(3*60)), UI_SCALE_Y(230));
     lv_obj_add_event_cb(btn_xy_plus1000, xy_feedrate_adj_event_cb, LV_EVENT_CLICKED, (void*)(intptr_t)1000);
     lv_obj_t *lbl_xy_plus1000 = lv_label_create(btn_xy_plus1000);
     lv_label_set_text(lbl_xy_plus1000, "+1000");
     lv_obj_set_style_text_font(lbl_xy_plus1000, &lv_font_montserrat_14, 0);
     lv_obj_center(lbl_xy_plus1000);
-    
-    // ========== Z Section (Right side) ==========
-    
-    // Z Jog header - centered above Z+ button
-    lv_obj_t *z_jog_header = lv_label_create(tab);
-    lv_label_set_text(z_jog_header, "Z JOG");
-    lv_obj_set_style_text_font(z_jog_header, &lv_font_montserrat_18, 0);
-    lv_obj_set_style_text_color(z_jog_header, UITheme::AXIS_Z, 0);
-    lv_obj_set_pos(z_jog_header, UI_SCALE_X(467), UI_SCALE_Y(5));  // Centered above Z+ button at x=460
-    
-    // Z Step size selection - vertical buttons
-    lv_obj_t *z_step_label = lv_label_create(tab);
-    lv_label_set_text(z_step_label, "Z Step");
-    lv_obj_set_style_text_font(z_step_label, &lv_font_montserrat_14, 0);
-    lv_obj_set_style_text_color(z_step_label, UITheme::AXIS_XY, 0);
-    lv_obj_set_pos(z_step_label, UI_SCALE_X(365), UI_SCALE_Y(9));
-    
-    const int z_step_row_start_x = UI_SCALE_X(365);
-    const int z_step_row_y = UI_SCALE_Y(30);
-
-    // Z Step size buttons - horizontal row, smallest to largest (left to right)
-    for (int display_index = 0; display_index < UITheme::Z_STEP_COUNT; display_index++) {
-        int value_index = UITheme::Z_STEP_COUNT - 1 - display_index;
-        lv_obj_t *btn_step = lv_button_create(tab);
-        lv_obj_set_size(btn_step, step_btn_width, step_btn_height);
-        lv_obj_set_pos(btn_step,
-                       z_step_row_start_x + display_index * (step_btn_width + step_btn_gap),
-                       z_step_row_y);
-        lv_obj_add_event_cb(btn_step, z_step_button_event_cb, LV_EVENT_CLICKED, (void*)(intptr_t)value_index);
-        
-        z_step_buttons[value_index] = btn_step;
-        
-        lv_obj_t *lbl = lv_label_create(btn_step);
-        lv_label_set_text(lbl, UITheme::Z_STEP_LABELS[value_index]);
-        lv_obj_set_style_text_font(lbl, &lv_font_montserrat_14, 0);
-        lv_obj_center(lbl);
-    }
-    update_z_step_button_styles();
     
     z_step_display_label = nullptr;
     
@@ -307,7 +292,8 @@ void UITabControlJog::create(lv_obj_t *tab) {
     lv_obj_t *z_feed_label = lv_label_create(tab);
     lv_label_set_text(z_feed_label, "Z Feed:");
     lv_obj_set_style_text_font(z_feed_label, &lv_font_montserrat_14, 0);
-    lv_obj_set_pos(z_feed_label, UI_SCALE_X(395), UI_SCALE_Y(250));
+    lv_obj_set_style_text_color(z_feed_label, UITheme::AXIS_XY, 0);
+    lv_obj_set_pos(z_feed_label, UI_SCALE_X(5), UI_SCALE_Y(280));
     
     // Z Feedrate value (plain text label) - load from settings
     z_feedrate_label = lv_label_create(tab);
@@ -315,7 +301,8 @@ void UITabControlJog::create(lv_obj_t *tab) {
     snprintf(z_feed_buf, sizeof(z_feed_buf), "%d", z_current_feed);
     lv_label_set_text(z_feedrate_label, z_feed_buf);
     lv_obj_set_style_text_font(z_feedrate_label, &lv_font_montserrat_14, 0);
-    lv_obj_set_pos(z_feedrate_label, UI_SCALE_X(460), UI_SCALE_Y(250));
+    lv_obj_set_style_text_color(z_feedrate_label, UITheme::TEXT_MEDIUM, 0);
+    lv_obj_set_pos(z_feedrate_label, UI_SCALE_X(75), UI_SCALE_Y(280));
     
     // Now update Z step display (after feedrate label exists)
     update_z_step_display();
@@ -323,12 +310,13 @@ void UITabControlJog::create(lv_obj_t *tab) {
     lv_obj_t *z_feed_unit = lv_label_create(tab);
     lv_label_set_text(z_feed_unit, "mm/min");
     lv_obj_set_style_text_font(z_feed_unit, &lv_font_montserrat_14, 0);
-    lv_obj_set_pos(z_feed_unit, UI_SCALE_X(505), UI_SCALE_Y(280));
+    lv_obj_set_style_text_color(z_feed_unit, UITheme::TEXT_MEDIUM, 0);
+    lv_obj_set_pos(z_feed_unit, UI_SCALE_X(115), UI_SCALE_Y(280));
     
     // Z Feedrate adjustment buttons - all on one line: -1000, -100, +100, +1000
     lv_obj_t *btn_z_minus1000 = lv_button_create(tab);
     lv_obj_set_size(btn_z_minus1000, UI_SCALE_X(55), UI_SCALE_Y(45));
-    lv_obj_set_pos(btn_z_minus1000, UI_SCALE_X(395), UI_SCALE_Y(300));
+    lv_obj_set_pos(btn_z_minus1000, UI_SCALE_X(5+(0*60)), UI_SCALE_Y(300));
     lv_obj_add_event_cb(btn_z_minus1000, z_feedrate_adj_event_cb, LV_EVENT_CLICKED, (void*)(intptr_t)-1000);
     lv_obj_t *lbl_z_minus1000 = lv_label_create(btn_z_minus1000);
     lv_label_set_text(lbl_z_minus1000, "-1000");
@@ -337,7 +325,7 @@ void UITabControlJog::create(lv_obj_t *tab) {
     
     lv_obj_t *btn_z_minus100 = lv_button_create(tab);
     lv_obj_set_size(btn_z_minus100, UI_SCALE_X(55), UI_SCALE_Y(45));
-    lv_obj_set_pos(btn_z_minus100, UI_SCALE_X(455), UI_SCALE_Y(300));
+    lv_obj_set_pos(btn_z_minus100, UI_SCALE_X(5+(1*60)), UI_SCALE_Y(300));
     lv_obj_add_event_cb(btn_z_minus100, z_feedrate_adj_event_cb, LV_EVENT_CLICKED, (void*)(intptr_t)-100);
     lv_obj_t *lbl_z_minus100 = lv_label_create(btn_z_minus100);
     lv_label_set_text(lbl_z_minus100, "-100");
@@ -346,7 +334,7 @@ void UITabControlJog::create(lv_obj_t *tab) {
     
     lv_obj_t *btn_z_plus100 = lv_button_create(tab);
     lv_obj_set_size(btn_z_plus100, UI_SCALE_X(55), UI_SCALE_Y(45));
-    lv_obj_set_pos(btn_z_plus100, UI_SCALE_X(515), UI_SCALE_Y(300));
+    lv_obj_set_pos(btn_z_plus100, UI_SCALE_X(5+(2*60)), UI_SCALE_Y(300));
     lv_obj_add_event_cb(btn_z_plus100, z_feedrate_adj_event_cb, LV_EVENT_CLICKED, (void*)(intptr_t)100);
     lv_obj_t *lbl_z_plus100 = lv_label_create(btn_z_plus100);
     lv_label_set_text(lbl_z_plus100, "+100");
@@ -355,7 +343,7 @@ void UITabControlJog::create(lv_obj_t *tab) {
     
     lv_obj_t *btn_z_plus1000 = lv_button_create(tab);
     lv_obj_set_size(btn_z_plus1000, UI_SCALE_X(55), UI_SCALE_Y(45));
-    lv_obj_set_pos(btn_z_plus1000, UI_SCALE_X(575), UI_SCALE_Y(300));
+    lv_obj_set_pos(btn_z_plus1000, UI_SCALE_X(5+(3*60)), UI_SCALE_Y(300));
     lv_obj_add_event_cb(btn_z_plus1000, z_feedrate_adj_event_cb, LV_EVENT_CLICKED, (void*)(intptr_t)1000);
     lv_obj_t *lbl_z_plus1000 = lv_label_create(btn_z_plus1000);
     lv_label_set_text(lbl_z_plus1000, "+1000");
@@ -363,20 +351,20 @@ void UITabControlJog::create(lv_obj_t *tab) {
     lv_obj_center(lbl_z_plus1000);
 
     // Soft limits button (opens modal editor)
-    soft_limits_button = lv_button_create(tab);
-    lv_obj_set_size(soft_limits_button, UI_SCALE_X(140), UI_SCALE_Y(40));
-    lv_obj_set_pos(soft_limits_button, UI_SCALE_X(360), UI_SCALE_Y(210));
-    lv_obj_add_event_cb(soft_limits_button, soft_limits_button_event_cb, LV_EVENT_CLICKED, nullptr);
-    lv_obj_t *lbl_soft_limits = lv_label_create(soft_limits_button);
-    lv_label_set_text(lbl_soft_limits, "Soft Limits");
-    lv_obj_set_style_text_font(lbl_soft_limits, &lv_font_montserrat_16, 0);
-    lv_obj_center(lbl_soft_limits);
+    // soft_limits_button = lv_button_create(tab);
+    // lv_obj_set_size(soft_limits_button, UI_SCALE_X(140), UI_SCALE_Y(40));
+    // lv_obj_set_pos(soft_limits_button, UI_SCALE_X(360), UI_SCALE_Y(210));
+    // lv_obj_add_event_cb(soft_limits_button, soft_limits_button_event_cb, LV_EVENT_CLICKED, nullptr);
+    // lv_obj_t *lbl_soft_limits = lv_label_create(soft_limits_button);
+    // lv_label_set_text(lbl_soft_limits, "Soft Limits");
+    // lv_obj_set_style_text_font(lbl_soft_limits, &lv_font_montserrat_16, 0);
+    // lv_obj_center(lbl_soft_limits);
     
     // ========== Cancel Jog Button (Upper Right) ==========
     // Create a container for the octagon stop button
     lv_obj_t *btn_cancel = lv_obj_create(tab);
     lv_obj_set_size(btn_cancel, UI_SCALE_X(70), UI_SCALE_Y(70));
-    lv_obj_set_pos(btn_cancel, UI_SCALE_X(560), UI_SCALE_Y(110));  // Aligned with middle row (left/right buttons)
+    lv_obj_set_pos(btn_cancel, UI_SCALE_X(280), UI_SCALE_Y(275));
     lv_obj_clear_flag(btn_cancel, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_style_bg_opa(btn_cancel, LV_OPA_TRANSP, 0);  // Transparent background
     lv_obj_set_style_border_width(btn_cancel, 0, 0);
@@ -393,6 +381,94 @@ void UITabControlJog::create(lv_obj_t *tab) {
     lv_obj_set_style_text_color(lbl_cancel, lv_color_white(), 0);
     lv_obj_center(lbl_cancel);
 
+    // Soft limits
+    soft_limits_panel = lv_obj_create(tab);
+    lv_obj_set_size(soft_limits_panel, UI_SCALE_X(360), UI_SCALE_Y(360));
+    lv_obj_set_pos(soft_limits_panel, UI_SCALE_X(360), UI_SCALE_Y(0));
+    lv_obj_set_style_bg_color(soft_limits_panel, UITheme::BG_MEDIUM, 0);
+    lv_obj_set_style_pad_all(soft_limits_panel, UI_SCALE_X(5), 0);
+    lv_obj_set_style_border_width(soft_limits_panel, 0, LV_PART_MAIN);
+    lv_obj_clear_flag(soft_limits_panel, LV_OBJ_FLAG_SCROLLABLE);
+
+    lv_obj_t *title = lv_label_create(soft_limits_panel);
+    lv_label_set_text(title, "SOFT LIMITS (WPos)");
+    lv_obj_set_style_text_font(title, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_color(title, UITheme::AXIS_XY, 0);
+    lv_obj_set_pos(title, UI_SCALE_X(5), UI_SCALE_Y(5));
+
+    const lv_coord_t row_start_y = UI_SCALE_Y(25);
+    const lv_coord_t row_gap = UI_SCALE_Y(65);
+    const lv_coord_t axis_x = UI_SCALE_X(5);
+    const lv_coord_t switch_x = UI_SCALE_X(25);
+    const lv_coord_t min_label_x = UI_SCALE_X(75);
+    const lv_coord_t min_field_x = UI_SCALE_X(110);
+    const lv_coord_t max_label_x = UI_SCALE_X(185);
+    const lv_coord_t max_field_x = UI_SCALE_X(220);
+    const lv_coord_t field_w = UI_SCALE_X(70);
+    const lv_coord_t field_h = UI_SCALE_Y(40);
+
+    auto make_axis_row = [&](const char *axis,
+                             lv_coord_t y,
+                             lv_obj_t **sw_out,
+                             lv_obj_t **min_out,
+                             lv_obj_t **max_out) {
+        lv_obj_t *lbl_axis = lv_label_create(soft_limits_panel);
+        lv_label_set_text(lbl_axis, axis);
+        lv_obj_set_style_text_font(lbl_axis, &lv_font_montserrat_14, 0);
+        lv_obj_set_style_text_color(lbl_axis, UITheme::TEXT_MEDIUM, 0);
+        lv_obj_set_pos(lbl_axis, axis_x, y + UI_SCALE_Y(12));
+
+        lv_obj_t *sw = lv_switch_create(soft_limits_panel);
+        lv_obj_set_pos(sw, switch_x, y + UI_SCALE_Y(6));
+        *sw_out = sw;
+
+        lv_obj_t *lbl_min = lv_label_create(soft_limits_panel);
+        lv_label_set_text(lbl_min, "Min:");
+        lv_obj_set_style_text_font(lbl_min, &lv_font_montserrat_14, 0);
+        lv_obj_set_style_text_color(lbl_min, UITheme::TEXT_MEDIUM, 0);
+        lv_obj_set_pos(lbl_min, min_label_x, y + UI_SCALE_Y(12));
+
+        lv_obj_t *ta_min = lv_textarea_create(soft_limits_panel);
+        lv_obj_set_size(ta_min, field_w, field_h);
+        lv_obj_set_pos(ta_min, min_field_x, y);
+        lv_textarea_set_one_line(ta_min, true);
+        lv_textarea_set_max_length(ta_min, 10);
+        lv_textarea_set_accepted_chars(ta_min, "0123456789.-");
+        lv_obj_set_style_text_font(ta_min, &lv_font_montserrat_18, 0);
+        lv_obj_add_event_cb(ta_min, soft_limits_textarea_focused_event_cb, LV_EVENT_FOCUSED, nullptr);
+        *min_out = ta_min;
+
+        lv_obj_t *lbl_max = lv_label_create(soft_limits_panel);
+        lv_label_set_text(lbl_max, "Max:");
+        lv_obj_set_style_text_font(lbl_max, &lv_font_montserrat_14, 0);
+        lv_obj_set_style_text_color(lbl_max, UITheme::TEXT_MEDIUM, 0);
+        lv_obj_set_pos(lbl_max, max_label_x, y + UI_SCALE_Y(12));
+
+        lv_obj_t *ta_max = lv_textarea_create(soft_limits_panel);
+        lv_obj_set_size(ta_max, field_w, field_h);
+        lv_obj_set_pos(ta_max, max_field_x, y);
+        lv_textarea_set_one_line(ta_max, true);
+        lv_textarea_set_max_length(ta_max, 10);
+        lv_textarea_set_accepted_chars(ta_max, "0123456789.-");
+        lv_obj_set_style_text_font(ta_max, &lv_font_montserrat_18, 0);
+        lv_obj_add_event_cb(ta_max, soft_limits_textarea_focused_event_cb, LV_EVENT_FOCUSED, nullptr);
+        *max_out = ta_max;
+    };
+
+    make_axis_row("X", row_start_y, &soft_limits_switch_x, &soft_limits_x_min_ta, &soft_limits_x_max_ta);
+    make_axis_row("Y", row_start_y + row_gap, &soft_limits_switch_y, &soft_limits_y_min_ta, &soft_limits_y_max_ta);
+    make_axis_row("Z", row_start_y + 2 * row_gap, &soft_limits_switch_z, &soft_limits_z_min_ta, &soft_limits_z_max_ta);
+
+    lv_obj_t *btn_save = lv_button_create(soft_limits_panel);
+    lv_obj_set_size(btn_save, UI_SCALE_X(150), UI_SCALE_Y(44));
+    lv_obj_set_pos(btn_save, UI_SCALE_X(140), UI_SCALE_Y(220));
+    lv_obj_set_style_bg_color(btn_save, UITheme::ACCENT_PRIMARY, 0);
+    lv_obj_add_event_cb(btn_save, soft_limits_save_event_cb, LV_EVENT_CLICKED, nullptr);
+    lv_obj_t *lbl_save = lv_label_create(btn_save);
+    lv_label_set_text(lbl_save, "Save");
+    lv_obj_set_style_text_font(lbl_save, &lv_font_montserrat_18, 0);
+    lv_obj_center(lbl_save);
+
     if (!encoder_timer) {
         encoder_timer = lv_timer_create(encoderTimerCb, 50, nullptr);
     }
@@ -402,122 +478,7 @@ void UITabControlJog::create(lv_obj_t *tab) {
     }
     reset_override_encoder_count();
 
-    if (!soft_limits_overlay) {
-        soft_limits_overlay = lv_obj_create(lv_scr_act());
-        lv_obj_set_size(soft_limits_overlay, SCREEN_WIDTH, SCREEN_HEIGHT);
-        lv_obj_set_style_bg_color(soft_limits_overlay, lv_color_black(), 0);
-        lv_obj_set_style_bg_opa(soft_limits_overlay, LV_OPA_60, 0);
-        lv_obj_clear_flag(soft_limits_overlay, LV_OBJ_FLAG_SCROLLABLE);
-        lv_obj_add_flag(soft_limits_overlay, LV_OBJ_FLAG_HIDDEN);
-
-        soft_limits_panel = lv_obj_create(soft_limits_overlay);
-        lv_obj_set_size(soft_limits_panel, UI_SCALE_X(720), UI_SCALE_Y(360));
-        lv_obj_center(soft_limits_panel);
-        lv_obj_set_style_bg_color(soft_limits_panel, UITheme::BG_MEDIUM, 0);
-        lv_obj_set_style_border_width(soft_limits_panel, 2, 0);
-        lv_obj_set_style_border_color(soft_limits_panel, UITheme::BORDER_LIGHT, 0);
-        lv_obj_set_style_pad_all(soft_limits_panel, UI_SCALE_X(12), 0);
-        lv_obj_clear_flag(soft_limits_panel, LV_OBJ_FLAG_SCROLLABLE);
-
-        lv_obj_t *title = lv_label_create(soft_limits_panel);
-        lv_label_set_text(title, "SOFT LIMITS (WORK POSITION)");
-        lv_obj_set_style_text_font(title, &lv_font_montserrat_18, 0);
-        lv_obj_set_style_text_color(title, UITheme::TEXT_DISABLED, 0);
-        lv_obj_set_pos(title, UI_SCALE_X(10), UI_SCALE_Y(5));
-
-        lv_obj_t *btn_close = lv_button_create(soft_limits_panel);
-        lv_obj_set_size(btn_close, UI_SCALE_X(40), UI_SCALE_Y(32));
-        lv_obj_set_pos(btn_close, UI_SCALE_X(660), UI_SCALE_Y(5));
-        lv_obj_add_event_cb(btn_close, soft_limits_close_event_cb, LV_EVENT_CLICKED, nullptr);
-        lv_obj_t *lbl_close = lv_label_create(btn_close);
-        lv_label_set_text(lbl_close, "X");
-        lv_obj_set_style_text_font(lbl_close, &lv_font_montserrat_16, 0);
-        lv_obj_center(lbl_close);
-
-        const lv_coord_t row_start_y = UI_SCALE_Y(60);
-        const lv_coord_t row_gap = UI_SCALE_Y(70);
-        const lv_coord_t axis_x = UI_SCALE_X(10);
-        const lv_coord_t switch_x = UI_SCALE_X(60);
-        const lv_coord_t min_label_x = UI_SCALE_X(180);
-        const lv_coord_t min_field_x = UI_SCALE_X(240);
-        const lv_coord_t max_label_x = UI_SCALE_X(400);
-        const lv_coord_t max_field_x = UI_SCALE_X(460);
-        const lv_coord_t field_w = UI_SCALE_X(140);
-        const lv_coord_t field_h = UI_SCALE_Y(40);
-
-        auto make_axis_row = [&](const char *axis,
-                                 lv_coord_t y,
-                                 lv_obj_t **sw_out,
-                                 lv_obj_t **min_out,
-                                 lv_obj_t **max_out) {
-            lv_obj_t *lbl_axis = lv_label_create(soft_limits_panel);
-            lv_label_set_text(lbl_axis, axis);
-            lv_obj_set_style_text_font(lbl_axis, &lv_font_montserrat_18, 0);
-            lv_obj_set_style_text_color(lbl_axis, UITheme::TEXT_LIGHT, 0);
-            lv_obj_set_pos(lbl_axis, axis_x, y + UI_SCALE_Y(8));
-
-            lv_obj_t *sw = lv_switch_create(soft_limits_panel);
-            lv_obj_set_pos(sw, switch_x, y);
-            *sw_out = sw;
-
-            lv_obj_t *lbl_min = lv_label_create(soft_limits_panel);
-            lv_label_set_text(lbl_min, "Min:");
-            lv_obj_set_style_text_font(lbl_min, &lv_font_montserrat_16, 0);
-            lv_obj_set_style_text_color(lbl_min, UITheme::TEXT_MEDIUM, 0);
-            lv_obj_set_pos(lbl_min, min_label_x, y + UI_SCALE_Y(10));
-
-            lv_obj_t *ta_min = lv_textarea_create(soft_limits_panel);
-            lv_obj_set_size(ta_min, field_w, field_h);
-            lv_obj_set_pos(ta_min, min_field_x, y);
-            lv_textarea_set_one_line(ta_min, true);
-            lv_textarea_set_max_length(ta_min, 10);
-            lv_textarea_set_accepted_chars(ta_min, "0123456789.-");
-            lv_obj_set_style_text_font(ta_min, &lv_font_montserrat_18, 0);
-            lv_obj_add_event_cb(ta_min, soft_limits_textarea_focused_event_cb, LV_EVENT_FOCUSED, nullptr);
-            *min_out = ta_min;
-
-            lv_obj_t *lbl_max = lv_label_create(soft_limits_panel);
-            lv_label_set_text(lbl_max, "Max:");
-            lv_obj_set_style_text_font(lbl_max, &lv_font_montserrat_16, 0);
-            lv_obj_set_style_text_color(lbl_max, UITheme::TEXT_MEDIUM, 0);
-            lv_obj_set_pos(lbl_max, max_label_x, y + UI_SCALE_Y(10));
-
-            lv_obj_t *ta_max = lv_textarea_create(soft_limits_panel);
-            lv_obj_set_size(ta_max, field_w, field_h);
-            lv_obj_set_pos(ta_max, max_field_x, y);
-            lv_textarea_set_one_line(ta_max, true);
-            lv_textarea_set_max_length(ta_max, 10);
-            lv_textarea_set_accepted_chars(ta_max, "0123456789.-");
-            lv_obj_set_style_text_font(ta_max, &lv_font_montserrat_18, 0);
-            lv_obj_add_event_cb(ta_max, soft_limits_textarea_focused_event_cb, LV_EVENT_FOCUSED, nullptr);
-            *max_out = ta_max;
-        };
-
-        make_axis_row("X", row_start_y, &soft_limits_switch_x, &soft_limits_x_min_ta, &soft_limits_x_max_ta);
-        make_axis_row("Y", row_start_y + row_gap, &soft_limits_switch_y, &soft_limits_y_min_ta, &soft_limits_y_max_ta);
-        make_axis_row("Z", row_start_y + 2 * row_gap, &soft_limits_switch_z, &soft_limits_z_min_ta, &soft_limits_z_max_ta);
-
-        lv_obj_t *btn_save = lv_button_create(soft_limits_panel);
-        lv_obj_set_size(btn_save, UI_SCALE_X(150), UI_SCALE_Y(44));
-        lv_obj_set_pos(btn_save, UI_SCALE_X(470), UI_SCALE_Y(300));
-        lv_obj_set_style_bg_color(btn_save, UITheme::ACCENT_PRIMARY, 0);
-        lv_obj_add_event_cb(btn_save, soft_limits_save_event_cb, LV_EVENT_CLICKED, nullptr);
-        lv_obj_t *lbl_save = lv_label_create(btn_save);
-        lv_label_set_text(lbl_save, "Save");
-        lv_obj_set_style_text_font(lbl_save, &lv_font_montserrat_18, 0);
-        lv_obj_center(lbl_save);
-
-        lv_obj_t *btn_cancel = lv_button_create(soft_limits_panel);
-        lv_obj_set_size(btn_cancel, UI_SCALE_X(150), UI_SCALE_Y(44));
-        lv_obj_set_pos(btn_cancel, UI_SCALE_X(300), UI_SCALE_Y(300));
-        lv_obj_add_event_cb(btn_cancel, soft_limits_close_event_cb, LV_EVENT_CLICKED, nullptr);
-        lv_obj_t *lbl_cancel = lv_label_create(btn_cancel);
-        lv_label_set_text(lbl_cancel, "Close");
-        lv_obj_set_style_text_font(lbl_cancel, &lv_font_montserrat_18, 0);
-        lv_obj_center(lbl_cancel);
-
-        syncSoftLimitsUI();
-    }
+    syncSoftLimitsUI();
 }
 
 // X Step button event handler
@@ -661,17 +622,11 @@ void UITabControlJog::soft_limits_button_event_cb(lv_event_t *e) {
     LV_UNUSED(e);
     loadSoftLimitsFromConfig();
     syncSoftLimitsUI();
-    if (soft_limits_overlay) {
-        lv_obj_clear_flag(soft_limits_overlay, LV_OBJ_FLAG_HIDDEN);
-    }
 }
 
 void UITabControlJog::soft_limits_close_event_cb(lv_event_t *e) {
     LV_UNUSED(e);
     hideSoftLimitsKeyboard();
-    if (soft_limits_overlay) {
-        lv_obj_add_flag(soft_limits_overlay, LV_OBJ_FLAG_HIDDEN);
-    }
 }
 
 void UITabControlJog::soft_limits_save_event_cb(lv_event_t *e) {
@@ -688,9 +643,6 @@ void UITabControlJog::soft_limits_save_event_cb(lv_event_t *e) {
                                   soft_limit_z_min,
                                   soft_limit_z_max);
     hideSoftLimitsKeyboard();
-    if (soft_limits_overlay) {
-        lv_obj_add_flag(soft_limits_overlay, LV_OBJ_FLAG_HIDDEN);
-    }
 }
 
 void UITabControlJog::soft_limits_textarea_focused_event_cb(lv_event_t *e) {

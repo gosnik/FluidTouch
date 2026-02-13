@@ -21,7 +21,7 @@ namespace UITheme {
     // Text Colors
     static constexpr lv_color_t TEXT_LIGHT = LV_COLOR_MAKE(0xCC, 0xCC, 0xCC);   // Light gray text
     static constexpr lv_color_t TEXT_MEDIUM = LV_COLOR_MAKE(0xAA, 0xAA, 0xAA);  // Medium gray text
-    static constexpr lv_color_t TEXT_DARK = LV_COLOR_MAKE(0x55, 0x55, 0x55);    // Dark gray text (borders, pressed buttons)
+    static constexpr lv_color_t TEXT_DARK = LV_COLOR_MAKE(0x85, 0x85, 0x85);    // Dark gray text (borders, pressed buttons)
     
     // Machine Status Colors
     static constexpr lv_color_t STATE_IDLE = LV_COLOR_MAKE(0x00, 0xFF, 0x00);   // Idle state, OK status (green)
@@ -43,13 +43,13 @@ namespace UITheme {
     
     // Border Colors
     static constexpr lv_color_t BORDER_MEDIUM = LV_COLOR_MAKE(0x44, 0x44, 0x44);// Status bar border
-    static constexpr lv_color_t BORDER_LIGHT = LV_COLOR_MAKE(0x55, 0x55, 0x55); // Terminal border
+    static constexpr lv_color_t BORDER_LIGHT = LV_COLOR_MAKE(0x75, 0x75, 0x75); // Terminal border
     
     // Extended Colors (for special widgets and indicators)
     static constexpr lv_color_t DROPDOWN_BG = LV_COLOR_MAKE(0x40, 0x40, 0x40);  // Dropdown backgrounds
     static constexpr lv_color_t FILE_ITEM_BORDER = LV_COLOR_MAKE(0x40, 0x40, 0x40); // File entry borders
     static constexpr lv_color_t FILE_SIZE_TEXT = LV_COLOR_MAKE(0x88, 0x88, 0x88); // File size gray text
-    static constexpr lv_color_t TEXT_DISABLED = LV_COLOR_MAKE(0x66, 0x66, 0x66); // Disabled/secondary text
+    static constexpr lv_color_t TEXT_DISABLED = LV_COLOR_MAKE(0x86, 0x86, 0x86); // Disabled/secondary text
     
     // Button Colors (special actions)
     static constexpr lv_color_t BTN_PLAY = LV_COLOR_MAKE(0x4C, 0xAF, 0x50);     // Play/Success buttons (green)

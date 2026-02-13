@@ -1,0 +1,14 @@
+#pragma once
+
+#include <cstddef>
+#include <cstdlib>
+
+#define MALLOC_CAP_SPIRAM 0
+
+inline void *heap_caps_malloc(size_t size, int) {
+    return std::malloc(size);
+}
+
+inline void heap_caps_free(void *ptr) {
+    std::free(ptr);
+}
