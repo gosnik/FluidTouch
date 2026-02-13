@@ -400,15 +400,16 @@ static void handle_event(const HidEvent &event)
                                        (static_cast<uint32_t>(payload[11]) << 24);
             dev.last_input.role_id = payload[12];
             dev.last_input.seq = static_cast<uint16_t>(payload[14] | (payload[15] << 8));
-            if ((dev.last_input.flags & 0x02) != 0) {
+            if ((dev.last_input.flags & QtdialHidProtocol::kInputStatusFlagHasDelta) != 0) {
                 dev.count += dev.last_input.delta;
             }
 
             ESP_LOGI(kTag,
-                     "qtdial slot=%d delta=%d rate=%d flags=0x%02x buttons=0x%02x role=%u",
+                     "qtdial slot=%d delta=%d rate=%d enabled=%d flags=0x%02x buttons=0x%02x role=%u",
                      slot,
                      dev.last_input.delta,
                      dev.last_input.rate,
+                     (dev.last_input.flags & QtdialHidProtocol::kInputStatusFlagEncoderEnabled) ? 1 : 0,
                      dev.last_input.flags,
                      dev.last_input.buttons,
                      dev.last_input.role_id);

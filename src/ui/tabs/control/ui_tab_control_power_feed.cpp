@@ -1,4 +1,5 @@
 #include "ui/tabs/control/ui_tab_control_power_feed.h"
+#include "ui/tabs/control/ui_tab_control_jog.h"
 #include "ui/ui_theme.h"
 #include "core/comm_manager.h"
 #include "core/encoder.h"
@@ -66,6 +67,7 @@ void UITabControlPowerFeed::create(lv_obj_t *tab) {
         lv_textarea_set_accepted_chars(ta, "0123456789.-");
         lv_obj_set_style_text_font(ta, &lv_font_montserrat_18, 0);
         lv_obj_add_event_cb(ta, onTextareaFocused, LV_EVENT_FOCUSED, nullptr);
+        lv_obj_add_event_cb(ta, onTextareaDefocused, LV_EVENT_DEFOCUSED, nullptr);
         *ta_out = ta;
     };
 
@@ -88,6 +90,7 @@ void UITabControlPowerFeed::create(lv_obj_t *tab) {
     lv_textarea_set_text(ta_feed, "1000");
     lv_obj_set_style_text_font(ta_feed, &lv_font_montserrat_18, 0);
     lv_obj_add_event_cb(ta_feed, onTextareaFocused, LV_EVENT_FOCUSED, nullptr);
+    lv_obj_add_event_cb(ta_feed, onTextareaDefocused, LV_EVENT_DEFOCUSED, nullptr);
 
     lv_obj_t *mode_lbl = lv_label_create(tab);
     lv_label_set_text(mode_lbl, "Absolute:");
@@ -233,11 +236,26 @@ void UITabControlPowerFeed::setStatus(const char *text, lv_color_t color) {
 void UITabControlPowerFeed::onTextareaFocused(lv_event_t *e) {
     lv_obj_t *ta = static_cast<lv_obj_t *>(lv_event_get_target(e));
     active_field = ta;
+    char axis = 'X';
+    if (ta == ta_y) {
+        axis = 'Y';
+    } else if (ta == ta_z) {
+        axis = 'Z';
+    }
+    UITabControlJog::setActiveNumericTextarea(ta, axis);
     if (encoder_enabled) {
         last_encoder_count = get_encoder_value(get_active_encoder_index(active_field));
         return;
     }
     showKeyboard(ta);
+}
+
+void UITabControlPowerFeed::onTextareaDefocused(lv_event_t *e) {
+    lv_obj_t *ta = static_cast<lv_obj_t *>(lv_event_get_target(e));
+    if (active_field == ta) {
+        active_field = nullptr;
+    }
+    UITabControlJog::clearActiveNumericTextarea(ta);
 }
 
 void UITabControlPowerFeed::showKeyboard(lv_obj_t *ta) {
@@ -277,6 +295,7 @@ void UITabControlPowerFeed::hideKeyboard() {
         lv_obj_set_style_pad_bottom(parent_tab, 0, 0);
         lv_obj_scroll_to_y(parent_tab, 0, LV_ANIM_OFF);
     }
+    UITabControlJog::clearActiveNumericTextarea(active_field);
 }
 
 void UITabControlPowerFeed::onEncoderToggle(lv_event_t *e) {
@@ -290,6 +309,9 @@ void UITabControlPowerFeed::onEncoderToggle(lv_event_t *e) {
 
 void UITabControlPowerFeed::encoderTimerCb(lv_timer_t *timer) {
     LV_UNUSED(timer);
+    if (UITabControlJog::isNumericTextareaCaptureActive()) {
+        return;
+    }
     if (!encoder_enabled || !active_field) {
         return;
     }

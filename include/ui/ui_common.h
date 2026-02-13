@@ -23,6 +23,8 @@ public:
     static void updateConnectionStatus(bool machine_connected, bool wifi_connected);
     static int getEncoderBindAxis();
     static void setEncoderBindAxis(int axis, bool force_display = false);
+    static bool isEncoderBindEnabled();
+    static void setEncoderBindEnabled(bool enabled, bool force_display = false);
     static bool isEncoderBindVisible();
     static void updateEncoderBindVisibility();
     static void maybeSendEncoderBindDisplay(bool force_display = false);
@@ -87,6 +89,7 @@ private:
     static lv_obj_t *encoder_bind_container;
     static lv_obj_t *encoder_bind_buttons[3];
     static int encoder_bind_axis;
+    static bool encoder_bind_enabled;
     static bool encoder_bind_visible;
     static uint32_t last_bind_display_ms;
     

@@ -25,6 +25,7 @@ private:
     static void showKeyboard(lv_obj_t *ta);
     static void hideKeyboard();
     static void onTextareaFocused(lv_event_t *e);
+    static void onTextareaDefocused(lv_event_t *e);
     static void onGoPressed(lv_event_t *e);
     static void onCurrentPressed(lv_event_t *e);
     static void onClearPressed(lv_event_t *e);

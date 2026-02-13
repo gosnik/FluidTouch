@@ -1,4 +1,5 @@
 #include "ui/tabs/control/ui_tab_control_probe.h"
+#include "ui/tabs/control/ui_tab_control_jog.h"
 #include "ui/tabs/settings/ui_tab_settings_probe.h"
 #include "ui/ui_theme.h"
 #include "core/comm_manager.h"
@@ -23,6 +24,7 @@ static lv_obj_t* thickness_input_ptr = nullptr;
 
 // Forward declaration for event handler
 static void textarea_focused_event_handler(lv_event_t *e);
+static void textarea_defocused_event_handler(lv_event_t *e);
 
 void UITabControlProbe::create(lv_obj_t *parent) {
     // Store parent tab reference
@@ -135,6 +137,7 @@ void UITabControlProbe::create(lv_obj_t *parent) {
     lv_obj_set_pos(feed_input_ptr, UI_SCALE_X(420), UI_SCALE_Y(45));  // Shifted left by 30px
     lv_obj_clear_flag(feed_input_ptr, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_add_event_cb(feed_input_ptr, textarea_focused_event_handler, LV_EVENT_FOCUSED, nullptr);
+    lv_obj_add_event_cb(feed_input_ptr, textarea_defocused_event_handler, LV_EVENT_DEFOCUSED, nullptr);
     
     lv_obj_t* feed_unit = lv_label_create(parent);
     lv_label_set_text(feed_unit, "mm/min");
@@ -159,6 +162,7 @@ void UITabControlProbe::create(lv_obj_t *parent) {
     lv_obj_set_pos(dist_input_ptr, UI_SCALE_X(420), UI_SCALE_Y(100));  // Shifted left by 30px
     lv_obj_clear_flag(dist_input_ptr, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_add_event_cb(dist_input_ptr, textarea_focused_event_handler, LV_EVENT_FOCUSED, nullptr);
+    lv_obj_add_event_cb(dist_input_ptr, textarea_defocused_event_handler, LV_EVENT_DEFOCUSED, nullptr);
     
     lv_obj_t* dist_unit = lv_label_create(parent);
     lv_label_set_text(dist_unit, "mm");
@@ -183,6 +187,7 @@ void UITabControlProbe::create(lv_obj_t *parent) {
     lv_obj_set_pos(retract_input_ptr, UI_SCALE_X(420), UI_SCALE_Y(155));  // Shifted left by 30px
     lv_obj_clear_flag(retract_input_ptr, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_add_event_cb(retract_input_ptr, textarea_focused_event_handler, LV_EVENT_FOCUSED, nullptr);
+    lv_obj_add_event_cb(retract_input_ptr, textarea_defocused_event_handler, LV_EVENT_DEFOCUSED, nullptr);
     
     lv_obj_t* retract_unit = lv_label_create(parent);
     lv_label_set_text(retract_unit, "mm");
@@ -207,6 +212,7 @@ void UITabControlProbe::create(lv_obj_t *parent) {
     lv_obj_set_pos(thickness_input_ptr, UI_SCALE_X(420), UI_SCALE_Y(210));  // Shifted left by 30px
     lv_obj_clear_flag(thickness_input_ptr, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_add_event_cb(thickness_input_ptr, textarea_focused_event_handler, LV_EVENT_FOCUSED, nullptr);
+    lv_obj_add_event_cb(thickness_input_ptr, textarea_defocused_event_handler, LV_EVENT_DEFOCUSED, nullptr);
     
     lv_obj_t* thickness_unit = lv_label_create(parent);
     lv_label_set_text(thickness_unit, "mm");
@@ -381,7 +387,13 @@ void UITabControlProbe::updateResult(float x, float y, float z, bool success) {
 // Textarea focused event handler - show keyboard
 static void textarea_focused_event_handler(lv_event_t *e) {
     lv_obj_t *ta = (lv_obj_t *)lv_event_get_target(e);
+    UITabControlJog::setActiveNumericTextarea(ta, 'X');
     UITabControlProbe::showKeyboard(ta);
+}
+
+static void textarea_defocused_event_handler(lv_event_t *e) {
+    lv_obj_t *ta = (lv_obj_t *)lv_event_get_target(e);
+    UITabControlJog::clearActiveNumericTextarea(ta);
 }
 
 // Show keyboard
@@ -446,4 +458,5 @@ void UITabControlProbe::hideKeyboard() {
             lv_obj_scroll_to_y(parent_tab, 0, LV_ANIM_ON); // Reset scroll position
         }
     }
+    UITabControlJog::clearActiveNumericTextarea(nullptr);
 }

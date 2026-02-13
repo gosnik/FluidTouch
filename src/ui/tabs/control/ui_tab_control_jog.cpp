@@ -11,6 +11,7 @@
 #include <Arduino.h>
 #include <cmath>
 #include <cstdlib>
+#include <cstring>
 
 // Static member initialization
 lv_obj_t *UITabControlJog::parent_tab = nullptr;
@@ -28,6 +29,8 @@ lv_obj_t *UITabControlJog::soft_limits_button = nullptr;
 lv_obj_t *UITabControlJog::soft_limits_panel = nullptr;
 lv_obj_t *UITabControlJog::soft_limits_keyboard = nullptr;
 lv_obj_t *UITabControlJog::soft_limits_active_ta = nullptr;
+lv_obj_t *UITabControlJog::active_numeric_ta = nullptr;
+char UITabControlJog::active_numeric_axis = 'X';
 lv_obj_t *UITabControlJog::soft_limits_switch_x = nullptr;
 lv_obj_t *UITabControlJog::soft_limits_switch_y = nullptr;
 lv_obj_t *UITabControlJog::soft_limits_switch_z = nullptr;
@@ -57,6 +60,77 @@ float UITabControlJog::soft_limit_y_min = 0.0f;
 float UITabControlJog::soft_limit_y_max = 0.0f;
 float UITabControlJog::soft_limit_z_min = 0.0f;
 float UITabControlJog::soft_limit_z_max = 0.0f;
+
+namespace {
+int axis_index_from_hint(char axis_hint) {
+    if (axis_hint == 'Y' || axis_hint == 'y') {
+        return 1;
+    }
+    if (axis_hint == 'Z' || axis_hint == 'z') {
+        return 2;
+    }
+    return 0;
+}
+
+void trim_float_string(char *text) {
+    if (!text) {
+        return;
+    }
+    char *dot = strchr(text, '.');
+    if (!dot) {
+        return;
+    }
+    char *end = text + strlen(text) - 1;
+    while (end > dot && *end == '0') {
+        *end-- = '\0';
+    }
+    if (end == dot) {
+        *end = '\0';
+    }
+}
+
+bool parse_textarea_float(lv_obj_t *ta, float &out) {
+    if (!ta) {
+        return false;
+    }
+    const char *text = lv_textarea_get_text(ta);
+    if (!text || text[0] == '\0') {
+        return false;
+    }
+    char *end = nullptr;
+    out = strtof(text, &end);
+    return end && *end == '\0';
+}
+
+void set_textarea_float(lv_obj_t *ta, float value) {
+    if (!ta) {
+        return;
+    }
+    char buf[32];
+    snprintf(buf, sizeof(buf), "%.3f", value);
+    lv_textarea_set_text(ta, buf);
+}
+
+void normalize_min_max_pair(lv_obj_t *min_ta, lv_obj_t *max_ta, lv_obj_t *changed_ta) {
+    float min_v = 0.0f;
+    float max_v = 0.0f;
+    const bool has_min = parse_textarea_float(min_ta, min_v);
+    const bool has_max = parse_textarea_float(max_ta, max_v);
+    if (!has_min || !has_max) {
+        return;
+    }
+    if (min_v <= max_v) {
+        return;
+    }
+    if (changed_ta == min_ta) {
+        set_textarea_float(max_ta, min_v);
+    } else if (changed_ta == max_ta) {
+        set_textarea_float(min_ta, max_v);
+    } else {
+        set_textarea_float(max_ta, min_v);
+    }
+}
+} // namespace
 
 void UITabControlJog::create(lv_obj_t *tab) {
     parent_tab = tab;
@@ -436,6 +510,7 @@ void UITabControlJog::create(lv_obj_t *tab) {
         lv_textarea_set_accepted_chars(ta_min, "0123456789.-");
         lv_obj_set_style_text_font(ta_min, &lv_font_montserrat_18, 0);
         lv_obj_add_event_cb(ta_min, soft_limits_textarea_focused_event_cb, LV_EVENT_FOCUSED, nullptr);
+        lv_obj_add_event_cb(ta_min, soft_limits_textarea_changed_event_cb, LV_EVENT_VALUE_CHANGED, nullptr);
         *min_out = ta_min;
 
         lv_obj_t *lbl_max = lv_label_create(soft_limits_panel);
@@ -452,6 +527,7 @@ void UITabControlJog::create(lv_obj_t *tab) {
         lv_textarea_set_accepted_chars(ta_max, "0123456789.-");
         lv_obj_set_style_text_font(ta_max, &lv_font_montserrat_18, 0);
         lv_obj_add_event_cb(ta_max, soft_limits_textarea_focused_event_cb, LV_EVENT_FOCUSED, nullptr);
+        lv_obj_add_event_cb(ta_max, soft_limits_textarea_changed_event_cb, LV_EVENT_VALUE_CHANGED, nullptr);
         *max_out = ta_max;
     };
 
@@ -479,6 +555,31 @@ void UITabControlJog::create(lv_obj_t *tab) {
     reset_override_encoder_count();
 
     syncSoftLimitsUI();
+}
+
+void UITabControlJog::setActiveNumericTextarea(lv_obj_t *ta, char axis_hint) {
+    if (!ta) {
+        return;
+    }
+    active_numeric_ta = ta;
+    if (axis_hint == 'Y' || axis_hint == 'y') {
+        active_numeric_axis = 'Y';
+    } else if (axis_hint == 'Z' || axis_hint == 'z') {
+        active_numeric_axis = 'Z';
+    } else {
+        active_numeric_axis = 'X';
+    }
+}
+
+void UITabControlJog::clearActiveNumericTextarea(lv_obj_t *ta) {
+    if (!ta || active_numeric_ta == ta) {
+        active_numeric_ta = nullptr;
+        active_numeric_axis = 'X';
+    }
+}
+
+bool UITabControlJog::isNumericTextareaCaptureActive() {
+    return active_numeric_ta != nullptr;
 }
 
 // X Step button event handler
@@ -587,23 +688,37 @@ void UITabControlJog::update_z_step_button_styles() {
 
 void UITabControlJog::encoder_bind_button_event_cb(lv_event_t *e) {
     int index = (int)(intptr_t)lv_event_get_user_data(e);
-    UICommon::setEncoderBindAxis(index, true);
+    if (index == UICommon::getEncoderBindAxis()) {
+        UICommon::setEncoderBindEnabled(!UICommon::isEncoderBindEnabled(), true);
+    } else {
+        UICommon::setEncoderBindAxis(index, true);
+    }
     update_encoder_bind_button_styles();
     reset_override_encoder_count();
 }
 
 void UITabControlJog::update_encoder_bind_button_styles() {
     int axis = UICommon::getEncoderBindAxis();
+    const bool enabled = UICommon::isEncoderBindEnabled();
     for (int i = 0; i < 3; ++i) {
         if (!encoder_bind_buttons[i]) {
             continue;
         }
         if (i == axis) {
-            lv_obj_set_style_bg_color(encoder_bind_buttons[i], UITheme::ACCENT_PRIMARY, LV_PART_MAIN | LV_STATE_DEFAULT);
-            lv_obj_set_style_bg_color(encoder_bind_buttons[i], UITheme::ACCENT_PRIMARY_PRESSED, LV_PART_MAIN | LV_STATE_PRESSED);
+            if (enabled) {
+                lv_obj_set_style_bg_color(encoder_bind_buttons[i], UITheme::ACCENT_PRIMARY, LV_PART_MAIN | LV_STATE_DEFAULT);
+                lv_obj_set_style_bg_color(encoder_bind_buttons[i], UITheme::ACCENT_PRIMARY_PRESSED, LV_PART_MAIN | LV_STATE_PRESSED);
+                lv_obj_set_style_border_width(encoder_bind_buttons[i], 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+            } else {
+                lv_obj_set_style_bg_color(encoder_bind_buttons[i], UITheme::BG_BUTTON, LV_PART_MAIN | LV_STATE_DEFAULT);
+                lv_obj_set_style_bg_color(encoder_bind_buttons[i], UITheme::BORDER_LIGHT, LV_PART_MAIN | LV_STATE_PRESSED);
+                lv_obj_set_style_border_width(encoder_bind_buttons[i], 2, LV_PART_MAIN | LV_STATE_DEFAULT);
+                lv_obj_set_style_border_color(encoder_bind_buttons[i], UITheme::ACCENT_PRIMARY, LV_PART_MAIN | LV_STATE_DEFAULT);
+            }
         } else {
             lv_obj_set_style_bg_color(encoder_bind_buttons[i], UITheme::BG_BUTTON, LV_PART_MAIN | LV_STATE_DEFAULT);
             lv_obj_set_style_bg_color(encoder_bind_buttons[i], UITheme::BORDER_LIGHT, LV_PART_MAIN | LV_STATE_PRESSED);
+            lv_obj_set_style_border_width(encoder_bind_buttons[i], 0, LV_PART_MAIN | LV_STATE_DEFAULT);
         }
     }
 }
@@ -647,6 +762,13 @@ void UITabControlJog::soft_limits_save_event_cb(lv_event_t *e) {
 
 void UITabControlJog::soft_limits_textarea_focused_event_cb(lv_event_t *e) {
     lv_obj_t *ta = (lv_obj_t *)lv_event_get_target(e);
+    char axis = 'X';
+    if (ta == soft_limits_y_min_ta || ta == soft_limits_y_max_ta) {
+        axis = 'Y';
+    } else if (ta == soft_limits_z_min_ta || ta == soft_limits_z_max_ta) {
+        axis = 'Z';
+    }
+    setActiveNumericTextarea(ta, axis);
     showSoftLimitsKeyboard(ta);
 }
 
@@ -665,10 +787,30 @@ void UITabControlJog::showSoftLimitsKeyboard(lv_obj_t *ta) {
     lv_obj_clear_flag(soft_limits_keyboard, LV_OBJ_FLAG_HIDDEN);
 }
 
+void UITabControlJog::soft_limits_textarea_changed_event_cb(lv_event_t *e) {
+    lv_obj_t *ta = (lv_obj_t *)lv_event_get_target(e);
+    if (!ta || ta != soft_limits_active_ta) {
+        return;
+    }
+    if (ta == soft_limits_x_min_ta || ta == soft_limits_x_max_ta) {
+        normalize_min_max_pair(soft_limits_x_min_ta, soft_limits_x_max_ta, ta);
+        return;
+    }
+    if (ta == soft_limits_y_min_ta || ta == soft_limits_y_max_ta) {
+        normalize_min_max_pair(soft_limits_y_min_ta, soft_limits_y_max_ta, ta);
+        return;
+    }
+    if (ta == soft_limits_z_min_ta || ta == soft_limits_z_max_ta) {
+        normalize_min_max_pair(soft_limits_z_min_ta, soft_limits_z_max_ta, ta);
+    }
+}
+
 void UITabControlJog::hideSoftLimitsKeyboard() {
     if (soft_limits_keyboard) {
         lv_obj_add_flag(soft_limits_keyboard, LV_OBJ_FLAG_HIDDEN);
     }
+    clearActiveNumericTextarea(soft_limits_active_ta);
+    soft_limits_active_ta = nullptr;
 }
 
 void UITabControlJog::loadSoftLimitsFromConfig() {
@@ -683,6 +825,15 @@ void UITabControlJog::loadSoftLimitsFromConfig() {
         soft_limit_y_max = config.soft_limit_y_max;
         soft_limit_z_min = config.soft_limit_z_min;
         soft_limit_z_max = config.soft_limit_z_max;
+        if (soft_limit_x_min > soft_limit_x_max) {
+            soft_limit_x_max = soft_limit_x_min;
+        }
+        if (soft_limit_y_min > soft_limit_y_max) {
+            soft_limit_y_max = soft_limit_y_min;
+        }
+        if (soft_limit_z_min > soft_limit_z_max) {
+            soft_limit_z_max = soft_limit_z_min;
+        }
     }
 }
 
@@ -759,6 +910,10 @@ void UITabControlJog::storeSoftLimitsFromUI() {
     if (soft_limits_y_max_ta) soft_limit_y_max = strtof(lv_textarea_get_text(soft_limits_y_max_ta), nullptr);
     if (soft_limits_z_min_ta) soft_limit_z_min = strtof(lv_textarea_get_text(soft_limits_z_min_ta), nullptr);
     if (soft_limits_z_max_ta) soft_limit_z_max = strtof(lv_textarea_get_text(soft_limits_z_max_ta), nullptr);
+
+    if (soft_limit_x_min > soft_limit_x_max) soft_limit_x_max = soft_limit_x_min;
+    if (soft_limit_y_min > soft_limit_y_max) soft_limit_y_max = soft_limit_y_min;
+    if (soft_limit_z_min > soft_limit_z_max) soft_limit_z_max = soft_limit_z_min;
 }
 
 
@@ -997,6 +1152,7 @@ void UITabControlJog::encoderTimerCb(lv_timer_t *timer) {
     }
 
     if (parent_tab && lv_obj_has_flag(parent_tab, LV_OBJ_FLAG_HIDDEN)) {
+        clearActiveNumericTextarea(nullptr);
         for (size_t i = 0; i < 3; ++i) {
             last_encoder_counts[i] = get_encoder_value(i);
         }
@@ -1004,6 +1160,53 @@ void UITabControlJog::encoderTimerCb(lv_timer_t *timer) {
             reset_override_encoder_count();
         }
         return;
+    }
+
+    if (active_numeric_ta) {
+        if (!lv_obj_is_valid(active_numeric_ta)) {
+            clearActiveNumericTextarea(nullptr);
+        } else {
+            int32_t delta = 0;
+            if (UICommon::isEncoderBindVisible()) {
+                int32_t count = 0;
+                if (UsbHostManager::getSingleDeviceCount(&count)) {
+                    if (!last_override_count_valid) {
+                        last_override_count = count;
+                        last_override_count_valid = true;
+                    }
+                    delta = count - last_override_count;
+                    last_override_count = count;
+                    UICommon::maybeSendEncoderBindDisplay(false);
+                }
+            }
+
+            if (delta == 0) {
+                const int axis_idx = axis_index_from_hint(active_numeric_axis);
+                int16_t count = get_encoder_value(static_cast<size_t>(axis_idx));
+                delta = count - last_encoder_counts[axis_idx];
+            }
+
+            for (size_t i = 0; i < 3; ++i) {
+                int16_t count = get_encoder_value(i);
+                last_encoder_counts[i] = count;
+            }
+
+            if (delta != 0) {
+                const float step = (active_numeric_axis == 'Y') ? y_current_step :
+                                   (active_numeric_axis == 'Z') ? z_current_step :
+                                                                  x_current_step;
+                const char *text = lv_textarea_get_text(active_numeric_ta);
+                double value = (text && text[0] != '\0') ? strtod(text, nullptr) : 0.0;
+                value += static_cast<double>(delta) * static_cast<double>(step);
+
+                char buf[32];
+                snprintf(buf, sizeof(buf), "%.4f", value);
+                trim_float_string(buf);
+                lv_textarea_set_text(active_numeric_ta, buf);
+                PowerManager::onUserActivity();
+            }
+            return;
+        }
     }
 
     if (!CommManager::isConnected()) {
@@ -1043,10 +1246,12 @@ void UITabControlJog::encoderTimerCb(lv_timer_t *timer) {
             int32_t delta = count - last_override_count;
             last_override_count = count;
             if (delta != 0) {
-                const AxisCmd &axis = axes[UICommon::getEncoderBindAxis()];
-                float move = axis.step * static_cast<float>(delta);
-                CommManager::sendJogRelativeAxis(axis.axis, move, static_cast<float>(axis.feedrate));
-                PowerManager::onUserActivity();
+                if (UICommon::isEncoderBindEnabled()) {
+                    const AxisCmd &axis = axes[UICommon::getEncoderBindAxis()];
+                    float move = axis.step * static_cast<float>(delta);
+                    CommManager::sendJogRelativeAxis(axis.axis, move, static_cast<float>(axis.feedrate));
+                    PowerManager::onUserActivity();
+                }
             }
             UICommon::maybeSendEncoderBindDisplay(false);
             return;

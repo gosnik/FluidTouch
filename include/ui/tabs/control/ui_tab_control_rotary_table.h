@@ -31,6 +31,7 @@ private:
     static void showKeyboard(lv_obj_t *ta);
     static void hideKeyboard();
     static void onTextareaFocused(lv_event_t *e);
+    static void onTextareaDefocused(lv_event_t *e);
     static void onSetStartPressed(lv_event_t *e);
     static void onApplyRadiusPressed(lv_event_t *e);
     static void onApplyArcPressed(lv_event_t *e);

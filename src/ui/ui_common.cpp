@@ -53,6 +53,7 @@ lv_obj_t *UICommon::lbl_mpos_z = nullptr;
 lv_obj_t *UICommon::encoder_bind_container = nullptr;
 lv_obj_t *UICommon::encoder_bind_buttons[3] = {nullptr, nullptr, nullptr};
 int UICommon::encoder_bind_axis = 0;
+bool UICommon::encoder_bind_enabled = true;
 bool UICommon::encoder_bind_visible = false;
 uint32_t UICommon::last_bind_display_ms = 0;
 
@@ -145,7 +146,11 @@ static void status_bar_right_click_handler(lv_event_t *e) {
 
 static void encoder_bind_button_event_cb(lv_event_t *e) {
     int index = static_cast<int>(reinterpret_cast<intptr_t>(lv_event_get_user_data(e)));
-    UICommon::setEncoderBindAxis(index, true);
+    if (index == UICommon::getEncoderBindAxis()) {
+        UICommon::setEncoderBindEnabled(!UICommon::isEncoderBindEnabled(), true);
+    } else {
+        UICommon::setEncoderBindAxis(index, true);
+    }
 }
 
 // Event handler for confirming machine selection change
@@ -805,20 +810,42 @@ void UICommon::setEncoderBindAxis(int axis, bool force_display) {
     } else if (axis > 2) {
         axis = 2;
     }
+    const bool axis_changed = (encoder_bind_axis != axis);
     encoder_bind_axis = axis;
+    if (axis_changed) {
+        encoder_bind_enabled = true;
+    }
     for (int i = 0; i < 3; ++i) {
         if (!encoder_bind_buttons[i]) {
             continue;
         }
         if (i == encoder_bind_axis) {
-            lv_obj_set_style_bg_color(encoder_bind_buttons[i], UITheme::ACCENT_PRIMARY, LV_PART_MAIN | LV_STATE_DEFAULT);
-            lv_obj_set_style_bg_color(encoder_bind_buttons[i], UITheme::ACCENT_PRIMARY_PRESSED, LV_PART_MAIN | LV_STATE_PRESSED);
+            if (encoder_bind_enabled) {
+                lv_obj_set_style_bg_color(encoder_bind_buttons[i], UITheme::ACCENT_PRIMARY, LV_PART_MAIN | LV_STATE_DEFAULT);
+                lv_obj_set_style_bg_color(encoder_bind_buttons[i], UITheme::ACCENT_PRIMARY_PRESSED, LV_PART_MAIN | LV_STATE_PRESSED);
+                lv_obj_set_style_border_width(encoder_bind_buttons[i], 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+            } else {
+                lv_obj_set_style_bg_color(encoder_bind_buttons[i], UITheme::BG_BUTTON, LV_PART_MAIN | LV_STATE_DEFAULT);
+                lv_obj_set_style_bg_color(encoder_bind_buttons[i], UITheme::BORDER_LIGHT, LV_PART_MAIN | LV_STATE_PRESSED);
+                lv_obj_set_style_border_width(encoder_bind_buttons[i], 2, LV_PART_MAIN | LV_STATE_DEFAULT);
+                lv_obj_set_style_border_color(encoder_bind_buttons[i], UITheme::ACCENT_PRIMARY, LV_PART_MAIN | LV_STATE_DEFAULT);
+            }
         } else {
             lv_obj_set_style_bg_color(encoder_bind_buttons[i], UITheme::BG_BUTTON, LV_PART_MAIN | LV_STATE_DEFAULT);
             lv_obj_set_style_bg_color(encoder_bind_buttons[i], UITheme::BORDER_LIGHT, LV_PART_MAIN | LV_STATE_PRESSED);
+            lv_obj_set_style_border_width(encoder_bind_buttons[i], 0, LV_PART_MAIN | LV_STATE_DEFAULT);
         }
     }
     maybeSendEncoderBindDisplay(force_display);
+}
+
+bool UICommon::isEncoderBindEnabled() {
+    return encoder_bind_enabled;
+}
+
+void UICommon::setEncoderBindEnabled(bool enabled, bool force_display) {
+    encoder_bind_enabled = enabled;
+    setEncoderBindAxis(encoder_bind_axis, force_display);
 }
 
 bool UICommon::isEncoderBindVisible() {
@@ -850,12 +877,14 @@ void UICommon::maybeSendEncoderBindDisplay(bool force_display) {
     if (!force_display && (now_ms - last_bind_display_ms) < 250) {
         return;
     }
-    const char *axis_text = "X AXIS";
+    const char *axis_base = "X AXIS";
     if (encoder_bind_axis == 1) {
-        axis_text = "Y AXIS";
+        axis_base = "Y AXIS";
     } else if (encoder_bind_axis == 2) {
-        axis_text = "Z AXIS";
+        axis_base = "Z AXIS";
     }
+    char axis_text[16];
+    snprintf(axis_text, sizeof(axis_text), "%s", axis_base);
     if (UsbHostManager::deviceCount() == 1) {
         UsbHostManager::sendDisplaySetFieldAll("cnc_axis_title", axis_text);
     }

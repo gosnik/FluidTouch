@@ -6,6 +6,9 @@
 class UITabControlJog {
 public:
     static void create(lv_obj_t *tab);
+    static void setActiveNumericTextarea(lv_obj_t *ta, char axis_hint);
+    static void clearActiveNumericTextarea(lv_obj_t *ta);
+    static bool isNumericTextareaCaptureActive();
 
 private:
     static lv_obj_t *parent_tab;
@@ -24,6 +27,8 @@ private:
     static lv_obj_t *soft_limits_panel;
     static lv_obj_t *soft_limits_keyboard;
     static lv_obj_t *soft_limits_active_ta;
+    static lv_obj_t *active_numeric_ta;
+    static char active_numeric_axis;
     static lv_obj_t *soft_limits_switch_x;
     static lv_obj_t *soft_limits_switch_y;
     static lv_obj_t *soft_limits_switch_z;
@@ -74,6 +79,7 @@ private:
     static void soft_limits_close_event_cb(lv_event_t *e);
     static void soft_limits_save_event_cb(lv_event_t *e);
     static void soft_limits_textarea_focused_event_cb(lv_event_t *e);
+    static void soft_limits_textarea_changed_event_cb(lv_event_t *e);
     static void showSoftLimitsKeyboard(lv_obj_t *ta);
     static void hideSoftLimitsKeyboard();
     static void loadSoftLimitsFromConfig();

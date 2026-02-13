@@ -43,7 +43,11 @@ void sendHidStatus(const FluidNCStatus &status, bool connected)
 
     uint8_t payload[36] = {};
     payload[0] = static_cast<uint8_t>(connected ? status.state : STATE_DISCONNECTED);
-    payload[1] = connected ? 0x07 : 0x00; // connected + wpos + mpos
+    payload[1] = (UICommon::isEncoderBindEnabled() ? QtdialHidProtocol::kOutputStatusFlagEncoderEnabled : 0x00) |
+                 (connected ? (QtdialHidProtocol::kOutputStatusFlagConnected |
+                               QtdialHidProtocol::kOutputStatusFlagHasWpos |
+                               QtdialHidProtocol::kOutputStatusFlagHasMpos)
+                            : 0x00);
 
     const int32_t feed = static_cast<int32_t>(status.feed_rate * QtdialHidProtocol::kStatusFeedScale);
     const int32_t spindle = static_cast<int32_t>(status.spindle_speed);
