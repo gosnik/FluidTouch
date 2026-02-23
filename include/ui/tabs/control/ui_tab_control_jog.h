@@ -2,6 +2,9 @@
 #define UI_TAB_CONTROL_JOG_H
 
 #include <lvgl.h>
+#include <cstdint>
+
+struct FluidNCStatus;
 
 class UITabControlJog {
 public:
@@ -9,8 +12,15 @@ public:
     static void setActiveNumericTextarea(lv_obj_t *ta, char axis_hint);
     static void clearActiveNumericTextarea(lv_obj_t *ta);
     static bool isNumericTextareaCaptureActive();
+    static int getCurrentXYFeed();
 
 private:
+    enum SoftLimitMode : int8_t {
+        SOFT_LIMIT_MODE_TRACK = -1,
+        SOFT_LIMIT_MODE_OFF = 0,
+        SOFT_LIMIT_MODE_ON = 1
+    };
+
     static lv_obj_t *parent_tab;
     static lv_obj_t *xy_step_display_label;
     static lv_obj_t *z_step_display_label;
@@ -29,15 +39,20 @@ private:
     static lv_obj_t *soft_limits_active_ta;
     static lv_obj_t *active_numeric_ta;
     static char active_numeric_axis;
-    static lv_obj_t *soft_limits_switch_x;
-    static lv_obj_t *soft_limits_switch_y;
-    static lv_obj_t *soft_limits_switch_z;
+    static lv_obj_t *soft_limits_mode_slider_x;
+    static lv_obj_t *soft_limits_mode_slider_y;
+    static lv_obj_t *soft_limits_mode_slider_z;
+    static lv_obj_t *soft_limits_mode_label_x;
+    static lv_obj_t *soft_limits_mode_label_y;
+    static lv_obj_t *soft_limits_mode_label_z;
     static lv_obj_t *soft_limits_x_min_ta;
     static lv_obj_t *soft_limits_x_max_ta;
     static lv_obj_t *soft_limits_y_min_ta;
     static lv_obj_t *soft_limits_y_max_ta;
     static lv_obj_t *soft_limits_z_min_ta;
     static lv_obj_t *soft_limits_z_max_ta;
+    static lv_obj_t *jog_predicted_wpos_label;
+    static lv_obj_t *jog_pending_cmd_count_label;
     static int16_t last_encoder_counts[3];
     static int32_t last_override_count;
     static bool last_override_count_valid;
@@ -52,6 +67,12 @@ private:
     static bool soft_limit_x_enabled;
     static bool soft_limit_y_enabled;
     static bool soft_limit_z_enabled;
+    static SoftLimitMode soft_limit_x_mode;
+    static SoftLimitMode soft_limit_y_mode;
+    static SoftLimitMode soft_limit_z_mode;
+    static bool soft_limit_x_learn_initialized;
+    static bool soft_limit_y_learn_initialized;
+    static bool soft_limit_z_learn_initialized;
     static float soft_limit_x_min;
     static float soft_limit_x_max;
     static float soft_limit_y_min;
@@ -78,14 +99,21 @@ private:
     static void soft_limits_button_event_cb(lv_event_t *e);
     static void soft_limits_close_event_cb(lv_event_t *e);
     static void soft_limits_save_event_cb(lv_event_t *e);
+    static void soft_limit_mode_slider_event_cb(lv_event_t *e);
     static void soft_limits_textarea_focused_event_cb(lv_event_t *e);
     static void soft_limits_textarea_changed_event_cb(lv_event_t *e);
     static void showSoftLimitsKeyboard(lv_obj_t *ta);
     static void hideSoftLimitsKeyboard();
     static void loadSoftLimitsFromConfig();
     static void saveSoftLimitsToConfig();
+    static void applySoftLimitsToComm();
+    static void updateSoftLimitModeLabel(char axis, SoftLimitMode mode);
+    static SoftLimitMode sliderValueToSoftLimitMode(lv_obj_t *slider);
+    static void setSliderFromSoftLimitMode(lv_obj_t *slider, SoftLimitMode mode);
+    static void updateSoftLimitLearnTracking(const FluidNCStatus &status);
     static void syncSoftLimitsUI();
     static void storeSoftLimitsFromUI();
+    static void updateJogDebugInfoUI();
     
     // Jog button event handlers
     static void xy_jog_button_event_cb(lv_event_t *e);

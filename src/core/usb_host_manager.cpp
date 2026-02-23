@@ -502,25 +502,11 @@ bool UsbHostManager::sendOutputReport(uint8_t slot, uint8_t app_report_id, const
         memcpy(&report[2], payload, length);
     }
 
-    //ESP_LOGI(kTag, "sendOutputReport: slot=%u app_id=0x%02X len=%u",
-    //         slot,
-    //         app_report_id,
-    //         static_cast<unsigned>(length));
     esp_err_t err = hid_class_request_set_report(g_state.devices[slot].handle,
                                                  HID_REPORT_TYPE_OUTPUT,
                                                  QtdialHidProtocol::kHidReportId,
                                                  report,
                                                  sizeof(report));
-    //ESP_LOGI(kTag, "sendOutputReport: slot=%u app_id=0x%02X err=%s",
-    //         slot,
-    //         app_report_id,
-    //         esp_err_to_name(err));
-    if (app_report_id == QtdialHidProtocol::kAppReportOutputDisplay) {
-        ESP_LOGI(kTag, "Display report send: slot=%u payload_len=%u err=%s",
-                 slot,
-                 static_cast<unsigned>(length),
-                 esp_err_to_name(err));
-    }
     if (err != ESP_OK) {
         ESP_LOGW(kTag, "Failed to send output report: %s", esp_err_to_name(err));
         return false;
@@ -541,10 +527,6 @@ bool UsbHostManager::sendDisplaySelectScreen(uint8_t slot, const char *screen_na
     if (!screen_name || screen_name[0] == '\0') {
         return false;
     }
-    ESP_LOGI(kTag, "Display select: slot=%u screen=%s clear=%d",
-             slot,
-             screen_name,
-             clear_before_load ? 1 : 0);
     const size_t max_payload = QtdialHidProtocol::kReportSizeBytes - 2;
     const size_t max_key = (max_payload > 4) ? (max_payload - 4) : 0;
     const size_t key_len = strnlen(screen_name, max_key);

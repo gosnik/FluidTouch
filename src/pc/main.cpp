@@ -11,6 +11,7 @@
 #include "core/comm_manager.h"
 #include "core/power_manager.h"
 #include "core/usb_host_manager.h"
+#include "core/qtdial_hid_protocol.h"
 #include "network/screenshot_server.h"
 #include "ui/ui_common.h"
 #include "ui/ui_machine_select.h"
@@ -23,6 +24,7 @@
 #include "ui/tabs/ui_tab_terminal.h"
 #include "ui/tabs/control/ui_tab_control_actions.h"
 #include "ui/tabs/control/ui_tab_control_override.h"
+#include "ui/tabs/control/ui_tab_control_jog.h"
 #include "ui/tabs/settings/ui_tab_settings_about.h"
 #include "ui/machine_config.h"
 
@@ -81,6 +83,41 @@ const char *state_to_string(MachineState state) {
     }
 }
 
+void send_hid_status(const FluidNCStatus &status, bool connected) {
+    if (UsbHostManager::deviceCount() <= 0) {
+        return;
+    }
+
+    uint8_t payload[36] = {};
+    payload[0] = static_cast<uint8_t>(connected ? status.state : STATE_DISCONNECTED);
+    payload[1] = (UICommon::isEncoderBindEnabled() ? QtdialHidProtocol::kOutputStatusFlagEncoderEnabled : 0x00) |
+                 (connected ? (QtdialHidProtocol::kOutputStatusFlagConnected |
+                               QtdialHidProtocol::kOutputStatusFlagHasWpos |
+                               QtdialHidProtocol::kOutputStatusFlagHasMpos)
+                            : 0x00);
+
+    const int32_t jog_xy_feed = UITabControlJog::getCurrentXYFeed();
+    const int32_t feed = static_cast<int32_t>(jog_xy_feed * QtdialHidProtocol::kStatusFeedScale);
+    const int32_t spindle = static_cast<int32_t>(status.spindle_speed);
+    const int32_t wpos_x = static_cast<int32_t>(status.wpos_x * QtdialHidProtocol::kStatusPosScale);
+    const int32_t wpos_y = static_cast<int32_t>(status.wpos_y * QtdialHidProtocol::kStatusPosScale);
+    const int32_t wpos_z = static_cast<int32_t>(status.wpos_z * QtdialHidProtocol::kStatusPosScale);
+    const int32_t mpos_x = static_cast<int32_t>(status.mpos_x * QtdialHidProtocol::kStatusPosScale);
+    const int32_t mpos_y = static_cast<int32_t>(status.mpos_y * QtdialHidProtocol::kStatusPosScale);
+    const int32_t mpos_z = static_cast<int32_t>(status.mpos_z * QtdialHidProtocol::kStatusPosScale);
+
+    memcpy(&payload[2], &feed, sizeof(feed));
+    memcpy(&payload[6], &spindle, sizeof(spindle));
+    memcpy(&payload[10], &wpos_x, sizeof(wpos_x));
+    memcpy(&payload[14], &wpos_y, sizeof(wpos_y));
+    memcpy(&payload[18], &wpos_z, sizeof(wpos_z));
+    memcpy(&payload[22], &mpos_x, sizeof(mpos_x));
+    memcpy(&payload[26], &mpos_y, sizeof(mpos_y));
+    memcpy(&payload[30], &mpos_z, sizeof(mpos_z));
+
+    UsbHostManager::sendStatusAll(payload, 34);
+}
+
 void update_ui_from_status() {
     const bool machine_connected = CommManager::isConnected();
     UICommon::updateConnectionStatus(machine_connected, machine_connected);
@@ -110,6 +147,7 @@ void update_ui_from_status() {
         UITabControlOverride::updateValues(status.feed_override, status.rapid_override, status.spindle_override);
         UITabSettingsAbout::update();
         PowerManager::update(status.state);
+        send_hid_status(status, true);
     } else {
         UICommon::updateMachineState("OFFLINE");
         UICommon::updateMachinePosition(-9999.0f, -9999.0f, -9999.0f);
@@ -123,6 +161,7 @@ void update_ui_from_status() {
         UITabStatus::updateSpindle(-9999.0f, -9999.0f);
         UITabStatus::updateModalStates("---", "---", "---", "---", "---", "---", "---", "---", "---");
         PowerManager::update(STATE_IDLE);
+        send_hid_status(CommManager::getStatus(), false);
     }
 }
 }  // namespace
@@ -148,12 +187,29 @@ int main() {
 
     UICommon::init(display);
     CommManager::init();
+    UsbHostManager::init();
     PowerManager::init(nullptr);
 
     seed_default_machine();
     Serial.println("FT PC: creating UI");
     UISplash::show(display);
-    UIMachineSelect::show(display);
+    MachineConfig machines[MAX_MACHINES];
+    MachineConfigManager::loadMachines(machines);
+    int configured_count = 0;
+    int only_machine_index = -1;
+    for (int i = 0; i < MAX_MACHINES; i++) {
+        if (!machines[i].is_configured) {
+            continue;
+        }
+        configured_count++;
+        only_machine_index = i;
+    }
+    if (configured_count == 1 && only_machine_index >= 0) {
+        MachineConfigManager::setSelectedMachineIndex(only_machine_index);
+        UICommon::createMainUI();
+    } else {
+        UIMachineSelect::show(display);
+    }
     Serial.println("FT PC: entering main loop");
 
     uint32_t last_tick = SDL_GetTicks();

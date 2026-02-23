@@ -155,22 +155,18 @@ static void encoder_bind_button_event_cb(lv_event_t *e) {
 
 // Event handler for confirming machine selection change
 static void on_machine_select_confirm(lv_event_t *e) {
-    Serial.println("UICommon: Restarting to change machine...");
+    Serial.println("UICommon: Opening machine selection...");
     UICommon::hideMachineSelectConfirmDialog();
-    
-    // Show restart message
-    lv_obj_t *restart_label = lv_label_create(lv_screen_active());
-    lv_label_set_text(restart_label, "Restarting...");
-    lv_obj_set_style_text_font(restart_label, &lv_font_montserrat_32, 0);
-    lv_obj_set_style_text_color(restart_label, UITheme::UI_INFO, 0);
-    lv_obj_center(restart_label);
-    
-    // Force display update
-    lv_timer_handler();
-    delay(500);
-    
-    // Restart the ESP32
-    ESP.restart();
+
+    UICommon::hideConnectionErrorDialog();
+    UICommon::hideConnectingPopup();
+    CommManager::stopReconnectionAttempts();
+    CommManager::disconnect();
+#if FT_WIFI_ENABLED
+    WifiManager::disconnect(false);
+#endif
+
+    UIMachineSelect::show(UICommon::getDisplay());
 }
 
 // Event handler for power off
@@ -272,11 +268,6 @@ void UICommon::createMainUI() {
 #endif
     }
 
-#if defined(FT_PLATFORM_PC)
-    // Emulator build: force wired path to avoid WiFi-only flow.
-    config.connection_type = CONN_WIRED;
-#endif
-    
     // Create main screen first
     lv_obj_t *main_screen = lv_obj_create(nullptr);
     lv_obj_set_style_bg_color(main_screen, UITheme::BG_DARKER, LV_PART_MAIN);
@@ -421,12 +412,21 @@ void UICommon::createMainUI() {
     
     // Connect to machine using selected transport
     if (config.connection_type == CONN_UART) {
-        Serial.println("UICommon: Connecting to CNC over UART");
+        Serial.printf("UICommon: Connecting to CNC over UART (%s @ %lu)\n",
+                     config.serial_port,
+                     static_cast<unsigned long>(config.uart_baudrate));
+    } else if (config.connection_type == CONN_WIRED && config.serial_port[0] != '\0') {
+        Serial.printf("UICommon: Connecting to CNC over wired serial (%s)\n", config.serial_port);
     } else {
         Serial.printf("UICommon: Connecting to FluidNC at %s:%d\n",
                      config.fluidnc_url, config.websocket_port);
     }
-    CommManager::connect(config);
+    if (!CommManager::connect(config)) {
+        showConnectionErrorDialog("Connection Failed",
+                                  "Unable to open selected machine connection.\nCheck settings and try again.");
+        connection_timeout_active = false;
+        return;
+    }
 
 #if defined(FT_PLATFORM_PC)
     // Emulator: ensure the connecting popup goes away immediately.
@@ -923,9 +923,9 @@ void UICommon::showMachineSelectConfirmDialog() {
     // Message (centered vertically in available space)
     lv_obj_t *msg_label = lv_label_create(content);
     if (power_mgmt_enabled) {
-        lv_label_set_text(msg_label, "Restart to change machines,\nor power off for battery operation.\n\nNote: Press reset button to power on\nafter using power off.");
+        lv_label_set_text(msg_label, "Open machine selector to change machines,\nor power off for battery operation.\n\nNote: Press reset button to power on\nafter using power off.");
     } else {
-        lv_label_set_text(msg_label, "Restart to change machines.");
+        lv_label_set_text(msg_label, "Open machine selector to change machines.");
     }
     lv_obj_set_style_text_font(msg_label, &lv_font_montserrat_16, 0);
     lv_obj_set_style_text_color(msg_label, UITheme::TEXT_LIGHT, 0);
@@ -946,14 +946,14 @@ void UICommon::showMachineSelectConfirmDialog() {
     lv_obj_align(btn_container, LV_ALIGN_BOTTOM_MID, 0, 0);
     lv_obj_clear_flag(btn_container, LV_OBJ_FLAG_SCROLLABLE);
     
-    // Restart button (adjust size based on number of buttons)
+    // Machine button (adjust size based on number of buttons)
     lv_obj_t *restart_btn = lv_btn_create(btn_container);
     lv_obj_set_size(restart_btn, power_mgmt_enabled ? UI_SCALE_X(165) : UI_SCALE_X(250), UI_SCALE_Y(50));
     lv_obj_set_style_bg_color(restart_btn, UITheme::ACCENT_PRIMARY, 0);
     lv_obj_add_event_cb(restart_btn, on_machine_select_confirm, LV_EVENT_CLICKED, nullptr);
     
     lv_obj_t *restart_label = lv_label_create(restart_btn);
-    lv_label_set_text(restart_label, LV_SYMBOL_REFRESH " Restart");
+    lv_label_set_text(restart_label, LV_SYMBOL_SETTINGS " Machine");
     lv_obj_set_style_text_font(restart_label, &lv_font_montserrat_18, 0);
     lv_obj_center(restart_label);
     
@@ -1217,22 +1217,18 @@ static void on_connection_error_connect(lv_event_t *e) {
 }
 
 static void on_connection_error_restart(lv_event_t *e) {
-    Serial.println("UICommon: Restarting to change machine...");
+    Serial.println("UICommon: Opening machine selection...");
     UICommon::hideConnectionErrorDialog();
-    
-    // Show restart message
-    lv_obj_t *restart_label = lv_label_create(lv_screen_active());
-    lv_label_set_text(restart_label, "Restarting...");
-    lv_obj_set_style_text_font(restart_label, &lv_font_montserrat_32, 0);
-    lv_obj_set_style_text_color(restart_label, UITheme::UI_INFO, 0);
-    lv_obj_center(restart_label);
-    
-    // Force display update
-    lv_timer_handler();
-    delay(500);
-    
-    // Restart the ESP32
-    ESP.restart();
+
+    UICommon::hideMachineSelectConfirmDialog();
+    UICommon::hideConnectingPopup();
+    CommManager::stopReconnectionAttempts();
+    CommManager::disconnect();
+#if FT_WIFI_ENABLED
+    WifiManager::disconnect(false);
+#endif
+
+    UIMachineSelect::show(UICommon::getDisplay());
 }
 
 void UICommon::showConnectionErrorDialog(const char *title, const char *message) {
@@ -1302,14 +1298,14 @@ void UICommon::showConnectionErrorDialog(const char *title, const char *message)
     lv_obj_set_style_text_font(connect_label, &lv_font_montserrat_16, 0);
     lv_obj_center(connect_label);
     
-    // Restart button (center)
+    // Machine button (center)
     lv_obj_t *restart_btn = lv_btn_create(btn_container);
     lv_obj_set_size(restart_btn, UI_SCALE_X(165), UI_SCALE_Y(50));
     lv_obj_set_style_bg_color(restart_btn, UITheme::ACCENT_PRIMARY, 0);
     lv_obj_add_event_cb(restart_btn, on_connection_error_restart, LV_EVENT_CLICKED, nullptr);
     
     lv_obj_t *restart_label = lv_label_create(restart_btn);
-    lv_label_set_text(restart_label, LV_SYMBOL_POWER " Restart");
+    lv_label_set_text(restart_label, LV_SYMBOL_SETTINGS " Machine");
     lv_obj_set_style_text_font(restart_label, &lv_font_montserrat_16, 0);
     lv_obj_center(restart_label);
     

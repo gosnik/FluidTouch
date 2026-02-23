@@ -5,6 +5,13 @@
 #include "core/power_manager.h"
 #include "config.h"
 #include <Preferences.h>
+#if defined(FT_PLATFORM_PC) && defined(__linux__)
+#include <algorithm>
+#include <dirent.h>
+#include <limits.h>
+#include <set>
+#include <vector>
+#endif
 
 // Static member initialization
 lv_obj_t *UIMachineSelect::screen = nullptr;
@@ -24,13 +31,108 @@ lv_obj_t *UIMachineSelect::dialog_content = nullptr;
 lv_obj_t *UIMachineSelect::keyboard = nullptr;
 int UIMachineSelect::editing_index = -1;
 lv_obj_t *UIMachineSelect::ta_name = nullptr;
+lv_obj_t *UIMachineSelect::lbl_ssid = nullptr;
 lv_obj_t *UIMachineSelect::ta_ssid = nullptr;
+lv_obj_t *UIMachineSelect::lbl_password = nullptr;
 lv_obj_t *UIMachineSelect::ta_password = nullptr;
+lv_obj_t *UIMachineSelect::lbl_url = nullptr;
 lv_obj_t *UIMachineSelect::ta_url = nullptr;
+lv_obj_t *UIMachineSelect::lbl_port = nullptr;
 lv_obj_t *UIMachineSelect::ta_port = nullptr;
+lv_obj_t *UIMachineSelect::lbl_serial_port = nullptr;
+lv_obj_t *UIMachineSelect::dd_serial_port = nullptr;
+lv_obj_t *UIMachineSelect::btn_refresh_ports = nullptr;
+lv_obj_t *UIMachineSelect::dd_baudrate = nullptr;
 lv_obj_t *UIMachineSelect::dd_connection_type = nullptr;
 lv_obj_t *UIMachineSelect::delete_dialog = nullptr;
 int UIMachineSelect::deleting_index = -1;
+
+namespace {
+constexpr uint32_t kUartBaudrates[] = {115200, 230400, 250000, 460800, 500000, 576000, 921600};
+
+int getBaudrateOptionIndex(uint32_t baudrate) {
+    for (size_t i = 0; i < (sizeof(kUartBaudrates) / sizeof(kUartBaudrates[0])); ++i) {
+        if (kUartBaudrates[i] == baudrate) {
+            return static_cast<int>(i);
+        }
+    }
+    return -1;
+}
+
+uint32_t getBaudrateByOptionIndex(uint16_t index) {
+    const size_t count = sizeof(kUartBaudrates) / sizeof(kUartBaudrates[0]);
+    if (index >= count) {
+        return GRBL_UART_BAUD;
+    }
+    return kUartBaudrates[index];
+}
+
+#if defined(FT_PLATFORM_PC) && defined(__linux__)
+std::vector<String> listSerialPorts()
+{
+    std::vector<String> ports;
+    std::set<std::string> unique_ports;
+
+    DIR *dir = opendir("/dev/serial/by-id");
+    if (!dir) {
+        // Fallback for systems without by-id entries.
+        dir = opendir("/dev");
+        if (!dir) {
+            return ports;
+        }
+
+        struct dirent *entry = nullptr;
+        while ((entry = readdir(dir)) != nullptr) {
+            const char *name = entry->d_name;
+            if (!name) {
+                continue;
+            }
+            if (strncmp(name, "ttyUSB", 6) == 0 ||
+                strncmp(name, "ttyACM", 6) == 0 ||
+                strncmp(name, "ttyS", 4) == 0) {
+                unique_ports.insert(std::string("/dev/") + name);
+            }
+        }
+        closedir(dir);
+    } else {
+        // Cross-reference from stable by-id symlinks to actual tty device nodes.
+        struct dirent *entry = nullptr;
+        while ((entry = readdir(dir)) != nullptr) {
+            const char *name = entry->d_name;
+            if (!name || strcmp(name, ".") == 0 || strcmp(name, "..") == 0) {
+                continue;
+            }
+
+            char by_id_path[PATH_MAX] = {0};
+            snprintf(by_id_path, sizeof(by_id_path), "/dev/serial/by-id/%s", name);
+
+            char resolved[PATH_MAX] = {0};
+            if (!realpath(by_id_path, resolved)) {
+                continue;
+            }
+
+            const char *base = strrchr(resolved, '/');
+            base = base ? (base + 1) : resolved;
+            if (strncmp(base, "ttyUSB", 6) == 0 ||
+                strncmp(base, "ttyACM", 6) == 0 ||
+                strncmp(base, "ttyS", 4) == 0) {
+                unique_ports.insert(std::string("/dev/") + base);
+            }
+        }
+        closedir(dir);
+    }
+
+    for (const std::string &p : unique_ports) {
+        ports.push_back(String(p.c_str()));
+    }
+
+    std::sort(ports.begin(), ports.end(), [](const String &a, const String &b) {
+        return std::strcmp(a.c_str(), b.c_str()) < 0;
+    });
+    return ports;
+}
+#endif
+}
 
 void UIMachineSelect::show(lv_display_t *disp) {
     display = disp;
@@ -558,6 +660,15 @@ void UIMachineSelect::onConfigSave(lv_event_t *e) {
     const char *password = lv_textarea_get_text(ta_password);
     const char *url = lv_textarea_get_text(ta_url);
     const char *port_str = lv_textarea_get_text(ta_port);
+    char serial_port[64] = {0};
+#if defined(FT_PLATFORM_PC)
+    if (dd_serial_port) {
+        lv_dropdown_get_selected_str(dd_serial_port, serial_port, sizeof(serial_port));
+        if (std::strcmp(serial_port, "(none)") == 0) {
+            serial_port[0] = '\0';
+        }
+    }
+#endif
     uint16_t sel = lv_dropdown_get_selected(dd_connection_type);
     
     // Validate
@@ -579,8 +690,10 @@ void UIMachineSelect::onConfigSave(lv_event_t *e) {
     strncpy(config.ssid, ssid, sizeof(config.ssid) - 1);
     strncpy(config.password, password, sizeof(config.password) - 1);
     strncpy(config.fluidnc_url, url, sizeof(config.fluidnc_url) - 1);
+    strncpy(config.serial_port, serial_port, sizeof(config.serial_port) - 1);
     config.websocket_port = atoi(port_str);
     if (config.websocket_port == 0) config.websocket_port = 81;
+    config.uart_baudrate = getBaudrateByOptionIndex(lv_dropdown_get_selected(dd_baudrate));
     config.is_configured = true;
     
     // Save
@@ -600,27 +713,112 @@ void UIMachineSelect::onConnectionTypeChanged(lv_event_t *e) {
     updateConnectionFields();
 }
 
+void UIMachineSelect::onRefreshPorts(lv_event_t *e) {
+    (void)e;
+    char current[64] = {0};
+    if (dd_serial_port) {
+        lv_dropdown_get_selected_str(dd_serial_port, current, sizeof(current));
+        if (std::strcmp(current, "(none)") == 0) {
+            current[0] = '\0';
+        }
+    }
+    refreshSerialPortDropdown(current);
+}
+
+void UIMachineSelect::refreshSerialPortDropdown(const char *preferred_port) {
+#if defined(FT_PLATFORM_PC)
+    if (!dd_serial_port) {
+        return;
+    }
+
+    String options;
+    int selected = 0;
+    int index = 0;
+
+#if defined(__linux__)
+    std::vector<String> ports = listSerialPorts();
+    if (ports.empty()) {
+        options = "(none)";
+    } else {
+        for (size_t i = 0; i < ports.size(); ++i) {
+            if (i > 0) options += "\n";
+            options += ports[i];
+            if (preferred_port && preferred_port[0] != '\0' && std::strcmp(preferred_port, ports[i].c_str()) == 0) {
+                selected = index;
+            }
+            index++;
+        }
+    }
+#else
+    options = "(none)";
+#endif
+
+    lv_dropdown_set_options(dd_serial_port, options.c_str());
+    lv_dropdown_set_selected(dd_serial_port, static_cast<uint16_t>(selected));
+#else
+    (void)preferred_port;
+#endif
+}
+
 void UIMachineSelect::updateConnectionFields() {
+    hideKeyboard();
+
     uint16_t sel = lv_dropdown_get_selected(dd_connection_type);
     bool is_wireless = (sel == 0);
     bool is_uart = (sel == 2);
-    
-    // Enable/disable wireless-specific fields
+    bool is_wired = (sel == 1);
+
     if (is_wireless) {
-        lv_obj_clear_state(ta_ssid, LV_STATE_DISABLED);
-        lv_obj_clear_state(ta_password, LV_STATE_DISABLED);
+        lv_obj_clear_flag(lbl_ssid, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(ta_ssid, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(lbl_password, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(ta_password, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(lbl_url, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(ta_url, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(lbl_port, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(ta_port, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(dd_baudrate, LV_OBJ_FLAG_HIDDEN);
+        lv_label_set_text(lbl_port, "Port:");
+    } else if (is_uart) {
+        lv_obj_add_flag(lbl_ssid, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(ta_ssid, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(lbl_password, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(ta_password, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(lbl_url, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(ta_url, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(lbl_port, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(ta_port, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(dd_baudrate, LV_OBJ_FLAG_HIDDEN);
+        lv_label_set_text(lbl_port, "Baudrate:");
     } else {
-        lv_obj_add_state(ta_ssid, LV_STATE_DISABLED);
-        lv_obj_add_state(ta_password, LV_STATE_DISABLED);
+        lv_obj_add_flag(lbl_ssid, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(ta_ssid, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(lbl_password, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(ta_password, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(lbl_url, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(ta_url, LV_OBJ_FLAG_HIDDEN);
+#if defined(FT_PLATFORM_PC)
+        lv_obj_add_flag(lbl_port, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(ta_port, LV_OBJ_FLAG_HIDDEN);
+#else
+        lv_obj_clear_flag(lbl_port, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(ta_port, LV_OBJ_FLAG_HIDDEN);
+#endif
+        lv_obj_add_flag(dd_baudrate, LV_OBJ_FLAG_HIDDEN);
+        lv_label_set_text(lbl_port, "Port:");
     }
 
-    if (is_uart) {
-        lv_obj_add_state(ta_url, LV_STATE_DISABLED);
-        lv_obj_add_state(ta_port, LV_STATE_DISABLED);
+#if defined(FT_PLATFORM_PC)
+    if (is_wired || is_uart) {
+        lv_obj_clear_flag(lbl_serial_port, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(dd_serial_port, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(btn_refresh_ports, LV_OBJ_FLAG_HIDDEN);
     } else {
-        lv_obj_clear_state(ta_url, LV_STATE_DISABLED);
-        lv_obj_clear_state(ta_port, LV_STATE_DISABLED);
+        lv_obj_add_flag(lbl_serial_port, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(dd_serial_port, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(btn_refresh_ports, LV_OBJ_FLAG_HIDDEN);
     }
+#endif
 }
 
 void UIMachineSelect::showConfigDialog(int index) {
@@ -690,7 +888,7 @@ void UIMachineSelect::showConfigDialog(int index) {
     lv_obj_add_event_cb(ta_name, onTextareaFocused, LV_EVENT_FOCUSED, nullptr);
     
     // WiFi SSID field
-    lv_obj_t *lbl_ssid = lv_label_create(left_col);
+    lbl_ssid = lv_label_create(left_col);
     lv_label_set_text(lbl_ssid, "WiFi SSID:");
     lv_obj_set_style_text_font(lbl_ssid, &lv_font_montserrat_18, 0);
     lv_obj_set_style_text_color(lbl_ssid, UITheme::TEXT_DISABLED, 0);
@@ -705,7 +903,7 @@ void UIMachineSelect::showConfigDialog(int index) {
     lv_obj_add_event_cb(ta_ssid, onTextareaFocused, LV_EVENT_FOCUSED, nullptr);
     
     // FluidNC URL field
-    lv_obj_t *lbl_url = lv_label_create(left_col);
+    lbl_url = lv_label_create(left_col);
     lv_label_set_text(lbl_url, "FluidNC URL:");
     lv_obj_set_style_text_font(lbl_url, &lv_font_montserrat_18, 0);
     lv_obj_set_style_text_color(lbl_url, UITheme::TEXT_DISABLED, 0);
@@ -757,10 +955,10 @@ void UIMachineSelect::showConfigDialog(int index) {
     lv_obj_add_event_cb(dd_connection_type, onConnectionTypeChanged, LV_EVENT_VALUE_CHANGED, nullptr);
     
     // Password field
-    lv_obj_t *lbl_pwd = lv_label_create(right_col);
-    lv_label_set_text(lbl_pwd, "Password:");
-    lv_obj_set_style_text_font(lbl_pwd, &lv_font_montserrat_18, 0);
-    lv_obj_set_style_text_color(lbl_pwd, UITheme::TEXT_DISABLED, 0);
+    lbl_password = lv_label_create(right_col);
+    lv_label_set_text(lbl_password, "Password:");
+    lv_obj_set_style_text_font(lbl_password, &lv_font_montserrat_18, 0);
+    lv_obj_set_style_text_color(lbl_password, UITheme::TEXT_DISABLED, 0);
     
     ta_password = lv_textarea_create(right_col);
     lv_obj_set_width(ta_password, LV_PCT(100));
@@ -773,7 +971,7 @@ void UIMachineSelect::showConfigDialog(int index) {
     lv_obj_add_event_cb(ta_password, onTextareaFocused, LV_EVENT_FOCUSED, nullptr);
     
     // Port field
-    lv_obj_t *lbl_port = lv_label_create(right_col);
+    lbl_port = lv_label_create(right_col);
     lv_label_set_text(lbl_port, "Port:");
     lv_obj_set_style_text_font(lbl_port, &lv_font_montserrat_18, 0);
     lv_obj_set_style_text_color(lbl_port, UITheme::TEXT_DISABLED, 0);
@@ -793,6 +991,42 @@ void UIMachineSelect::showConfigDialog(int index) {
         lv_textarea_set_text(ta_port, "81");
     }
     lv_obj_add_event_cb(ta_port, onTextareaFocused, LV_EVENT_FOCUSED, nullptr);
+
+    // UART baudrate field (shown only for UART connection type)
+    dd_baudrate = lv_dropdown_create(right_col);
+    lv_obj_set_width(dd_baudrate, LV_PCT(100));
+    lv_obj_set_height(dd_baudrate, UI_SCALE_Y(48));
+    lv_obj_set_style_text_font(dd_baudrate, &lv_font_montserrat_18, 0);
+    lv_obj_set_style_pad_top(dd_baudrate, UI_SCALE_Y(12), LV_PART_MAIN);
+    lv_dropdown_set_options(dd_baudrate, "115200\n230400\n250000\n460800\n500000\n576000\n921600");
+    uint32_t current_baud = is_new ? GRBL_UART_BAUD : machines[index].uart_baudrate;
+    int baud_index = getBaudrateOptionIndex(current_baud);
+    lv_dropdown_set_selected(dd_baudrate, (baud_index >= 0) ? static_cast<uint16_t>(baud_index) : 3);
+
+#if defined(FT_PLATFORM_PC)
+    lbl_serial_port = lv_label_create(right_col);
+    lv_label_set_text(lbl_serial_port, "Device Port:");
+    lv_obj_set_style_text_font(lbl_serial_port, &lv_font_montserrat_18, 0);
+    lv_obj_set_style_text_color(lbl_serial_port, UITheme::TEXT_DISABLED, 0);
+
+    dd_serial_port = lv_dropdown_create(right_col);
+    lv_obj_set_width(dd_serial_port, LV_PCT(100));
+    lv_obj_set_height(dd_serial_port, UI_SCALE_Y(48));
+    lv_obj_set_style_text_font(dd_serial_port, &lv_font_montserrat_18, 0);
+    lv_obj_set_style_pad_top(dd_serial_port, UI_SCALE_Y(12), LV_PART_MAIN);
+
+    btn_refresh_ports = lv_btn_create(right_col);
+    lv_obj_set_width(btn_refresh_ports, LV_PCT(100));
+    lv_obj_set_height(btn_refresh_ports, UI_SCALE_Y(36));
+    lv_obj_set_style_bg_color(btn_refresh_ports, UITheme::BG_BUTTON, 0);
+    lv_obj_add_event_cb(btn_refresh_ports, onRefreshPorts, LV_EVENT_CLICKED, nullptr);
+    lv_obj_t *lbl_refresh_ports = lv_label_create(btn_refresh_ports);
+    lv_label_set_text(lbl_refresh_ports, LV_SYMBOL_REFRESH " Refresh Ports");
+    lv_obj_set_style_text_font(lbl_refresh_ports, &lv_font_montserrat_16, 0);
+    lv_obj_center(lbl_refresh_ports);
+
+    refreshSerialPortDropdown(is_new ? "" : machines[index].serial_port);
+#endif
     
     // Button container at bottom with absolute positioning
     lv_obj_t *btn_container = lv_obj_create(dialog_content);
@@ -835,6 +1069,20 @@ void UIMachineSelect::hideConfigDialog() {
         config_dialog = nullptr;
         dialog_content = nullptr;
     }
+    ta_name = nullptr;
+    lbl_ssid = nullptr;
+    ta_ssid = nullptr;
+    lbl_password = nullptr;
+    ta_password = nullptr;
+    lbl_url = nullptr;
+    ta_url = nullptr;
+    lbl_port = nullptr;
+    ta_port = nullptr;
+    lbl_serial_port = nullptr;
+    dd_serial_port = nullptr;
+    btn_refresh_ports = nullptr;
+    dd_baudrate = nullptr;
+    dd_connection_type = nullptr;
     editing_index = -1;
 }
 

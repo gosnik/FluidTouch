@@ -17,7 +17,9 @@ struct MachineConfig {
     char ssid[33];           // WiFi SSID (max 32 chars + null)
     char password[64];       // WiFi password (max 63 chars + null)
     char fluidnc_url[128];   // FluidNC URL (e.g., "192.168.1.100" or "fluidnc.local")
+    char serial_port[64];    // Serial device path for PC builds (e.g., /dev/ttyUSB0)
     uint16_t websocket_port; // WebSocket port (default 81)
+    uint32_t uart_baudrate;  // UART baud rate (default 460800)
     bool is_configured;      // Whether this slot has a valid machine
     
     // Jog control defaults
@@ -29,6 +31,9 @@ struct MachineConfig {
     int jog_max_z_feed;      // Max Z feed for joystick (mm/min)
 
     // Jog soft limits (work position)
+    int8_t soft_limit_x_mode;   // -1=track, 0=off, 1=on
+    int8_t soft_limit_y_mode;   // -1=track, 0=off, 1=on
+    int8_t soft_limit_z_mode;   // -1=track, 0=off, 1=on
     bool soft_limit_x_enabled;
     bool soft_limit_y_enabled;
     bool soft_limit_z_enabled;
@@ -46,10 +51,11 @@ struct MachineConfig {
     float probe_thickness;   // Default probe thickness (mm, 1 decimal place)
     
     // Constructor with defaults
-    MachineConfig() : connection_type(CONN_WIRELESS), websocket_port(81), is_configured(false),
+    MachineConfig() : connection_type(CONN_WIRELESS), websocket_port(81), uart_baudrate(460800), is_configured(false),
                       jog_xy_step(0.01f), jog_z_step(0.01f), 
                       jog_xy_feed(3000), jog_z_feed(1000),
                       jog_max_xy_feed(3000), jog_max_z_feed(1000),
+                      soft_limit_x_mode(0), soft_limit_y_mode(0), soft_limit_z_mode(0),
                       soft_limit_x_enabled(false), soft_limit_y_enabled(false), soft_limit_z_enabled(false),
                       soft_limit_x_min(0.0f), soft_limit_x_max(0.0f),
                       soft_limit_y_min(0.0f), soft_limit_y_max(0.0f),
@@ -60,6 +66,7 @@ struct MachineConfig {
         ssid[0] = '\0';
         password[0] = '\0';
         fluidnc_url[0] = '\0';
+        serial_port[0] = '\0';
     }
 };
 

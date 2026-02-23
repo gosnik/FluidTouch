@@ -6,6 +6,7 @@
 #include <cstdlib>
 #include <algorithm>
 #include <cstring>
+#include <fstream>
 #include "Arduino.h"
 
 class Preferences {
@@ -25,6 +26,7 @@ public:
             return;
         }
         store()[namespace_].clear();
+        saveToDisk();
     }
 
     bool getBool(const char *key, bool defaultValue = false) {
@@ -121,16 +123,107 @@ public:
         }
         if (!buf || length == 0) {
             store()[namespace_][key ? key : ""].clear();
+            saveToDisk();
             return;
         }
         store()[namespace_][key ? key : ""] =
             std::string(static_cast<const char *>(buf), length);
+        saveToDisk();
     }
 
 private:
+    static std::string prefsFilePath() {
+        return ".fluidtouch_prefs.db";
+    }
+
+    static std::string hexEncode(const std::string &input) {
+        static const char *kHex = "0123456789ABCDEF";
+        std::string out;
+        out.reserve(input.size() * 2);
+        for (unsigned char c : input) {
+            out.push_back(kHex[(c >> 4) & 0x0F]);
+            out.push_back(kHex[c & 0x0F]);
+        }
+        return out;
+    }
+
+    static bool hexValue(char c, uint8_t &out) {
+        if (c >= '0' && c <= '9') {
+            out = static_cast<uint8_t>(c - '0');
+            return true;
+        }
+        if (c >= 'A' && c <= 'F') {
+            out = static_cast<uint8_t>(10 + (c - 'A'));
+            return true;
+        }
+        if (c >= 'a' && c <= 'f') {
+            out = static_cast<uint8_t>(10 + (c - 'a'));
+            return true;
+        }
+        return false;
+    }
+
+    static std::string hexDecode(const std::string &input) {
+        if (input.size() % 2 != 0) {
+            return std::string();
+        }
+        std::string out;
+        out.reserve(input.size() / 2);
+        for (size_t i = 0; i < input.size(); i += 2) {
+            uint8_t hi = 0;
+            uint8_t lo = 0;
+            if (!hexValue(input[i], hi) || !hexValue(input[i + 1], lo)) {
+                return std::string();
+            }
+            out.push_back(static_cast<char>((hi << 4) | lo));
+        }
+        return out;
+    }
+
+    static void loadFromDisk() {
+        if (loaded_) {
+            return;
+        }
+        loaded_ = true;
+
+        std::ifstream in(prefsFilePath(), std::ios::in);
+        if (!in.is_open()) {
+            return;
+        }
+
+        std::string line;
+        while (std::getline(in, line)) {
+            const size_t p1 = line.find('|');
+            if (p1 == std::string::npos) continue;
+            const size_t p2 = line.find('|', p1 + 1);
+            if (p2 == std::string::npos) continue;
+
+            const std::string ns = hexDecode(line.substr(0, p1));
+            const std::string key = hexDecode(line.substr(p1 + 1, p2 - (p1 + 1)));
+            const std::string value = hexDecode(line.substr(p2 + 1));
+            store_[ns][key] = value;
+        }
+    }
+
+    static void saveToDisk() {
+        std::ofstream out(prefsFilePath(), std::ios::out | std::ios::trunc);
+        if (!out.is_open()) {
+            return;
+        }
+
+        for (const auto &ns_pair : store_) {
+            const std::string ns_hex = hexEncode(ns_pair.first);
+            for (const auto &kv : ns_pair.second) {
+                out << ns_hex << '|'
+                    << hexEncode(kv.first) << '|'
+                    << hexEncode(kv.second) << '\n';
+            }
+        }
+    }
+
     static std::unordered_map<std::string, std::unordered_map<std::string, std::string>> &store() {
-        static std::unordered_map<std::string, std::unordered_map<std::string, std::string>> s_store;
-        return s_store;
+        loadFromDisk();
+        return store_;
     }
 
     std::string getValue(const char *key, const std::string &defaultValue) const {
@@ -150,8 +243,14 @@ private:
             return;
         }
         store()[namespace_][key ? key : ""] = value;
+        saveToDisk();
     }
 
     std::string namespace_;
     bool read_only_ = false;
+    static bool loaded_;
+    static std::unordered_map<std::string, std::unordered_map<std::string, std::string>> store_;
 };
+
+inline bool Preferences::loaded_ = false;
+inline std::unordered_map<std::string, std::unordered_map<std::string, std::string>> Preferences::store_;

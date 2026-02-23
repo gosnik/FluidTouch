@@ -52,6 +52,8 @@ public:
     static bool sendJog(const JogCommand &cmd);
     static bool sendJogRelative(float x, float y, float z, float feedrate);
     static bool sendJogRelativeAxis(char axis, float delta, float feedrate);
+    static bool getJogPredictedWpos(float &x, float &y, float &z);
+    static int32_t getJogPendingCommandCount();
     static void setJogSoftLimits(bool x_enabled, bool y_enabled, bool z_enabled,
                                  float x_min, float x_max,
                                  float y_min, float y_max,
@@ -90,16 +92,18 @@ private:
     static float jog_pending_x;
     static float jog_pending_y;
     static float jog_pending_z;
+    static int32_t jog_pending_command_count;
     static float jog_last_reported_x;
     static float jog_last_reported_y;
     static float jog_last_reported_z;
+    static MachineState jog_last_state;
 
     static bool useGrbl();
     static void applyCallbacks();
     static void resetJogTracking();
     static void updateJogTrackingFromStatus(const FluidNCStatus &status);
     static void getPredictedWpos(const FluidNCStatus &status, float &x, float &y, float &z);
-    static float clampJogTarget(float target, bool enabled, float min_limit, float max_limit);
+    static float clampJogTarget(float current, float target, bool enabled, float min_limit, float max_limit);
 };
 
 #endif // COMM_MANAGER_H

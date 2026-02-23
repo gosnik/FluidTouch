@@ -12,7 +12,23 @@ MessageCallback GrblComm::terminalCallback = nullptr;
 char GrblComm::lineBuffer[256] = {0};
 size_t GrblComm::lineLen = 0;
 namespace {
-constexpr uint32_t kStatusTimeoutMs = 1000;
+constexpr uint32_t kStatusTimeoutMs = 5000;
+constexpr uint8_t kCmdMpgModeToggle = 0x8B;
+bool g_mpg_mode_requested = false;
+
+void requestMpgMode(HardwareSerial *port, bool enable)
+{
+    if (!port) {
+        g_mpg_mode_requested = false;
+        return;
+    }
+    if (g_mpg_mode_requested == enable) {
+        return;
+    }
+    port->write(kCmdMpgModeToggle);
+    g_mpg_mode_requested = enable;
+    Serial.printf("[GrblComm] MPG mode %s via 0x8B\n", enable ? "enabled" : "disabled");
+}
 }
 
 void GrblComm::init() {
@@ -24,25 +40,32 @@ void GrblComm::init() {
 }
 
 bool GrblComm::connect(const MachineConfig &config) {
-    (void)config;
     init();
     if (!serialPort) {
         return false;
     }
-    serialPort->begin(GRBL_UART_BAUD, SERIAL_8N1, GRBL_UART_RX_PIN, GRBL_UART_TX_PIN);
+    uint32_t baudrate = config.uart_baudrate;
+    if (baudrate < 115200 || baudrate > 921600) {
+        baudrate = GRBL_UART_BAUD;
+    }
+    serialPort->begin(baudrate, SERIAL_8N1, GRBL_UART_RX_PIN, GRBL_UART_TX_PIN);
     lineLen = 0;
     currentStatus = FluidNCStatus();
     lastStatusRequestMs = 0;
     lastStatusRxMs = 0;
     currentStatus.is_connected = false;
-    Serial.println("[GrblComm] UART initialized");
+    g_mpg_mode_requested = false;
+    requestMpgMode(serialPort, true);
+    Serial.printf("[GrblComm] UART initialized @ %lu baud\n", static_cast<unsigned long>(baudrate));
     return true;
 }
 
 void GrblComm::disconnect() {
+    requestMpgMode(serialPort, false);
     if (serialPort) {
         serialPort->end();
     }
+    g_mpg_mode_requested = false;
     currentStatus.is_connected = false;
 }
 

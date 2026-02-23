@@ -33,7 +33,9 @@ void MachineConfigManager::loadMachines(MachineConfig machines[MAX_MACHINES]) {
             prefs.getString((prefix + "ssid").c_str(), machines[i].ssid, sizeof(machines[i].ssid));
             prefs.getString((prefix + "pwd").c_str(), machines[i].password, sizeof(machines[i].password));
             prefs.getString((prefix + "url").c_str(), machines[i].fluidnc_url, sizeof(machines[i].fluidnc_url));
+            prefs.getString((prefix + "spath").c_str(), machines[i].serial_port, sizeof(machines[i].serial_port));
             machines[i].websocket_port = prefs.getUShort((prefix + "port").c_str(), 81);
+            machines[i].uart_baudrate = static_cast<uint32_t>(prefs.getInt((prefix + "baud").c_str(), GRBL_UART_BAUD));
             
             Serial.printf("    Name: %s, URL: %s:%d\n", machines[i].name, machines[i].fluidnc_url, machines[i].websocket_port);
             
@@ -49,6 +51,15 @@ void MachineConfigManager::loadMachines(MachineConfig machines[MAX_MACHINES]) {
             machines[i].soft_limit_x_enabled = prefs.getBool((prefix + "slx_en").c_str(), false);
             machines[i].soft_limit_y_enabled = prefs.getBool((prefix + "sly_en").c_str(), false);
             machines[i].soft_limit_z_enabled = prefs.getBool((prefix + "slz_en").c_str(), false);
+            machines[i].soft_limit_x_mode = static_cast<int8_t>(prefs.getInt((prefix + "slx_md").c_str(), machines[i].soft_limit_x_enabled ? 1 : 0));
+            machines[i].soft_limit_y_mode = static_cast<int8_t>(prefs.getInt((prefix + "sly_md").c_str(), machines[i].soft_limit_y_enabled ? 1 : 0));
+            machines[i].soft_limit_z_mode = static_cast<int8_t>(prefs.getInt((prefix + "slz_md").c_str(), machines[i].soft_limit_z_enabled ? 1 : 0));
+            if (machines[i].soft_limit_x_mode < -1 || machines[i].soft_limit_x_mode > 1) machines[i].soft_limit_x_mode = 0;
+            if (machines[i].soft_limit_y_mode < -1 || machines[i].soft_limit_y_mode > 1) machines[i].soft_limit_y_mode = 0;
+            if (machines[i].soft_limit_z_mode < -1 || machines[i].soft_limit_z_mode > 1) machines[i].soft_limit_z_mode = 0;
+            machines[i].soft_limit_x_enabled = (machines[i].soft_limit_x_mode == 1);
+            machines[i].soft_limit_y_enabled = (machines[i].soft_limit_y_mode == 1);
+            machines[i].soft_limit_z_enabled = (machines[i].soft_limit_z_mode == 1);
             machines[i].soft_limit_x_min = prefs.getFloat((prefix + "slx_min").c_str(), 0.0f);
             machines[i].soft_limit_x_max = prefs.getFloat((prefix + "slx_max").c_str(), 0.0f);
             machines[i].soft_limit_y_min = prefs.getFloat((prefix + "sly_min").c_str(), 0.0f);
@@ -92,7 +103,9 @@ void MachineConfigManager::saveMachines(const MachineConfig machines[MAX_MACHINE
             prefs.putString((prefix + "ssid").c_str(), machines[i].ssid);
             prefs.putString((prefix + "pwd").c_str(), machines[i].password);
             prefs.putString((prefix + "url").c_str(), machines[i].fluidnc_url);
+            prefs.putString((prefix + "spath").c_str(), machines[i].serial_port);
             prefs.putUShort((prefix + "port").c_str(), machines[i].websocket_port);
+            prefs.putInt((prefix + "baud").c_str(), static_cast<int>(machines[i].uart_baudrate));
             
             // Save jog settings
             prefs.putFloat((prefix + "jxy_st").c_str(), machines[i].jog_xy_step);
@@ -103,6 +116,9 @@ void MachineConfigManager::saveMachines(const MachineConfig machines[MAX_MACHINE
             prefs.putInt((prefix + "jz_mx").c_str(), machines[i].jog_max_z_feed);
 
             // Save jog soft limits
+            prefs.putInt((prefix + "slx_md").c_str(), machines[i].soft_limit_x_mode);
+            prefs.putInt((prefix + "sly_md").c_str(), machines[i].soft_limit_y_mode);
+            prefs.putInt((prefix + "slz_md").c_str(), machines[i].soft_limit_z_mode);
             prefs.putBool((prefix + "slx_en").c_str(), machines[i].soft_limit_x_enabled);
             prefs.putBool((prefix + "sly_en").c_str(), machines[i].soft_limit_y_enabled);
             prefs.putBool((prefix + "slz_en").c_str(), machines[i].soft_limit_z_enabled);

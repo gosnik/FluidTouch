@@ -33,10 +33,18 @@ private:
     static lv_obj_t *keyboard;
     static int editing_index;
     static lv_obj_t *ta_name;
+    static lv_obj_t *lbl_ssid;
     static lv_obj_t *ta_ssid;
+    static lv_obj_t *lbl_password;
     static lv_obj_t *ta_password;
+    static lv_obj_t *lbl_url;
     static lv_obj_t *ta_url;
+    static lv_obj_t *lbl_port;
     static lv_obj_t *ta_port;
+    static lv_obj_t *lbl_serial_port;
+    static lv_obj_t *dd_serial_port;
+    static lv_obj_t *btn_refresh_ports;
+    static lv_obj_t *dd_baudrate;
     static lv_obj_t *dd_connection_type;
     
     // Delete confirmation dialog
@@ -56,6 +64,7 @@ private:
     static void onConfigSave(lv_event_t *e);
     static void onConfigCancel(lv_event_t *e);
     static void onConnectionTypeChanged(lv_event_t *e);
+    static void onRefreshPorts(lv_event_t *e);
     static void onTextareaFocused(lv_event_t *e);
     
     // Helper functions
@@ -65,6 +74,7 @@ private:
     static void showDeleteConfirmDialog(int index);
     static void hideDeleteConfirmDialog();
     static void updateConnectionFields();
+    static void refreshSerialPortDropdown(const char *preferred_port);
     static void showKeyboard(lv_obj_t *ta);
     static void hideKeyboard();
     static int getConfiguredMachineCount();

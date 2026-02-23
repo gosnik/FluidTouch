@@ -27,6 +27,7 @@
 #include "ui/tabs/ui_tab_terminal.h" // Terminal tab for updates
 #include "ui/tabs/settings/ui_tab_settings_about.h" // About tab for screenshot URL updates
 #include "ui/tabs/control/ui_tab_control_actions.h" // Actions tab for pause button updates
+#include "ui/tabs/control/ui_tab_control_jog.h" // Jog tab for current feed setting
 #include "ui/tabs/control/ui_tab_control_override.h" // Override tab for updates
 #include "ui/machine_config.h"  // Machine configuration manager
 
@@ -49,7 +50,8 @@ void sendHidStatus(const FluidNCStatus &status, bool connected)
                                QtdialHidProtocol::kOutputStatusFlagHasMpos)
                             : 0x00);
 
-    const int32_t feed = static_cast<int32_t>(status.feed_rate * QtdialHidProtocol::kStatusFeedScale);
+    const int32_t jog_xy_feed = UITabControlJog::getCurrentXYFeed();
+    const int32_t feed = static_cast<int32_t>(jog_xy_feed * QtdialHidProtocol::kStatusFeedScale);
     const int32_t spindle = static_cast<int32_t>(status.spindle_speed);
     const int32_t wpos_x = static_cast<int32_t>(status.wpos_x * QtdialHidProtocol::kStatusPosScale);
     const int32_t wpos_y = static_cast<int32_t>(status.wpos_y * QtdialHidProtocol::kStatusPosScale);
@@ -148,9 +150,28 @@ void setup()
     Serial.printf("Main: show_mach_sel preference = %d\n", show_machine_select);
     
     if (show_machine_select) {
-        // Show machine selection screen
-        ESP_LOGI(TAG, "Showing machine selection screen...");
-        UIMachineSelect::show(displayDriver.getDisplay());
+        MachineConfig machines[MAX_MACHINES];
+        MachineConfigManager::loadMachines(machines);
+
+        int configured_count = 0;
+        int only_machine_index = -1;
+        for (int i = 0; i < MAX_MACHINES; i++) {
+            if (!machines[i].is_configured) {
+                continue;
+            }
+            configured_count++;
+            only_machine_index = i;
+        }
+
+        if (configured_count == 1 && only_machine_index >= 0) {
+            MachineConfigManager::setSelectedMachineIndex(only_machine_index);
+            Serial.printf("Auto-selected only configured machine: %s\n", machines[only_machine_index].name);
+            UICommon::createMainUI();
+        } else {
+            // Show machine selection screen
+            ESP_LOGI(TAG, "Showing machine selection screen...");
+            UIMachineSelect::show(displayDriver.getDisplay());
+        }
     } else {
         // Auto-load first configured machine
         ESP_LOGI(TAG, "Auto-loading first machine...");

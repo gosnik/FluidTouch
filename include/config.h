@@ -58,7 +58,7 @@
 // Grbl UART configuration
 #define GRBL_UART_RX_PIN 46
 #define GRBL_UART_TX_PIN 47
-#define GRBL_UART_BAUD 1000000
+#define GRBL_UART_BAUD 460800
 
 // Encoder pin configuration
 #if defined(CONFIG_IDF_TARGET_ESP32P4)

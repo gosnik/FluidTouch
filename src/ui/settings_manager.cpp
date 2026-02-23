@@ -51,7 +51,9 @@ bool SettingsManager::exportSettings(const char* filepath) {
         machine["ssid"] = machine_configs[i].ssid;
         machine["password"] = "";  // Password not exported for security
         machine["fluidnc_url"] = machine_configs[i].fluidnc_url;
+        machine["serial_port"] = machine_configs[i].serial_port;
         machine["websocket_port"] = machine_configs[i].websocket_port;
+        machine["uart_baudrate"] = machine_configs[i].uart_baudrate;
         
         // Jog settings
         JsonObject jog = machine["jog"].to<JsonObject>();
@@ -60,6 +62,9 @@ bool SettingsManager::exportSettings(const char* filepath) {
         jog["xy_step"] = machine_configs[i].jog_xy_step;
         jog["z_step"] = machine_configs[i].jog_z_step;
         JsonObject soft_limits = jog["soft_limits"].to<JsonObject>();
+        soft_limits["x_mode"] = machine_configs[i].soft_limit_x_mode;
+        soft_limits["y_mode"] = machine_configs[i].soft_limit_y_mode;
+        soft_limits["z_mode"] = machine_configs[i].soft_limit_z_mode;
         soft_limits["x_enabled"] = machine_configs[i].soft_limit_x_enabled;
         soft_limits["y_enabled"] = machine_configs[i].soft_limit_y_enabled;
         soft_limits["z_enabled"] = machine_configs[i].soft_limit_z_enabled;
@@ -216,7 +221,9 @@ bool SettingsManager::importSettings(const char* filepath) {
             strncpy(machine_configs[machine_index].ssid, machine["ssid"] | "", sizeof(machine_configs[machine_index].ssid) - 1);
             strncpy(machine_configs[machine_index].password, machine["password"] | "", sizeof(machine_configs[machine_index].password) - 1);
             strncpy(machine_configs[machine_index].fluidnc_url, machine["fluidnc_url"] | "", sizeof(machine_configs[machine_index].fluidnc_url) - 1);
+            strncpy(machine_configs[machine_index].serial_port, machine["serial_port"] | "", sizeof(machine_configs[machine_index].serial_port) - 1);
             machine_configs[machine_index].websocket_port = machine["websocket_port"] | 81;
+            machine_configs[machine_index].uart_baudrate = machine["uart_baudrate"] | GRBL_UART_BAUD;
             
             // Jog settings
             JsonObject jog = machine["jog"];
@@ -225,9 +232,15 @@ bool SettingsManager::importSettings(const char* filepath) {
             machine_configs[machine_index].jog_xy_step = jog["xy_step"] | 0.01f;
             machine_configs[machine_index].jog_z_step = jog["z_step"] | 0.01f;
             JsonObject soft_limits = jog["soft_limits"];
-            machine_configs[machine_index].soft_limit_x_enabled = soft_limits["x_enabled"] | false;
-            machine_configs[machine_index].soft_limit_y_enabled = soft_limits["y_enabled"] | false;
-            machine_configs[machine_index].soft_limit_z_enabled = soft_limits["z_enabled"] | false;
+            machine_configs[machine_index].soft_limit_x_mode = soft_limits["x_mode"] | ((soft_limits["x_enabled"] | false) ? 1 : 0);
+            machine_configs[machine_index].soft_limit_y_mode = soft_limits["y_mode"] | ((soft_limits["y_enabled"] | false) ? 1 : 0);
+            machine_configs[machine_index].soft_limit_z_mode = soft_limits["z_mode"] | ((soft_limits["z_enabled"] | false) ? 1 : 0);
+            if (machine_configs[machine_index].soft_limit_x_mode < -1 || machine_configs[machine_index].soft_limit_x_mode > 1) machine_configs[machine_index].soft_limit_x_mode = 0;
+            if (machine_configs[machine_index].soft_limit_y_mode < -1 || machine_configs[machine_index].soft_limit_y_mode > 1) machine_configs[machine_index].soft_limit_y_mode = 0;
+            if (machine_configs[machine_index].soft_limit_z_mode < -1 || machine_configs[machine_index].soft_limit_z_mode > 1) machine_configs[machine_index].soft_limit_z_mode = 0;
+            machine_configs[machine_index].soft_limit_x_enabled = (machine_configs[machine_index].soft_limit_x_mode == 1);
+            machine_configs[machine_index].soft_limit_y_enabled = (machine_configs[machine_index].soft_limit_y_mode == 1);
+            machine_configs[machine_index].soft_limit_z_enabled = (machine_configs[machine_index].soft_limit_z_mode == 1);
             machine_configs[machine_index].soft_limit_x_min = soft_limits["x_min"] | 0.0f;
             machine_configs[machine_index].soft_limit_x_max = soft_limits["x_max"] | 0.0f;
             machine_configs[machine_index].soft_limit_y_min = soft_limits["y_min"] | 0.0f;

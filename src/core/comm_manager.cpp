@@ -21,9 +21,11 @@ bool CommManager::jog_pending_valid = false;
 float CommManager::jog_pending_x = 0.0f;
 float CommManager::jog_pending_y = 0.0f;
 float CommManager::jog_pending_z = 0.0f;
+int32_t CommManager::jog_pending_command_count = 0;
 float CommManager::jog_last_reported_x = 0.0f;
 float CommManager::jog_last_reported_y = 0.0f;
 float CommManager::jog_last_reported_z = 0.0f;
+MachineState CommManager::jog_last_state = STATE_DISCONNECTED;
 
 void CommManager::init() {
     if (initialized) {
@@ -123,19 +125,19 @@ bool CommManager::sendJog(const JogCommand &cmd) {
 
     if (include_x) {
         target_x = cmd.absolute ? cmd.x : (predicted_x + cmd.x);
-        target_x = clampJogTarget(target_x, jog_soft_limit_x_enabled, jog_soft_limit_x_min, jog_soft_limit_x_max);
+        target_x = clampJogTarget(predicted_x, target_x, jog_soft_limit_x_enabled, jog_soft_limit_x_min, jog_soft_limit_x_max);
         delta_x = target_x - predicted_x;
         if (delta_x == 0.0f) include_x = false;
     }
     if (include_y) {
         target_y = cmd.absolute ? cmd.y : (predicted_y + cmd.y);
-        target_y = clampJogTarget(target_y, jog_soft_limit_y_enabled, jog_soft_limit_y_min, jog_soft_limit_y_max);
+        target_y = clampJogTarget(predicted_y, target_y, jog_soft_limit_y_enabled, jog_soft_limit_y_min, jog_soft_limit_y_max);
         delta_y = target_y - predicted_y;
         if (delta_y == 0.0f) include_y = false;
     }
     if (include_z) {
         target_z = cmd.absolute ? cmd.z : (predicted_z + cmd.z);
-        target_z = clampJogTarget(target_z, jog_soft_limit_z_enabled, jog_soft_limit_z_min, jog_soft_limit_z_max);
+        target_z = clampJogTarget(predicted_z, target_z, jog_soft_limit_z_enabled, jog_soft_limit_z_min, jog_soft_limit_z_max);
         delta_z = target_z - predicted_z;
         if (delta_z == 0.0f) include_z = false;
     }
@@ -171,6 +173,7 @@ bool CommManager::sendJog(const JogCommand &cmd) {
         if (include_x) jog_pending_x += (cmd.absolute ? (target_x - predicted_x) : delta_x);
         if (include_y) jog_pending_y += (cmd.absolute ? (target_y - predicted_y) : delta_y);
         if (include_z) jog_pending_z += (cmd.absolute ? (target_z - predicted_z) : delta_z);
+        jog_pending_command_count++;
     }
 
     return true;
@@ -204,6 +207,16 @@ bool CommManager::sendJogRelativeAxis(char axis, float delta, float feedrate) {
     return sendJog(cmd);
 }
 
+bool CommManager::getJogPredictedWpos(float &x, float &y, float &z) {
+    const FluidNCStatus &status = getStatus();
+    getPredictedWpos(status, x, y, z);
+    return jog_pending_valid && status.is_connected;
+}
+
+int32_t CommManager::getJogPendingCommandCount() {
+    return jog_pending_command_count;
+}
+
 void CommManager::setJogSoftLimits(bool x_enabled, bool y_enabled, bool z_enabled,
                                    float x_min, float x_max,
                                    float y_min, float y_max,
@@ -217,6 +230,12 @@ void CommManager::setJogSoftLimits(bool x_enabled, bool y_enabled, bool z_enable
     jog_soft_limit_y_max = y_max;
     jog_soft_limit_z_min = z_min;
     jog_soft_limit_z_max = z_max;
+
+    // Soft-limit changes can invalidate pending predicted offsets.
+    // Re-anchor prediction to the latest reported machine status.
+    const FluidNCStatus &status = getStatus();
+    resetJogTracking();
+    updateJogTrackingFromStatus(status);
 }
 
 void CommManager::requestStatusReport() {
@@ -305,7 +324,11 @@ ConnectionType CommManager::getConnectionType() {
 }
 
 bool CommManager::useGrbl() {
-    return currentType == CONN_UART;
+    if (currentType == CONN_UART) {
+        return true;
+    }
+    // Treat explicit wired-serial targets as pendant/MPG transport too.
+    return (currentType == CONN_WIRED && currentConfig.serial_port[0] != '\0');
 }
 
 void CommManager::applyCallbacks() {
@@ -331,16 +354,23 @@ void CommManager::resetJogTracking() {
     jog_pending_x = 0.0f;
     jog_pending_y = 0.0f;
     jog_pending_z = 0.0f;
+    jog_pending_command_count = 0;
     jog_last_reported_x = 0.0f;
     jog_last_reported_y = 0.0f;
     jog_last_reported_z = 0.0f;
+    jog_last_state = STATE_DISCONNECTED;
 }
 
 void CommManager::updateJogTrackingFromStatus(const FluidNCStatus &status) {
     if (!status.is_connected) {
         jog_pending_valid = false;
+        jog_last_state = STATE_DISCONNECTED;
         return;
     }
+
+    const bool jog_to_idle = (jog_last_state == STATE_JOG && status.state == STATE_IDLE);
+    jog_last_state = status.state;
+
     if (!jog_pending_valid) {
         jog_last_reported_x = status.wpos_x;
         jog_last_reported_y = status.wpos_y;
@@ -349,6 +379,17 @@ void CommManager::updateJogTrackingFromStatus(const FluidNCStatus &status) {
         jog_pending_y = 0.0f;
         jog_pending_z = 0.0f;
         jog_pending_valid = true;
+        return;
+    }
+
+    if (jog_to_idle) {
+        jog_last_reported_x = status.wpos_x;
+        jog_last_reported_y = status.wpos_y;
+        jog_last_reported_z = status.wpos_z;
+        jog_pending_x = 0.0f;
+        jog_pending_y = 0.0f;
+        jog_pending_z = 0.0f;
+        jog_pending_command_count = 0;
         return;
     }
 
@@ -370,6 +411,9 @@ void CommManager::updateJogTrackingFromStatus(const FluidNCStatus &status) {
     jog_pending_x = target_x - jog_last_reported_x;
     jog_pending_y = target_y - jog_last_reported_y;
     jog_pending_z = target_z - jog_last_reported_z;
+    if (jog_pending_command_count > 0) {
+        jog_pending_command_count--;
+    }
 }
 
 void CommManager::getPredictedWpos(const FluidNCStatus &status, float &x, float &y, float &z) {
@@ -385,7 +429,7 @@ void CommManager::getPredictedWpos(const FluidNCStatus &status, float &x, float 
     z = jog_last_reported_z + jog_pending_z;
 }
 
-float CommManager::clampJogTarget(float target, bool enabled, float min_limit, float max_limit) {
+float CommManager::clampJogTarget(float current, float target, bool enabled, float min_limit, float max_limit) {
     if (!enabled) {
         return target;
     }
@@ -394,6 +438,30 @@ float CommManager::clampJogTarget(float target, bool enabled, float min_limit, f
         min_limit = max_limit;
         max_limit = tmp;
     }
+
+    // If already below min, allow only recovery moves in the positive direction.
+    if (current < min_limit) {
+        if (target <= current) {
+            return current;
+        }
+        if (target > max_limit) {
+            return max_limit;
+        }
+        return target;
+    }
+
+    // If already above max, allow only recovery moves in the negative direction.
+    if (current > max_limit) {
+        if (target >= current) {
+            return current;
+        }
+        if (target < min_limit) {
+            return min_limit;
+        }
+        return target;
+    }
+
+    // Normal in-range clamping.
     if (target < min_limit) return min_limit;
     if (target > max_limit) return max_limit;
     return target;
