@@ -11,8 +11,8 @@
 
 // Static member initialization
 esp_websocket_client_handle_t FluidNCClient::webSocket = nullptr;
-FluidNCStatus FluidNCClient::currentStatus;
-MachineConfig FluidNCClient::currentConfig;
+FluidNCStatus FluidNCClient::currentStatus = {};
+MachineConfig FluidNCClient::currentConfig = {};
 uint32_t FluidNCClient::lastStatusRequestMs = 0;
 bool FluidNCClient::initialized = false;
 MessageCallback FluidNCClient::messageCallback = nullptr;
@@ -29,7 +29,8 @@ uint32_t FluidNCClient::lastReconnectAttemptMs = 0;
 
 void FluidNCClient::init() {
     if (initialized) return;
-    
+
+    resetFluidNCStatus(currentStatus);
     Serial.println("[FluidNC] Initializing client");
     initialized = true;
 }

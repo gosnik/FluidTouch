@@ -33,9 +33,6 @@ public:
         bool is_cached;
         std::vector<FileInfo> file_list;
     };
-    static StorageCache fluidnc_sd_cache;
-    static StorageCache fluidnc_flash_cache;
-    static StorageCache display_sd_cache;
     
 private:
     static lv_obj_t *file_list_container;
@@ -46,8 +43,6 @@ private:
     static lv_obj_t *upload_progress_dialog;
     static lv_obj_t *upload_progress_bar;
     static lv_obj_t *upload_progress_label;
-    static std::vector<std::string> file_names;
-    static std::string current_path;  // Track current directory path
     static bool initial_load_done;    // Track if initial file list has been loaded
     static bool refresh_pending;      // Flag to request refresh from callbacks
     

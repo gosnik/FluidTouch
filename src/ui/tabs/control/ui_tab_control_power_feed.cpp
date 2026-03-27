@@ -21,9 +21,9 @@ lv_timer_t *UITabControlPowerFeed::encoder_timer = nullptr;
 int16_t UITabControlPowerFeed::last_encoder_count = 0;
 bool UITabControlPowerFeed::encoder_enabled = false;
 
-static const lv_coord_t PF_FIELD_H = UI_SCALE_Y(44);
-static const lv_coord_t PF_LABEL_W = UI_SCALE_X(40);
-static const lv_coord_t PF_FIELD_W = UI_SCALE_X(180);
+static lv_coord_t pfFieldH() { return UI_SCALE_Y(44); }
+static lv_coord_t pfLabelW() { return UI_SCALE_X(40); }
+static lv_coord_t pfFieldW() { return UI_SCALE_X(180); }
 
 static size_t get_active_encoder_index(lv_obj_t *field) {
     if (field == UITabControlPowerFeed::ta_x) {
@@ -58,10 +58,10 @@ void UITabControlPowerFeed::create(lv_obj_t *tab) {
         lv_obj_set_style_text_font(lbl, &lv_font_montserrat_18, 0);
         lv_obj_set_style_text_color(lbl, UITheme::TEXT_LIGHT, 0);
         lv_obj_set_pos(lbl, UI_SCALE_X(10), y + UI_SCALE_Y(8));
-        lv_obj_set_width(lbl, PF_LABEL_W);
+        lv_obj_set_width(lbl, pfLabelW());
 
         lv_obj_t *ta = lv_textarea_create(tab);
-        lv_obj_set_size(ta, PF_FIELD_W, PF_FIELD_H);
+        lv_obj_set_size(ta, pfFieldW(), pfFieldH());
         lv_obj_set_pos(ta, UI_SCALE_X(60), y);
         lv_textarea_set_one_line(ta, true);
         lv_textarea_set_accepted_chars(ta, "0123456789.-");
@@ -72,8 +72,8 @@ void UITabControlPowerFeed::create(lv_obj_t *tab) {
     };
 
     make_field("X:", start_y, &ta_x);
-    make_field("Y:", start_y + (PF_FIELD_H + row_gap), &ta_y);
-    make_field("Z:", start_y + 2 * (PF_FIELD_H + row_gap), &ta_z);
+    make_field("Y:", start_y + (pfFieldH() + row_gap), &ta_y);
+    make_field("Z:", start_y + 2 * (pfFieldH() + row_gap), &ta_z);
 
     lv_coord_t right_x = UI_SCALE_X(320);
     lv_obj_t *feed_lbl = lv_label_create(tab);
@@ -83,7 +83,7 @@ void UITabControlPowerFeed::create(lv_obj_t *tab) {
     lv_obj_set_pos(feed_lbl, right_x, start_y + UI_SCALE_Y(8));
 
     ta_feed = lv_textarea_create(tab);
-    lv_obj_set_size(ta_feed, PF_FIELD_W, PF_FIELD_H);
+    lv_obj_set_size(ta_feed, pfFieldW(), pfFieldH());
     lv_obj_set_pos(ta_feed, right_x + UI_SCALE_X(80), start_y);
     lv_textarea_set_one_line(ta_feed, true);
     lv_textarea_set_accepted_chars(ta_feed, "0123456789");
@@ -96,25 +96,25 @@ void UITabControlPowerFeed::create(lv_obj_t *tab) {
     lv_label_set_text(mode_lbl, "Absolute:");
     lv_obj_set_style_text_font(mode_lbl, &lv_font_montserrat_18, 0);
     lv_obj_set_style_text_color(mode_lbl, UITheme::TEXT_LIGHT, 0);
-    lv_obj_set_pos(mode_lbl, right_x, start_y + PF_FIELD_H + row_gap + UI_SCALE_Y(6));
+    lv_obj_set_pos(mode_lbl, right_x, start_y + pfFieldH() + row_gap + UI_SCALE_Y(6));
 
     mode_switch = lv_switch_create(tab);
-    lv_obj_set_pos(mode_switch, right_x + UI_SCALE_X(120), start_y + PF_FIELD_H + row_gap);
+    lv_obj_set_pos(mode_switch, right_x + UI_SCALE_X(120), start_y + pfFieldH() + row_gap);
     lv_obj_add_state(mode_switch, LV_STATE_CHECKED);
 
     lv_obj_t *encoder_lbl = lv_label_create(tab);
     lv_label_set_text(encoder_lbl, "Encoder:");
     lv_obj_set_style_text_font(encoder_lbl, &lv_font_montserrat_18, 0);
     lv_obj_set_style_text_color(encoder_lbl, UITheme::TEXT_LIGHT, 0);
-    lv_obj_set_pos(encoder_lbl, right_x, start_y + 2 * (PF_FIELD_H + row_gap) - UI_SCALE_Y(6));
+    lv_obj_set_pos(encoder_lbl, right_x, start_y + 2 * (pfFieldH() + row_gap) - UI_SCALE_Y(6));
 
     encoder_switch = lv_switch_create(tab);
-    lv_obj_set_pos(encoder_switch, right_x + UI_SCALE_X(120), start_y + 2 * (PF_FIELD_H + row_gap) - UI_SCALE_Y(10));
+    lv_obj_set_pos(encoder_switch, right_x + UI_SCALE_X(120), start_y + 2 * (pfFieldH() + row_gap) - UI_SCALE_Y(10));
     lv_obj_add_event_cb(encoder_switch, onEncoderToggle, LV_EVENT_VALUE_CHANGED, nullptr);
 
     lv_obj_t *btn_go = lv_button_create(tab);
     lv_obj_set_size(btn_go, UI_SCALE_X(160), UI_SCALE_Y(50));
-    lv_obj_set_pos(btn_go, right_x, start_y + 3 * (PF_FIELD_H + row_gap) + UI_SCALE_Y(10));
+    lv_obj_set_pos(btn_go, right_x, start_y + 3 * (pfFieldH() + row_gap) + UI_SCALE_Y(10));
     lv_obj_set_style_bg_color(btn_go, UITheme::BTN_PLAY, 0);
     lv_obj_add_event_cb(btn_go, onGoPressed, LV_EVENT_CLICKED, nullptr);
     lv_obj_t *btn_go_lbl = lv_label_create(btn_go);
@@ -124,7 +124,7 @@ void UITabControlPowerFeed::create(lv_obj_t *tab) {
 
     lv_obj_t *btn_current = lv_button_create(tab);
     lv_obj_set_size(btn_current, UI_SCALE_X(160), UI_SCALE_Y(50));
-    lv_obj_set_pos(btn_current, right_x + UI_SCALE_X(180), start_y + 3 * (PF_FIELD_H + row_gap) + UI_SCALE_Y(10));
+    lv_obj_set_pos(btn_current, right_x + UI_SCALE_X(180), start_y + 3 * (pfFieldH() + row_gap) + UI_SCALE_Y(10));
     lv_obj_set_style_bg_color(btn_current, UITheme::BG_BUTTON, 0);
     lv_obj_add_event_cb(btn_current, onCurrentPressed, LV_EVENT_CLICKED, nullptr);
     lv_obj_t *btn_current_lbl = lv_label_create(btn_current);
@@ -134,7 +134,7 @@ void UITabControlPowerFeed::create(lv_obj_t *tab) {
 
     lv_obj_t *btn_clear = lv_button_create(tab);
     lv_obj_set_size(btn_clear, UI_SCALE_X(160), UI_SCALE_Y(50));
-    lv_obj_set_pos(btn_clear, right_x + UI_SCALE_X(360), start_y + 3 * (PF_FIELD_H + row_gap) + UI_SCALE_Y(10));
+    lv_obj_set_pos(btn_clear, right_x + UI_SCALE_X(360), start_y + 3 * (pfFieldH() + row_gap) + UI_SCALE_Y(10));
     lv_obj_set_style_bg_color(btn_clear, UITheme::BG_BUTTON, 0);
     lv_obj_add_event_cb(btn_clear, onClearPressed, LV_EVENT_CLICKED, nullptr);
     lv_obj_t *btn_clear_lbl = lv_label_create(btn_clear);

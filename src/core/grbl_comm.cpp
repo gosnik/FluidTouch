@@ -3,7 +3,7 @@
 #include "core/comm_manager.h"
 
 HardwareSerial *GrblComm::serialPort = nullptr;
-FluidNCStatus GrblComm::currentStatus;
+FluidNCStatus GrblComm::currentStatus = {};
 uint32_t GrblComm::lastStatusRequestMs = 0;
 uint32_t GrblComm::lastStatusRxMs = 0;
 bool GrblComm::initialized = false;
@@ -36,6 +36,7 @@ void GrblComm::init() {
         return;
     }
     serialPort = &Serial1;
+    resetFluidNCStatus(currentStatus);
     initialized = true;
 }
 
@@ -50,7 +51,7 @@ bool GrblComm::connect(const MachineConfig &config) {
     }
     serialPort->begin(baudrate, SERIAL_8N1, GRBL_UART_RX_PIN, GRBL_UART_TX_PIN);
     lineLen = 0;
-    currentStatus = FluidNCStatus();
+    resetFluidNCStatus(currentStatus);
     lastStatusRequestMs = 0;
     lastStatusRxMs = 0;
     currentStatus.is_connected = false;

@@ -7,6 +7,7 @@
 #include "core/display_driver.h"
 #include "core/power_manager.h"
 #include "core/usb_host_manager.h"
+#include "env/platform.h"
 #include "ui/tabs/control/ui_tab_control_probe.h"
 #include "network/screenshot_server.h"
 #include "config.h"
@@ -15,6 +16,9 @@
 #include "network/wifi_manager.h"
 #endif
 #include <esp_sleep.h>
+#if !defined(FT_PLATFORM_PC) && !defined(FT_PLATFORM_RPI)
+#include <esp_system.h>
+#endif
 
 // Static member initialization
 lv_display_t *UICommon::display = nullptr;
@@ -75,6 +79,7 @@ static uint32_t connection_timeout_start = 0;
 static bool connection_timeout_active = false;
 static bool connection_error_shown = false;
 static bool ever_connected_successfully = false;  // Track if we've connected at least once
+static bool connection_issue_dialog_latched = false;  // Show automatic connection issue dialog once per issue
 
 // Event handler for status bar left area click (go to Status tab)
 static void status_bar_left_click_handler(lv_event_t *e) {
@@ -140,7 +145,7 @@ static void status_bar_right_click_handler(lv_event_t *e) {
                     "%s connection is disconnected.\n\n%s\n\nClick Connect to reconnect.",
                     conn_label, config.name);
         }
-        UICommon::showConnectionErrorDialog("Connection Lost", error_msg);
+        UICommon::showConnectionErrorDialog("Connection Lost", error_msg, true);
     }
 }
 
@@ -239,6 +244,17 @@ static void on_machine_select_cancel(lv_event_t *e) {
     UICommon::hideMachineSelectConfirmDialog();
 }
 
+static void on_machine_select_exit(lv_event_t *e) {
+    Serial.println("UICommon: Exit requested from system options dialog");
+    UICommon::hideMachineSelectConfirmDialog();
+
+#if defined(FT_PLATFORM_PC) || defined(FT_PLATFORM_RPI)
+    EnvPlatform::requestExit();
+#else
+    ESP.restart();
+#endif
+}
+
 void UICommon::init(lv_display_t *disp) {
     display = disp;
 }
@@ -290,6 +306,7 @@ void UICommon::createMainUI() {
     // Reset connection state for a new machine selection
     ever_connected_successfully = false;
     connection_error_shown = false;
+    connection_issue_dialog_latched = false;
     
     // Create status bar
     Serial.println("UICommon: Creating status bar");
@@ -305,6 +322,7 @@ void UICommon::createMainUI() {
         CommManager::setEventCallback([](const CommManager::Event &event) {
             switch (event.type) {
                 case CommManager::EventType::CONNECTED:
+                    connection_issue_dialog_latched = false;
                     UICommon::hideConnectingPopup();
                     UICommon::hideConnectionErrorDialog();
                     break;
@@ -946,9 +964,11 @@ void UICommon::showMachineSelectConfirmDialog() {
     lv_obj_align(btn_container, LV_ALIGN_BOTTOM_MID, 0, 0);
     lv_obj_clear_flag(btn_container, LV_OBJ_FLAG_SCROLLABLE);
     
-    // Machine button (adjust size based on number of buttons)
+    const int button_width = power_mgmt_enabled ? 130 : 180;
+
+    // Machine button
     lv_obj_t *restart_btn = lv_btn_create(btn_container);
-    lv_obj_set_size(restart_btn, power_mgmt_enabled ? UI_SCALE_X(165) : UI_SCALE_X(250), UI_SCALE_Y(50));
+    lv_obj_set_size(restart_btn, UI_SCALE_X(button_width), UI_SCALE_Y(50));
     lv_obj_set_style_bg_color(restart_btn, UITheme::ACCENT_PRIMARY, 0);
     lv_obj_add_event_cb(restart_btn, on_machine_select_confirm, LV_EVENT_CLICKED, nullptr);
     
@@ -960,7 +980,7 @@ void UICommon::showMachineSelectConfirmDialog() {
     // Power off button (only show if power management is enabled)
     if (power_mgmt_enabled) {
         lv_obj_t *poweroff_btn = lv_btn_create(btn_container);
-        lv_obj_set_size(poweroff_btn, UI_SCALE_X(165), UI_SCALE_Y(50));
+        lv_obj_set_size(poweroff_btn, UI_SCALE_X(button_width), UI_SCALE_Y(50));
         lv_obj_set_style_bg_color(poweroff_btn, lv_color_make(180, 60, 0), 0);  // Orange/red for power off
         lv_obj_add_event_cb(poweroff_btn, on_power_off_confirm, LV_EVENT_CLICKED, nullptr);
         
@@ -970,9 +990,9 @@ void UICommon::showMachineSelectConfirmDialog() {
         lv_obj_center(poweroff_label);
     }
     
-    // Cancel button (adjust size based on number of buttons)
+    // Cancel button
     lv_obj_t *cancel_btn = lv_btn_create(btn_container);
-    lv_obj_set_size(cancel_btn, power_mgmt_enabled ? UI_SCALE_X(165) : UI_SCALE_X(250), UI_SCALE_Y(50));
+    lv_obj_set_size(cancel_btn, UI_SCALE_X(button_width), UI_SCALE_Y(50));
     lv_obj_set_style_bg_color(cancel_btn, UITheme::BG_BUTTON, 0);
     lv_obj_add_event_cb(cancel_btn, on_machine_select_cancel, LV_EVENT_CLICKED, nullptr);
     
@@ -980,6 +1000,17 @@ void UICommon::showMachineSelectConfirmDialog() {
     lv_label_set_text(cancel_label, "Cancel");
     lv_obj_set_style_text_font(cancel_label, &lv_font_montserrat_18, 0);
     lv_obj_center(cancel_label);
+
+    // Exit button
+    lv_obj_t *exit_btn = lv_btn_create(btn_container);
+    lv_obj_set_size(exit_btn, UI_SCALE_X(button_width), UI_SCALE_Y(50));
+    lv_obj_set_style_bg_color(exit_btn, UITheme::STATE_ALARM, 0);
+    lv_obj_add_event_cb(exit_btn, on_machine_select_exit, LV_EVENT_CLICKED, nullptr);
+
+    lv_obj_t *exit_label = lv_label_create(exit_btn);
+    lv_label_set_text(exit_label, LV_SYMBOL_POWER " Exit");
+    lv_obj_set_style_text_font(exit_label, &lv_font_montserrat_18, 0);
+    lv_obj_center(exit_label);
 }
 
 void UICommon::showPowerOffConfirmDialog() {
@@ -1121,6 +1152,7 @@ static void on_connection_error_close(lv_event_t *e) {
 static void on_connection_error_connect(lv_event_t *e) {
     Serial.println("UICommon: Reconnecting machine...");
     UICommon::hideConnectionErrorDialog();
+    connection_issue_dialog_latched = false;
     
     // Get machine config
     MachineConfig config;
@@ -1231,7 +1263,29 @@ static void on_connection_error_restart(lv_event_t *e) {
     UIMachineSelect::show(UICommon::getDisplay());
 }
 
-void UICommon::showConnectionErrorDialog(const char *title, const char *message) {
+static void on_connection_error_exit(lv_event_t *e) {
+    Serial.println("UICommon: Exit requested from connection error dialog");
+    UICommon::hideConnectionErrorDialog();
+
+#if defined(FT_PLATFORM_PC) || defined(FT_PLATFORM_RPI)
+    EnvPlatform::requestExit();
+#else
+    ESP.restart();
+#endif
+}
+
+void UICommon::showConnectionErrorDialog(const char *title, const char *message, bool force_show) {
+    if (!force_show && connection_issue_dialog_latched) {
+        Serial.printf("UICommon: Skipping duplicate connection issue dialog - %s\n", title);
+        return;
+    }
+    connection_issue_dialog_latched = true;
+
+    if (connection_error_dialog) {
+        lv_obj_del(connection_error_dialog);
+        connection_error_dialog = nullptr;
+    }
+
     // Hide connecting popup if it's showing
     hideConnectingPopup();
     
@@ -1281,7 +1335,7 @@ void UICommon::showConnectionErrorDialog(const char *title, const char *message)
     lv_obj_set_style_bg_opa(btn_container, LV_OPA_TRANSP, 0);
     lv_obj_set_style_border_width(btn_container, 0, 0);
     lv_obj_set_style_pad_all(btn_container, 0, 0);
-    lv_obj_set_style_pad_gap(btn_container, UI_SCALE_X(10), 0);
+    lv_obj_set_style_pad_gap(btn_container, UI_SCALE_X(6), 0);
     lv_obj_set_flex_flow(btn_container, LV_FLEX_FLOW_ROW);
     lv_obj_set_flex_align(btn_container, LV_FLEX_ALIGN_SPACE_EVENLY, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
     lv_obj_align(btn_container, LV_ALIGN_BOTTOM_MID, 0, 0);
@@ -1289,7 +1343,7 @@ void UICommon::showConnectionErrorDialog(const char *title, const char *message)
     
     // Connect button (left)
     lv_obj_t *connect_btn = lv_btn_create(btn_container);
-    lv_obj_set_size(connect_btn, UI_SCALE_X(165), UI_SCALE_Y(50));
+    lv_obj_set_size(connect_btn, UI_SCALE_X(130), UI_SCALE_Y(50));
     lv_obj_set_style_bg_color(connect_btn, UITheme::BTN_CONNECT, 0);
     lv_obj_add_event_cb(connect_btn, on_connection_error_connect, LV_EVENT_CLICKED, nullptr);
     
@@ -1300,7 +1354,7 @@ void UICommon::showConnectionErrorDialog(const char *title, const char *message)
     
     // Machine button (center)
     lv_obj_t *restart_btn = lv_btn_create(btn_container);
-    lv_obj_set_size(restart_btn, UI_SCALE_X(165), UI_SCALE_Y(50));
+    lv_obj_set_size(restart_btn, UI_SCALE_X(130), UI_SCALE_Y(50));
     lv_obj_set_style_bg_color(restart_btn, UITheme::ACCENT_PRIMARY, 0);
     lv_obj_add_event_cb(restart_btn, on_connection_error_restart, LV_EVENT_CLICKED, nullptr);
     
@@ -1311,7 +1365,7 @@ void UICommon::showConnectionErrorDialog(const char *title, const char *message)
     
     // Close button (right)
     lv_obj_t *close_btn = lv_btn_create(btn_container);
-    lv_obj_set_size(close_btn, UI_SCALE_X(165), UI_SCALE_Y(50));
+    lv_obj_set_size(close_btn, UI_SCALE_X(130), UI_SCALE_Y(50));
     lv_obj_set_style_bg_color(close_btn, UITheme::BG_BUTTON, 0);
     lv_obj_add_event_cb(close_btn, on_connection_error_close, LV_EVENT_CLICKED, nullptr);
     
@@ -1319,6 +1373,17 @@ void UICommon::showConnectionErrorDialog(const char *title, const char *message)
     lv_label_set_text(close_label, "Close");
     lv_obj_set_style_text_font(close_label, &lv_font_montserrat_18, 0);
     lv_obj_center(close_label);
+
+    // Exit button (far right)
+    lv_obj_t *exit_btn = lv_btn_create(btn_container);
+    lv_obj_set_size(exit_btn, UI_SCALE_X(130), UI_SCALE_Y(50));
+    lv_obj_set_style_bg_color(exit_btn, UITheme::STATE_ALARM, 0);
+    lv_obj_add_event_cb(exit_btn, on_connection_error_exit, LV_EVENT_CLICKED, nullptr);
+
+    lv_obj_t *exit_label = lv_label_create(exit_btn);
+    lv_label_set_text(exit_label, LV_SYMBOL_POWER " Exit");
+    lv_obj_set_style_text_font(exit_label, &lv_font_montserrat_16, 0);
+    lv_obj_center(exit_label);
     
     Serial.printf("UICommon: Connection error dialog shown - %s: %s\n", title, message);
 }
@@ -1342,6 +1407,7 @@ void UICommon::checkConnectionTimeout() {
         connection_timeout_active = false;
         connection_error_shown = false;
         ever_connected_successfully = true;  // Mark that we've connected successfully
+        connection_issue_dialog_latched = false;
         hideConnectingPopup();  // Hide connecting popup when connected
         hideConnectionErrorDialog();
         return;

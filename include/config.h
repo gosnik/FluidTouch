@@ -2,19 +2,36 @@
 #define CONFIG_H
 
 #include <Arduino.h>
+#include <lvgl.h>
 
 // Version
 #define FLUIDTOUCH_VERSION "1.0.1"
 
 // Display settings
-#define SCREEN_WIDTH  1024
-#define SCREEN_HEIGHT 600
+static inline int32_t ft_get_screen_width() {
+    lv_display_t *display = lv_display_get_default();
+    if (display != nullptr) {
+        return lv_display_get_horizontal_resolution(display);
+    }
+    return 1024;
+}
+
+static inline int32_t ft_get_screen_height() {
+    lv_display_t *display = lv_display_get_default();
+    if (display != nullptr) {
+        return lv_display_get_vertical_resolution(display);
+    }
+    return 600;
+}
+
+#define SCREEN_WIDTH  (ft_get_screen_width())
+#define SCREEN_HEIGHT (ft_get_screen_height())
 
 // UI scaling helpers (base layout was 800x480)
 #define UI_BASE_WIDTH  800
 #define UI_BASE_HEIGHT 480
-#define UI_SCALE_X(px) ((px) * SCREEN_WIDTH / UI_BASE_WIDTH)
-#define UI_SCALE_Y(px) ((px) * SCREEN_HEIGHT / UI_BASE_HEIGHT)
+#define UI_SCALE_X(px) ((px) * ft_get_screen_width() / UI_BASE_WIDTH)
+#define UI_SCALE_Y(px) ((px) * ft_get_screen_height() / UI_BASE_HEIGHT)
 
 // Hardware-specific pin configurations
 #ifdef HARDWARE_ADVANCE

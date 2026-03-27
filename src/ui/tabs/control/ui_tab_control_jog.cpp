@@ -335,42 +335,42 @@ void UITabControlJog::create(lv_obj_t *tab) {
     lv_obj_set_style_text_color(xy_feed_unit, UITheme::TEXT_MEDIUM, 0);
     lv_obj_set_pos(xy_feed_unit, UI_SCALE_X(115), UI_SCALE_Y(210));
     
-    // XY Feedrate adjustment buttons - all on one line: -1000, -100, +100, +1000
-    lv_obj_t *btn_xy_minus1000 = lv_button_create(tab);
-    lv_obj_set_size(btn_xy_minus1000, UI_SCALE_X(55), UI_SCALE_Y(45));
-    lv_obj_set_pos(btn_xy_minus1000, UI_SCALE_X(5), UI_SCALE_Y(230));
-    lv_obj_add_event_cb(btn_xy_minus1000, xy_feedrate_adj_event_cb, LV_EVENT_CLICKED, (void*)(intptr_t)-1000);
-    lv_obj_t *lbl_xy_minus1000 = lv_label_create(btn_xy_minus1000);
-    lv_label_set_text(lbl_xy_minus1000, "-1000");
-    lv_obj_set_style_text_font(lbl_xy_minus1000, &lv_font_montserrat_14, 0);
-    lv_obj_center(lbl_xy_minus1000);
-    
+    // XY Feedrate adjustment buttons - all on one line: -100, -10, +10, +100
     lv_obj_t *btn_xy_minus100 = lv_button_create(tab);
     lv_obj_set_size(btn_xy_minus100, UI_SCALE_X(55), UI_SCALE_Y(45));
-    lv_obj_set_pos(btn_xy_minus100, UI_SCALE_X(5+(1*60)), UI_SCALE_Y(230));
+    lv_obj_set_pos(btn_xy_minus100, UI_SCALE_X(5), UI_SCALE_Y(230));
     lv_obj_add_event_cb(btn_xy_minus100, xy_feedrate_adj_event_cb, LV_EVENT_CLICKED, (void*)(intptr_t)-100);
     lv_obj_t *lbl_xy_minus100 = lv_label_create(btn_xy_minus100);
     lv_label_set_text(lbl_xy_minus100, "-100");
     lv_obj_set_style_text_font(lbl_xy_minus100, &lv_font_montserrat_14, 0);
     lv_obj_center(lbl_xy_minus100);
     
+    lv_obj_t *btn_xy_minus10 = lv_button_create(tab);
+    lv_obj_set_size(btn_xy_minus10, UI_SCALE_X(55), UI_SCALE_Y(45));
+    lv_obj_set_pos(btn_xy_minus10, UI_SCALE_X(5+(1*60)), UI_SCALE_Y(230));
+    lv_obj_add_event_cb(btn_xy_minus10, xy_feedrate_adj_event_cb, LV_EVENT_CLICKED, (void*)(intptr_t)-10);
+    lv_obj_t *lbl_xy_minus10 = lv_label_create(btn_xy_minus10);
+    lv_label_set_text(lbl_xy_minus10, "-10");
+    lv_obj_set_style_text_font(lbl_xy_minus10, &lv_font_montserrat_14, 0);
+    lv_obj_center(lbl_xy_minus10);
+    
+    lv_obj_t *btn_xy_plus10 = lv_button_create(tab);
+    lv_obj_set_size(btn_xy_plus10, UI_SCALE_X(55), UI_SCALE_Y(45));
+    lv_obj_set_pos(btn_xy_plus10, UI_SCALE_X(5+(2*60)), UI_SCALE_Y(230));
+    lv_obj_add_event_cb(btn_xy_plus10, xy_feedrate_adj_event_cb, LV_EVENT_CLICKED, (void*)(intptr_t)10);
+    lv_obj_t *lbl_xy_plus10 = lv_label_create(btn_xy_plus10);
+    lv_label_set_text(lbl_xy_plus10, "+10");
+    lv_obj_set_style_text_font(lbl_xy_plus10, &lv_font_montserrat_14, 0);
+    lv_obj_center(lbl_xy_plus10);
+    
     lv_obj_t *btn_xy_plus100 = lv_button_create(tab);
     lv_obj_set_size(btn_xy_plus100, UI_SCALE_X(55), UI_SCALE_Y(45));
-    lv_obj_set_pos(btn_xy_plus100, UI_SCALE_X(5+(2*60)), UI_SCALE_Y(230));
+    lv_obj_set_pos(btn_xy_plus100, UI_SCALE_X(5+(3*60)), UI_SCALE_Y(230));
     lv_obj_add_event_cb(btn_xy_plus100, xy_feedrate_adj_event_cb, LV_EVENT_CLICKED, (void*)(intptr_t)100);
     lv_obj_t *lbl_xy_plus100 = lv_label_create(btn_xy_plus100);
     lv_label_set_text(lbl_xy_plus100, "+100");
     lv_obj_set_style_text_font(lbl_xy_plus100, &lv_font_montserrat_14, 0);
     lv_obj_center(lbl_xy_plus100);
-    
-    lv_obj_t *btn_xy_plus1000 = lv_button_create(tab);
-    lv_obj_set_size(btn_xy_plus1000, UI_SCALE_X(55), UI_SCALE_Y(45));
-    lv_obj_set_pos(btn_xy_plus1000, UI_SCALE_X(5+(3*60)), UI_SCALE_Y(230));
-    lv_obj_add_event_cb(btn_xy_plus1000, xy_feedrate_adj_event_cb, LV_EVENT_CLICKED, (void*)(intptr_t)1000);
-    lv_obj_t *lbl_xy_plus1000 = lv_label_create(btn_xy_plus1000);
-    lv_label_set_text(lbl_xy_plus1000, "+1000");
-    lv_obj_set_style_text_font(lbl_xy_plus1000, &lv_font_montserrat_14, 0);
-    lv_obj_center(lbl_xy_plus1000);
     
     z_step_display_label = nullptr;
     
@@ -399,42 +399,42 @@ void UITabControlJog::create(lv_obj_t *tab) {
     lv_obj_set_style_text_color(z_feed_unit, UITheme::TEXT_MEDIUM, 0);
     lv_obj_set_pos(z_feed_unit, UI_SCALE_X(115), UI_SCALE_Y(280));
     
-    // Z Feedrate adjustment buttons - all on one line: -1000, -100, +100, +1000
-    lv_obj_t *btn_z_minus1000 = lv_button_create(tab);
-    lv_obj_set_size(btn_z_minus1000, UI_SCALE_X(55), UI_SCALE_Y(45));
-    lv_obj_set_pos(btn_z_minus1000, UI_SCALE_X(5+(0*60)), UI_SCALE_Y(300));
-    lv_obj_add_event_cb(btn_z_minus1000, z_feedrate_adj_event_cb, LV_EVENT_CLICKED, (void*)(intptr_t)-1000);
-    lv_obj_t *lbl_z_minus1000 = lv_label_create(btn_z_minus1000);
-    lv_label_set_text(lbl_z_minus1000, "-1000");
-    lv_obj_set_style_text_font(lbl_z_minus1000, &lv_font_montserrat_14, 0);
-    lv_obj_center(lbl_z_minus1000);
-    
+    // Z Feedrate adjustment buttons - all on one line: -100, -10, +10, +100
     lv_obj_t *btn_z_minus100 = lv_button_create(tab);
     lv_obj_set_size(btn_z_minus100, UI_SCALE_X(55), UI_SCALE_Y(45));
-    lv_obj_set_pos(btn_z_minus100, UI_SCALE_X(5+(1*60)), UI_SCALE_Y(300));
+    lv_obj_set_pos(btn_z_minus100, UI_SCALE_X(5+(0*60)), UI_SCALE_Y(300));
     lv_obj_add_event_cb(btn_z_minus100, z_feedrate_adj_event_cb, LV_EVENT_CLICKED, (void*)(intptr_t)-100);
     lv_obj_t *lbl_z_minus100 = lv_label_create(btn_z_minus100);
     lv_label_set_text(lbl_z_minus100, "-100");
     lv_obj_set_style_text_font(lbl_z_minus100, &lv_font_montserrat_14, 0);
     lv_obj_center(lbl_z_minus100);
     
+    lv_obj_t *btn_z_minus10 = lv_button_create(tab);
+    lv_obj_set_size(btn_z_minus10, UI_SCALE_X(55), UI_SCALE_Y(45));
+    lv_obj_set_pos(btn_z_minus10, UI_SCALE_X(5+(1*60)), UI_SCALE_Y(300));
+    lv_obj_add_event_cb(btn_z_minus10, z_feedrate_adj_event_cb, LV_EVENT_CLICKED, (void*)(intptr_t)-10);
+    lv_obj_t *lbl_z_minus10 = lv_label_create(btn_z_minus10);
+    lv_label_set_text(lbl_z_minus10, "-10");
+    lv_obj_set_style_text_font(lbl_z_minus10, &lv_font_montserrat_14, 0);
+    lv_obj_center(lbl_z_minus10);
+    
+    lv_obj_t *btn_z_plus10 = lv_button_create(tab);
+    lv_obj_set_size(btn_z_plus10, UI_SCALE_X(55), UI_SCALE_Y(45));
+    lv_obj_set_pos(btn_z_plus10, UI_SCALE_X(5+(2*60)), UI_SCALE_Y(300));
+    lv_obj_add_event_cb(btn_z_plus10, z_feedrate_adj_event_cb, LV_EVENT_CLICKED, (void*)(intptr_t)10);
+    lv_obj_t *lbl_z_plus10 = lv_label_create(btn_z_plus10);
+    lv_label_set_text(lbl_z_plus10, "+10");
+    lv_obj_set_style_text_font(lbl_z_plus10, &lv_font_montserrat_14, 0);
+    lv_obj_center(lbl_z_plus10);
+    
     lv_obj_t *btn_z_plus100 = lv_button_create(tab);
     lv_obj_set_size(btn_z_plus100, UI_SCALE_X(55), UI_SCALE_Y(45));
-    lv_obj_set_pos(btn_z_plus100, UI_SCALE_X(5+(2*60)), UI_SCALE_Y(300));
+    lv_obj_set_pos(btn_z_plus100, UI_SCALE_X(5+(3*60)), UI_SCALE_Y(300));
     lv_obj_add_event_cb(btn_z_plus100, z_feedrate_adj_event_cb, LV_EVENT_CLICKED, (void*)(intptr_t)100);
     lv_obj_t *lbl_z_plus100 = lv_label_create(btn_z_plus100);
     lv_label_set_text(lbl_z_plus100, "+100");
     lv_obj_set_style_text_font(lbl_z_plus100, &lv_font_montserrat_14, 0);
     lv_obj_center(lbl_z_plus100);
-    
-    lv_obj_t *btn_z_plus1000 = lv_button_create(tab);
-    lv_obj_set_size(btn_z_plus1000, UI_SCALE_X(55), UI_SCALE_Y(45));
-    lv_obj_set_pos(btn_z_plus1000, UI_SCALE_X(5+(3*60)), UI_SCALE_Y(300));
-    lv_obj_add_event_cb(btn_z_plus1000, z_feedrate_adj_event_cb, LV_EVENT_CLICKED, (void*)(intptr_t)1000);
-    lv_obj_t *lbl_z_plus1000 = lv_label_create(btn_z_plus1000);
-    lv_label_set_text(lbl_z_plus1000, "+1000");
-    lv_obj_set_style_text_font(lbl_z_plus1000, &lv_font_montserrat_14, 0);
-    lv_obj_center(lbl_z_plus1000);
 
     // ========== Cancel Jog Button (Upper Right) ==========
     // Create a container for the octagon stop button
@@ -1189,8 +1189,8 @@ void UITabControlJog::xy_feedrate_adj_event_cb(lv_event_t *e) {
         int current_value = atoi(current_text);
         int new_value = current_value + adjustment;
         
-        // Clamp to reasonable range (100-10000 mm/min)
-        if (new_value < 100) new_value = 100;
+        // Clamp to reasonable range (10-10000 mm/min)
+        if (new_value < 10) new_value = 10;
         if (new_value > 10000) new_value = 10000;
         
         char buf[16];
@@ -1214,8 +1214,8 @@ void UITabControlJog::z_feedrate_adj_event_cb(lv_event_t *e) {
         int current_value = atoi(current_text);
         int new_value = current_value + adjustment;
         
-        // Clamp to reasonable range (50-5000 mm/min)
-        if (new_value < 50) new_value = 50;
+        // Clamp to reasonable range (10-5000 mm/min)
+        if (new_value < 10) new_value = 10;
         if (new_value > 5000) new_value = 5000;
         
         char buf[16];

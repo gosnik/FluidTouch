@@ -10,13 +10,14 @@
 #include <dirent.h>
 #include <limits.h>
 #include <set>
+#include <unistd.h>
 #include <vector>
 #endif
 
 // Static member initialization
 lv_obj_t *UIMachineSelect::screen = nullptr;
 lv_display_t *UIMachineSelect::display = nullptr;
-MachineConfig UIMachineSelect::machines[MAX_MACHINES];
+MachineConfig UIMachineSelect::machines[MAX_MACHINES] = {};
 bool UIMachineSelect::edit_mode = false;
 lv_obj_t *UIMachineSelect::edit_mode_button = nullptr;
 lv_obj_t *UIMachineSelect::list_container = nullptr;  // Machine list container
@@ -120,14 +121,18 @@ std::vector<String> listSerialPorts()
             }
         }
         closedir(dir);
-    }
+	    }
 
-    for (const std::string &p : unique_ports) {
-        ports.push_back(String(p.c_str()));
-    }
+	    if (access("/tmp/ttyGRBL", F_OK) == 0) {
+	        unique_ports.insert("/tmp/ttyGRBL");
+	    }
+
+	    for (const std::string &p : unique_ports) {
+	        ports.push_back(String(p.c_str()));
+	    }
 
     std::sort(ports.begin(), ports.end(), [](const String &a, const String &b) {
-        return std::strcmp(a.c_str(), b.c_str()) < 0;
+        return strcmp(a.c_str(), b.c_str()) < 0;
     });
     return ports;
 }
@@ -664,7 +669,7 @@ void UIMachineSelect::onConfigSave(lv_event_t *e) {
 #if defined(FT_PLATFORM_PC)
     if (dd_serial_port) {
         lv_dropdown_get_selected_str(dd_serial_port, serial_port, sizeof(serial_port));
-        if (std::strcmp(serial_port, "(none)") == 0) {
+        if (strcmp(serial_port, "(none)") == 0) {
             serial_port[0] = '\0';
         }
     }
@@ -718,7 +723,7 @@ void UIMachineSelect::onRefreshPorts(lv_event_t *e) {
     char current[64] = {0};
     if (dd_serial_port) {
         lv_dropdown_get_selected_str(dd_serial_port, current, sizeof(current));
-        if (std::strcmp(current, "(none)") == 0) {
+        if (strcmp(current, "(none)") == 0) {
             current[0] = '\0';
         }
     }
@@ -743,7 +748,7 @@ void UIMachineSelect::refreshSerialPortDropdown(const char *preferred_port) {
         for (size_t i = 0; i < ports.size(); ++i) {
             if (i > 0) options += "\n";
             options += ports[i];
-            if (preferred_port && preferred_port[0] != '\0' && std::strcmp(preferred_port, ports[i].c_str()) == 0) {
+            if (preferred_port && preferred_port[0] != '\0' && strcmp(preferred_port, ports[i].c_str()) == 0) {
                 selected = index;
             }
             index++;

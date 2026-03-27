@@ -2,6 +2,16 @@
 #include "Arduino.h"
 #include "config.h"
 #include <cstring>
+#include <condition_variable>
+#include <fstream>
+#include <mutex>
+#include <string>
+#include <thread>
+#include <vector>
+
+#if defined(FT_PLATFORM_PC)
+#include <SDL2/SDL.h>
+#endif
 
 #if defined(__linux__)
 #include <cerrno>
@@ -17,6 +27,7 @@ MachineConfig CommManager::currentConfig = {};
 bool CommManager::initialized = false;
 MessageCallback CommManager::messageCallback = nullptr;
 MessageCallback CommManager::terminalCallback = nullptr;
+CommManager::CommandTap CommManager::commandTap = nullptr;
 CommManager::EventCallback CommManager::eventCallback = nullptr;
 bool CommManager::jog_soft_limit_x_enabled = false;
 bool CommManager::jog_soft_limit_y_enabled = false;
@@ -53,6 +64,35 @@ MessageCallback g_terminal_callback = nullptr;
 constexpr uint32_t kStatusTimeoutMs = 5000;
 constexpr uint8_t kCmdMpgModeToggle = 0x8B;
 bool g_mpg_mode_requested = false;
+constexpr size_t kMacroMaxInFlight = 4;
+std::thread g_macro_thread;
+std::mutex g_macro_mutex;
+std::condition_variable g_macro_cv;
+bool g_macro_running = false;
+bool g_macro_stop_requested = false;
+size_t g_macro_in_flight = 0;
+size_t g_macro_total_lines = 0;
+size_t g_macro_sent_lines = 0;
+size_t g_macro_acked_lines = 0;
+uint32_t g_macro_start_ms = 0;
+
+void updateLocalMacroStatusLocked()
+{
+    if (g_macro_total_lines == 0) {
+        g_status.sd_percent = 0.0f;
+    } else {
+        g_status.sd_percent = (100.0f * static_cast<float>(g_macro_acked_lines)) / static_cast<float>(g_macro_total_lines);
+    }
+    if (g_status.sd_percent > 100.0f) {
+        g_status.sd_percent = 100.0f;
+    }
+    g_status.is_sd_printing = true;
+    g_status.sd_elapsed_ms = millis() - g_macro_start_ms;
+    snprintf(g_status.last_message, sizeof(g_status.last_message),
+             "Local macro %u/%u",
+             static_cast<unsigned>(g_macro_acked_lines),
+             static_cast<unsigned>(g_macro_total_lines));
+}
 
 speed_t baudToTermios(uint32_t baud)
 {
@@ -87,6 +127,37 @@ void closeSerial()
     g_line_len = 0;
     g_last_status_request_ms = 0;
     g_last_status_rx_ms = 0;
+}
+
+void writeTransportOnly(const char *command)
+{
+    if ((CommManager::getConnectionType() == CONN_WIRED || CommManager::getConnectionType() == CONN_UART) && g_serial_fd >= 0) {
+        write(g_serial_fd, command, strlen(command));
+    }
+}
+
+void stopLocalMacroRunner(bool wait_for_join)
+{
+    std::thread worker_to_join;
+    {
+        std::lock_guard<std::mutex> lock(g_macro_mutex);
+        if (!g_macro_running && !g_macro_thread.joinable()) {
+            return;
+        }
+        g_macro_stop_requested = true;
+        g_status.is_sd_printing = false;
+        g_status.sd_elapsed_ms = 0;
+        if (g_macro_running) {
+            snprintf(g_status.last_message, sizeof(g_status.last_message), "Local macro stopped");
+        }
+        g_macro_cv.notify_all();
+        if (wait_for_join && g_macro_thread.joinable()) {
+            worker_to_join = std::move(g_macro_thread);
+        }
+    }
+    if (worker_to_join.joinable()) {
+        worker_to_join.join();
+    }
 }
 
 bool openSerial(const char *path, uint32_t baud)
@@ -254,19 +325,26 @@ void parseStatusReport(const char *message)
         }
     }
 
-    const char *sd = strstr(message, "SD:");
-    if (sd) {
-        float pct = 0.0f;
-        uint32_t elapsed = 0;
-        if (sscanf(sd + 3, "%f,%u", &pct, &elapsed) >= 1) {
-            g_status.is_sd_printing = true;
-            g_status.sd_percent = pct;
-            g_status.sd_elapsed_ms = elapsed * 1000;
+    bool local_macro_running = false;
+    {
+        std::lock_guard<std::mutex> lock(g_macro_mutex);
+        local_macro_running = g_macro_running;
+    }
+    if (!local_macro_running) {
+        const char *sd = strstr(message, "SD:");
+        if (sd) {
+            float pct = 0.0f;
+            uint32_t elapsed = 0;
+            if (sscanf(sd + 3, "%f,%u", &pct, &elapsed) >= 1) {
+                g_status.is_sd_printing = true;
+                g_status.sd_percent = pct;
+                g_status.sd_elapsed_ms = elapsed * 1000;
+            }
+        } else {
+            g_status.is_sd_printing = false;
+            g_status.sd_percent = 0.0f;
+            g_status.sd_elapsed_ms = 0;
         }
-    } else {
-        g_status.is_sd_printing = false;
-        g_status.sd_percent = 0.0f;
-        g_status.sd_elapsed_ms = 0;
     }
 }
 
@@ -296,8 +374,255 @@ void handleLine(const char *line)
     if (g_terminal_callback) {
         g_terminal_callback(line);
     }
+
+    if (strcmp(line, "ok") == 0 || strncmp(line, "error:", 6) == 0 || strncmp(line, "ALARM:", 6) == 0) {
+        std::lock_guard<std::mutex> lock(g_macro_mutex);
+        if (g_macro_in_flight > 0) {
+            --g_macro_in_flight;
+            if (g_macro_acked_lines < g_macro_total_lines) {
+                ++g_macro_acked_lines;
+            }
+            if (g_macro_running) {
+                updateLocalMacroStatusLocked();
+            }
+            g_macro_cv.notify_all();
+        }
+    }
 }
 #endif
+
+std::string trimLine(const std::string &line)
+{
+    size_t start = 0;
+    while (start < line.size() && (line[start] == ' ' || line[start] == '\t' || line[start] == '\r' || line[start] == '\n')) {
+        ++start;
+    }
+    size_t end = line.size();
+    while (end > start && (line[end - 1] == ' ' || line[end - 1] == '\t' || line[end - 1] == '\r' || line[end - 1] == '\n')) {
+        --end;
+    }
+    return line.substr(start, end - start);
+}
+
+bool startsWith(const char *text, const char *prefix)
+{
+    if (!text || !prefix) {
+        return false;
+    }
+    return strncmp(text, prefix, strlen(prefix)) == 0;
+}
+
+bool extractRunRequest(const char *command, std::string &out_path, int &out_repeat_count)
+{
+    out_repeat_count = 1;
+    static constexpr const char *kRunPrefixes[] = {"$LocalFS/Run=", "$SD/Run="};
+    for (const char *prefix : kRunPrefixes) {
+        if (startsWith(command, prefix)) {
+            std::string payload = trimLine(command + strlen(prefix));
+            if (startsWith(payload.c_str(), "Repeat=")) {
+                const size_t sep = payload.find('|');
+                if (sep == std::string::npos || sep <= strlen("Repeat=") || sep + 1 >= payload.length()) {
+                    return false;
+                }
+                int repeat = atoi(payload.substr(strlen("Repeat="), sep - strlen("Repeat=")).c_str());
+                if (repeat < 1) {
+                    return false;
+                }
+                out_repeat_count = repeat;
+                out_path = trimLine(payload.substr(sep + 1));
+                return !out_path.empty();
+            }
+            out_path = payload;
+            return !out_path.empty();
+        }
+    }
+
+    static constexpr const char *kRepeatPrefixes[] = {"$LocalFS/RunRepeat=", "$SD/RunRepeat="};
+    for (const char *prefix : kRepeatPrefixes) {
+        if (!startsWith(command, prefix)) {
+            continue;
+        }
+        std::string payload = trimLine(command + strlen(prefix));
+        const size_t sep = payload.find('|');
+        if (sep == std::string::npos || sep == 0 || sep + 1 >= payload.length()) {
+            return false;
+        }
+        int repeat = atoi(payload.substr(0, sep).c_str());
+        if (repeat < 1) {
+            return false;
+        }
+        out_repeat_count = repeat;
+        out_path = trimLine(payload.substr(sep + 1));
+        return !out_path.empty();
+    }
+    return false;
+}
+
+bool isStopLocalMacroCommand(const char *command)
+{
+    if (!command) {
+        return false;
+    }
+    const std::string trimmed = trimLine(command);
+    return trimmed == "$LocalFS/Stop" || trimmed == "$SD/Stop" || trimmed == "$Macro/Stop";
+}
+
+bool shouldAbortLocalMacroOnCommand(const char *command)
+{
+    if (!command) {
+        return false;
+    }
+    if (command[0] == 0x18) {  // Soft reset
+        return true;
+    }
+    const std::string trimmed = trimLine(command);
+    return trimmed == "!" || trimmed == "\x18";
+}
+
+std::string resolveMacroPath(const std::string &macro_path)
+{
+    if (macro_path.empty()) {
+        return std::string();
+    }
+
+    std::vector<std::string> candidates;
+    candidates.push_back(macro_path);
+
+    if (!macro_path.empty() && macro_path[0] == '/') {
+        candidates.push_back("." + macro_path);
+    }
+
+#if defined(FT_PLATFORM_PC)
+    char *sdl_base = SDL_GetBasePath();
+    if (sdl_base && sdl_base[0] != '\0') {
+        std::string base = sdl_base;
+        if (!base.empty() && base.back() == '/') {
+            base.pop_back();
+        }
+        if (!macro_path.empty() && macro_path[0] == '/') {
+            candidates.push_back(base + macro_path);
+        } else {
+            candidates.push_back(base + "/" + macro_path);
+        }
+    }
+    if (sdl_base) {
+        SDL_free(sdl_base);
+    }
+#endif
+
+    for (const std::string &candidate : candidates) {
+        std::ifstream test(candidate.c_str(), std::ios::in);
+        if (test.is_open()) {
+            return candidate;
+        }
+    }
+
+    return std::string();
+}
+
+void sendTransportCommand(const char *command, bool echo_terminal)
+{
+    writeTransportOnly(command);
+    if (echo_terminal && g_terminal_callback) {
+        g_terminal_callback(command);
+    }
+}
+
+bool startLocalMacroRunner(const std::string &resolved_path, int repeat_count)
+{
+    if (repeat_count < 1) {
+        return false;
+    }
+    bool should_join_finished = false;
+    {
+        std::lock_guard<std::mutex> lock(g_macro_mutex);
+        should_join_finished = (!g_macro_running && g_macro_thread.joinable());
+    }
+    if (should_join_finished) {
+        g_macro_thread.join();
+    }
+
+    std::string display_name = resolved_path;
+    const size_t slash_pos = display_name.find_last_of('/');
+    if (slash_pos != std::string::npos && slash_pos + 1 < display_name.size()) {
+        display_name = display_name.substr(slash_pos + 1);
+    }
+
+    std::vector<std::string> lines;
+    std::ifstream macro_file(resolved_path.c_str(), std::ios::in);
+    if (!macro_file.is_open()) {
+        return false;
+    }
+
+    std::string line;
+    while (std::getline(macro_file, line)) {
+        const std::string trimmed = trimLine(line);
+        if (trimmed.empty() || trimmed[0] == ';') {
+            continue;
+        }
+        lines.push_back(trimmed + "\n");
+    }
+
+    {
+        std::lock_guard<std::mutex> lock(g_macro_mutex);
+        if (g_macro_running || g_macro_thread.joinable()) {
+            return false;
+        }
+        g_macro_running = true;
+        g_macro_stop_requested = false;
+        g_macro_in_flight = 0;
+        g_macro_total_lines = lines.size() * static_cast<size_t>(repeat_count);
+        g_macro_sent_lines = 0;
+        g_macro_acked_lines = 0;
+        g_macro_start_ms = millis();
+        g_status.is_sd_printing = true;
+        g_status.sd_start_time_ms = g_macro_start_ms;
+        g_status.sd_elapsed_ms = 0;
+        strncpy(g_status.sd_filename, display_name.c_str(), sizeof(g_status.sd_filename) - 1);
+        g_status.sd_filename[sizeof(g_status.sd_filename) - 1] = '\0';
+        updateLocalMacroStatusLocked();
+    }
+
+    g_macro_thread = std::thread([lines = std::move(lines), repeat_count]() {
+        for (int pass = 0; pass < repeat_count; ++pass) {
+            for (const std::string &gcode : lines) {
+            std::unique_lock<std::mutex> lock(g_macro_mutex);
+            g_macro_cv.wait(lock, []() {
+                return g_macro_stop_requested || !g_connected || g_macro_in_flight < kMacroMaxInFlight;
+            });
+            if (g_macro_stop_requested || !g_connected) {
+                break;
+            }
+            ++g_macro_in_flight;
+            if (g_macro_sent_lines < g_macro_total_lines) {
+                ++g_macro_sent_lines;
+            }
+            updateLocalMacroStatusLocked();
+            lock.unlock();
+            writeTransportOnly(gcode.c_str());
+        }
+            std::unique_lock<std::mutex> lock(g_macro_mutex);
+            if (g_macro_stop_requested || !g_connected) {
+                break;
+            }
+        }
+
+        std::unique_lock<std::mutex> lock(g_macro_mutex);
+        g_macro_cv.wait(lock, []() {
+            return g_macro_stop_requested || !g_connected || g_macro_in_flight == 0;
+        });
+        g_macro_running = false;
+        g_macro_stop_requested = false;
+        g_macro_in_flight = 0;
+        g_macro_total_lines = 0;
+        g_macro_sent_lines = 0;
+        g_macro_acked_lines = 0;
+        g_status.is_sd_printing = false;
+        g_status.sd_elapsed_ms = 0;
+        snprintf(g_status.last_message, sizeof(g_status.last_message), "Local macro complete");
+    });
+    return true;
+}
 }
 
 void CommManager::init() {
@@ -358,6 +683,7 @@ bool CommManager::connect(const MachineConfig &config) {
 }
 
 void CommManager::disconnect() {
+    stopLocalMacroRunner(true);
     resetJogTracking();
 #if defined(__linux__)
     requestMpgMode(false);
@@ -462,14 +788,40 @@ void CommManager::sendCommand(const char *command) {
     if (!command) {
         return;
     }
-#if defined(__linux__)
-    if ((currentType == CONN_WIRED || currentType == CONN_UART) && g_serial_fd >= 0) {
-        write(g_serial_fd, command, strlen(command));
+    if (commandTap) {
+        commandTap(command);
     }
-#endif
-    if (terminalCallback) {
-        terminalCallback(command);
+
+    if (isStopLocalMacroCommand(command)) {
+        stopLocalMacroRunner(false);
+        return;
     }
+
+    if (shouldAbortLocalMacroOnCommand(command)) {
+        stopLocalMacroRunner(false);
+    }
+
+    std::string macro_path;
+    int repeat_count = 1;
+    if (extractRunRequest(command, macro_path, repeat_count)) {
+        const std::string resolved = resolveMacroPath(macro_path);
+        if (resolved.empty()) {
+            char msg[192];
+            snprintf(msg, sizeof(msg), "[PC] Macro file not found: %s", macro_path.c_str());
+            emitConnectionError(msg);
+            return;
+        }
+
+        if (!startLocalMacroRunner(resolved, repeat_count)) {
+            char msg[224];
+            snprintf(msg, sizeof(msg), "[PC] Failed to start local macro runner: %s", macro_path.c_str());
+            emitConnectionError(msg);
+            return;
+        }
+        return;
+    }
+
+    sendTransportCommand(command, true);
 }
 
 bool CommManager::sendJog(const JogCommand &cmd) {
@@ -654,6 +1006,14 @@ void CommManager::clearTerminalCallback() {
 #if defined(__linux__)
     g_terminal_callback = nullptr;
 #endif
+}
+
+void CommManager::setCommandTap(CommandTap tap) {
+    commandTap = tap;
+}
+
+void CommManager::clearCommandTap() {
+    commandTap = nullptr;
 }
 
 void CommManager::setEventCallback(EventCallback callback) {

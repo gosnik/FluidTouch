@@ -16,7 +16,6 @@ private:
     static lv_obj_t *keyboard;
     static lv_obj_t *auto_scroll_switch;
 
-    static String terminal_buffer;  // Buffer to store terminal text
     static const size_t MAX_BUFFER_SIZE = 8192;  // Limit buffer to 8KB
     static bool auto_scroll_enabled;  // Auto-scroll toggle state
     static bool buffer_dirty;  // Flag to indicate buffer needs UI update

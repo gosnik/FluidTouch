@@ -2,6 +2,7 @@
 #define MACHINE_CONFIG_H
 
 #include <Arduino.h>
+#include <cstring>
 
 #define MAX_MACHINES 4
 
@@ -49,26 +50,39 @@ struct MachineConfig {
     int probe_max_distance;  // Default max probe distance (mm)
     int probe_retract;       // Default retract distance (mm)
     float probe_thickness;   // Default probe thickness (mm, 1 decimal place)
-    
-    // Constructor with defaults
-    MachineConfig() : connection_type(CONN_WIRELESS), websocket_port(81), uart_baudrate(460800), is_configured(false),
-                      jog_xy_step(0.01f), jog_z_step(0.01f), 
-                      jog_xy_feed(3000), jog_z_feed(1000),
-                      jog_max_xy_feed(3000), jog_max_z_feed(1000),
-                      soft_limit_x_mode(0), soft_limit_y_mode(0), soft_limit_z_mode(0),
-                      soft_limit_x_enabled(false), soft_limit_y_enabled(false), soft_limit_z_enabled(false),
-                      soft_limit_x_min(0.0f), soft_limit_x_max(0.0f),
-                      soft_limit_y_min(0.0f), soft_limit_y_max(0.0f),
-                      soft_limit_z_min(0.0f), soft_limit_z_max(0.0f),
-                      probe_feed_rate(100), probe_max_distance(10),
-                      probe_retract(2), probe_thickness(0.0f) {
-        name[0] = '\0';
-        ssid[0] = '\0';
-        password[0] = '\0';
-        fluidnc_url[0] = '\0';
-        serial_port[0] = '\0';
-    }
 };
+
+inline void resetMachineConfig(MachineConfig &config) {
+    std::memset(&config, 0, sizeof(config));
+#if defined(FT_PLATFORM_RPI)
+    config.connection_type = CONN_UART;
+#else
+    config.connection_type = CONN_WIRELESS;
+#endif
+    config.websocket_port = 81;
+    config.uart_baudrate = 460800;
+    config.jog_xy_step = 0.01f;
+    config.jog_z_step = 0.01f;
+    config.jog_xy_feed = 3000;
+    config.jog_z_feed = 1000;
+    config.jog_max_xy_feed = 3000;
+    config.jog_max_z_feed = 1000;
+    config.probe_feed_rate = 100;
+    config.probe_max_distance = 10;
+    config.probe_retract = 2;
+}
+
+inline MachineConfig makeDefaultMachineConfig() {
+    MachineConfig config{};
+    resetMachineConfig(config);
+    return config;
+}
+
+inline void resetMachineConfigArray(MachineConfig machines[MAX_MACHINES]) {
+    for (int i = 0; i < MAX_MACHINES; ++i) {
+        resetMachineConfig(machines[i]);
+    }
+}
 
 class MachineConfigManager {
 public:

@@ -2,6 +2,7 @@
 #define COMM_TYPES_H
 
 #include <Arduino.h>
+#include <cstring>
 #include <functional>
 
 // Callback type for receiving CNC messages.
@@ -63,27 +64,23 @@ struct FluidNCStatus {
     bool is_connected;
     uint32_t last_update_ms;
 
-    FluidNCStatus()
-        : state(STATE_DISCONNECTED),
-          mpos_x(0), mpos_y(0), mpos_z(0),
-          wpos_x(0), wpos_y(0), wpos_z(0),
-          wco_x(0), wco_y(0), wco_z(0),
-          feed_rate(0), feed_override(100), rapid_override(100),
-          spindle_speed(0), spindle_override(100),
-          is_sd_printing(false), sd_percent(0), sd_start_time_ms(0), sd_elapsed_ms(0),
-          is_connected(false), last_update_ms(0) {
-        strcpy(modal_motion, "G0");
-        strcpy(modal_wcs, "G54");
-        strcpy(modal_plane, "G17");
-        strcpy(modal_units, "G21");
-        strcpy(modal_distance, "G90");
-        strcpy(modal_feedrate, "G94");
-        strcpy(modal_spindle, "M5");
-        strcpy(modal_coolant, "M9");
-        strcpy(modal_tool, "T0");
-        last_message[0] = '\0';
-        sd_filename[0] = '\0';
-    }
 };
+
+inline void resetFluidNCStatus(FluidNCStatus &status) {
+    std::memset(&status, 0, sizeof(status));
+    status.state = STATE_DISCONNECTED;
+    status.feed_override = 100;
+    status.rapid_override = 100;
+    status.spindle_override = 100;
+    std::strcpy(status.modal_motion, "G0");
+    std::strcpy(status.modal_wcs, "G54");
+    std::strcpy(status.modal_plane, "G17");
+    std::strcpy(status.modal_units, "G21");
+    std::strcpy(status.modal_distance, "G90");
+    std::strcpy(status.modal_feedrate, "G94");
+    std::strcpy(status.modal_spindle, "M5");
+    std::strcpy(status.modal_coolant, "M9");
+    std::strcpy(status.modal_tool, "T0");
+}
 
 #endif // COMM_TYPES_H

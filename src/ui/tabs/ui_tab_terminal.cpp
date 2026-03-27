@@ -2,7 +2,18 @@
 #include "ui/ui_theme.h"
 #include "core/comm_manager.h"
 #include "config.h"
+#if !defined(FT_PLATFORM_RPI)
 #include "ui/fonts/jetbrains_mono_16.h"
+#endif
+
+namespace {
+
+String &terminalBufferStorage() {
+    static String buffer;
+    return buffer;
+}
+
+}
 
 // Static member initialization
 lv_obj_t *UITabTerminal::terminal_text = nullptr;
@@ -10,7 +21,6 @@ lv_obj_t *UITabTerminal::terminal_cont = nullptr;
 lv_obj_t *UITabTerminal::input_field = nullptr;
 lv_obj_t *UITabTerminal::keyboard = nullptr;
 lv_obj_t *UITabTerminal::auto_scroll_switch = nullptr;
-String UITabTerminal::terminal_buffer = "";
 bool UITabTerminal::auto_scroll_enabled = true;
 bool UITabTerminal::buffer_dirty = false;
 uint32_t UITabTerminal::last_update_ms = 0;
@@ -81,13 +91,17 @@ void UITabTerminal::create(lv_obj_t *tab) {
 
     terminal_text = lv_label_create(terminal_cont);
     lv_label_set_text(terminal_text, "");
+#if defined(FT_PLATFORM_RPI)
+    lv_obj_set_style_text_font(terminal_text, &lv_font_montserrat_16, 0);
+#else
     lv_obj_set_style_text_font(terminal_text, &jetbrains_mono_16, 0);
+#endif
     lv_obj_set_style_text_color(terminal_text, UITheme::UI_SUCCESS, 0);
     lv_label_set_long_mode(terminal_text, LV_LABEL_LONG_WRAP);
     lv_obj_set_width(terminal_text, UI_SCALE_X(760));
 
     // Initialize buffer (empty)
-    terminal_buffer = "";
+    terminalBufferStorage() = "";
 }
 
 // Send button event handler
@@ -151,9 +165,9 @@ void UITabTerminal::send_command() {
         CommManager::sendCommand(cmd_with_newline.c_str());
 
         // Echo command to terminal
-        terminal_buffer += "> ";
-        terminal_buffer += cmd;
-        terminal_buffer += "\n";
+        terminalBufferStorage() += "> ";
+        terminalBufferStorage() += cmd;
+        terminalBufferStorage() += "\n";
         trimBuffer();
 
         // Update display immediately for user commands
@@ -231,8 +245,8 @@ void UITabTerminal::appendMessage(const char *message) {
     }
 
     // Append cleaned message to buffer with exactly one newline
-    terminal_buffer += clean_msg;
-    terminal_buffer += "\n";
+    terminalBufferStorage() += clean_msg;
+    terminalBufferStorage() += "\n";
 
     // Trim buffer if needed
     trimBuffer();
@@ -243,21 +257,21 @@ void UITabTerminal::appendMessage(const char *message) {
 
 void UITabTerminal::trimBuffer() {
     // If buffer exceeds max size, remove lines from the beginning
-    if (terminal_buffer.length() > MAX_BUFFER_SIZE) {
+    if (terminalBufferStorage().length() > MAX_BUFFER_SIZE) {
         // Find position to start trimming (keep last 75% of buffer)
         size_t trim_to = MAX_BUFFER_SIZE * 3 / 4;
 
         // Find the first newline after the trim point to avoid cutting mid-line
-        int newline_pos = terminal_buffer.indexOf('\n', terminal_buffer.length() - trim_to);
+        int newline_pos = terminalBufferStorage().indexOf('\n', terminalBufferStorage().length() - trim_to);
 
         if (newline_pos > 0) {
-            terminal_buffer = terminal_buffer.substring(newline_pos + 1);
+            terminalBufferStorage() = terminalBufferStorage().substring(newline_pos + 1);
         } else {
             // No newline found, just trim to size
-            terminal_buffer = terminal_buffer.substring(terminal_buffer.length() - trim_to);
+            terminalBufferStorage() = terminalBufferStorage().substring(terminalBufferStorage().length() - trim_to);
         }
 
-        Serial.printf("[Terminal] Buffer trimmed to %d bytes\n", terminal_buffer.length());
+        Serial.printf("[Terminal] Buffer trimmed to %d bytes\n", terminalBufferStorage().length());
     }
 }
 
@@ -279,7 +293,7 @@ void UITabTerminal::update() {
 void UITabTerminal::updateDisplay() {
     // Update display if terminal exists
     if (terminal_text) {
-        lv_label_set_text(terminal_text, terminal_buffer.c_str());
+        lv_label_set_text(terminal_text, terminalBufferStorage().c_str());
 
         // Auto-scroll to bottom only if enabled
         if (terminal_cont && auto_scroll_enabled) {

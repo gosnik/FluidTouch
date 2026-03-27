@@ -31,6 +31,7 @@ private:
     static lv_obj_t *parent_tab;
     static lv_obj_t *macro_container;
     static lv_obj_t *btn_edit;
+    static lv_obj_t *btn_record;
     static lv_obj_t *btn_add;
     static lv_obj_t *btn_done;
     static lv_obj_t *lbl_empty_message;  // Message shown when no macros configured
@@ -61,11 +62,16 @@ private:
     static int selected_color_index;
     static lv_obj_t *keyboard;
     static int editing_index;
-    static std::vector<std::string> macro_files;
     
     // Delete confirmation dialog
     static lv_obj_t *delete_dialog;
-    
+    static lv_obj_t *record_save_dialog;
+    static lv_obj_t *record_name_textarea;
+    static lv_obj_t *repeat_dialog;
+    static lv_obj_t *repeat_count_textarea;
+    static int repeat_macro_index;
+    static bool is_recording;
+    static bool suppress_next_macro_click;
     // Helper functions
     static void refreshMacroList();
     static void loadMacros();
@@ -76,16 +82,27 @@ private:
     static bool findPreviousConfiguredIndex(int current_index);
     static bool findNextConfiguredIndex(int current_index);
     static void loadMacroFilesFromSD();
+    static int findFirstEmptySlot();
+    static bool isCommandRecordable(const char *command);
+    static std::string normalizeRecordedCommand(const char *command);
+    static std::string sanitizeFilenameBase(const char *name);
+    static bool writeRecordedMacroFile(const char *filename, std::string &local_path_out);
+    static bool addRecordedMacroConfig(const char *macro_name, const char *filename);
+    static void updateRecordButtonState();
+    static bool isLocalMacro(int index);
+    static void executeMacro(int index, int repeat_count);
     
     // Event handlers
     static void onEditModeToggle(lv_event_t *e);
     static void onMacroClicked(lv_event_t *e);
+    static void onMacroLongPressed(lv_event_t *e);
     static void onAddMacro(lv_event_t *e);
     static void onEditMacro(lv_event_t *e);
     static void onDeleteMacro(lv_event_t *e);
     static void onMoveUpMacro(lv_event_t *e);
     static void onMoveDownMacro(lv_event_t *e);
     static void onRefreshFiles(lv_event_t *e);
+    static void onRecordToggle(lv_event_t *e);
     
     // Config dialog
     static void showConfigDialog(bool is_add);
@@ -102,6 +119,14 @@ private:
     static void hideDeleteConfirmDialog();
     static void onDeleteConfirm(lv_event_t *e);
     static void onDeleteCancel(lv_event_t *e);
+    static void showRecordSaveDialog();
+    static void hideRecordSaveDialog();
+    static void onRecordSaveConfirm(lv_event_t *e);
+    static void onRecordSaveCancel(lv_event_t *e);
+    static void showRepeatDialog(int index);
+    static void hideRepeatDialog();
+    static void onRepeatConfirm(lv_event_t *e);
+    static void onRepeatCancel(lv_event_t *e);
 };
 
 #endif // UI_TAB_MACROS_H

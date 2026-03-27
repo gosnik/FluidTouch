@@ -1,17 +1,84 @@
 #include "ui/tabs/ui_tab_macros.h"
 #include "ui/ui_theme.h"
 #include "ui/machine_config.h"
+#include "ui/upload_manager.h"
 #include "config.h"
 #include "core/comm_manager.h"
+#include "env/platform.h"
 #include <Arduino.h>
 #include <Preferences.h>
 #include <ArduinoJson.h>
+#include <SD.h>
+#include <SPI.h>
 #include <vector>
+#include <algorithm>
+#include <cctype>
+#include <cstdlib>
+#if defined(FT_PLATFORM_PC)
+#include <cerrno>
+#include <cstdio>
+#include <dirent.h>
+#include <fstream>
+#include <sys/stat.h>
+#include <SDL2/SDL.h>
+#endif
+
+namespace {
+#if defined(FT_PLATFORM_PC) || defined(FT_PLATFORM_RPI)
+const char *macroStoragePathDisplay() {
+    return EnvPlatform::macroStorageDisplayPath();
+}
+
+const char *macroStoragePathCommand() {
+    return EnvPlatform::macroStorageCommandPath();
+}
+
+const char *macroRunCommandPrefix() {
+    return EnvPlatform::macroRunCommandPrefix();
+}
+
+const char *macroNoMacroMessage() {
+    return EnvPlatform::macroNoMacroMessage();
+}
+#else
+const char *macroStoragePathDisplay() {
+    return "/sd/fluidtouch/macros/";
+}
+
+const char *macroStoragePathCommand() {
+    return "/sd/fluidtouch/macros";
+}
+
+const char *macroRunCommandPrefix() {
+    return "$SD/Run=";
+}
+
+const char *macroNoMacroMessage() {
+    return "No macros configured.\n\nClick " LV_SYMBOL_EDIT
+           " Edit to add macros.\n\nMacro files must be on machine SD card in /fluidtouch/macros directory.";
+}
+#endif
+}  // namespace
+
+namespace {
+
+std::vector<std::string> &recordedCommandsStorage() {
+    static std::vector<std::string> commands;
+    return commands;
+}
+
+std::vector<std::string> &macroFilesStorage() {
+    static std::vector<std::string> files;
+    return files;
+}
+
+}  // namespace
 
 // Static member initialization
 lv_obj_t *UITabMacros::parent_tab = nullptr;
 lv_obj_t *UITabMacros::macro_container = nullptr;
 lv_obj_t *UITabMacros::btn_edit = nullptr;
+lv_obj_t *UITabMacros::btn_record = nullptr;
 lv_obj_t *UITabMacros::btn_add = nullptr;
 lv_obj_t *UITabMacros::btn_done = nullptr;
 lv_obj_t *UITabMacros::lbl_empty_message = nullptr;
@@ -36,7 +103,13 @@ int UITabMacros::selected_color_index = 0;
 lv_obj_t *UITabMacros::keyboard = nullptr;
 int UITabMacros::editing_index = -1;
 lv_obj_t *UITabMacros::delete_dialog = nullptr;
-std::vector<std::string> UITabMacros::macro_files;
+lv_obj_t *UITabMacros::record_save_dialog = nullptr;
+lv_obj_t *UITabMacros::record_name_textarea = nullptr;
+lv_obj_t *UITabMacros::repeat_dialog = nullptr;
+lv_obj_t *UITabMacros::repeat_count_textarea = nullptr;
+int UITabMacros::repeat_macro_index = -1;
+bool UITabMacros::is_recording = false;
+bool UITabMacros::suppress_next_macro_click = false;
 
 void UITabMacros::create(lv_obj_t *tab) {
     parent_tab = tab;
@@ -53,7 +126,7 @@ void UITabMacros::create(lv_obj_t *tab) {
 
     // PROGRESS DISPLAY - Top area (hidden by default, shown during macro execution)
     progress_container = lv_obj_create(tab);
-    lv_obj_set_size(progress_container, UI_SCALE_X(630), UI_SCALE_Y(65));  // Increased from 60 to 65
+    lv_obj_set_size(progress_container, UI_SCALE_X(520), UI_SCALE_Y(65));  // Keep clear of Rec button area
     lv_obj_set_pos(progress_container, UI_SCALE_X(15), UI_SCALE_Y(5));
     lv_obj_set_style_bg_color(progress_container, UITheme::BG_DARKER, 0);
     lv_obj_set_style_border_width(progress_container, 1, 0);
@@ -69,11 +142,11 @@ void UITabMacros::create(lv_obj_t *tab) {
     lv_obj_set_style_text_color(lbl_macro_name, UITheme::TEXT_LIGHT, 0);
     lv_obj_set_pos(lbl_macro_name, 0, 0);
     lv_label_set_long_mode(lbl_macro_name, LV_LABEL_LONG_DOT);
-    lv_obj_set_width(lbl_macro_name, UI_SCALE_X(400));
+    lv_obj_set_width(lbl_macro_name, UI_SCALE_X(395));
     
     // Progress bar
     bar_progress = lv_bar_create(progress_container);
-    lv_obj_set_size(bar_progress, UI_SCALE_X(500), UI_SCALE_Y(15));
+    lv_obj_set_size(bar_progress, UI_SCALE_X(390), UI_SCALE_Y(15));
     lv_obj_set_pos(bar_progress, 0, UI_SCALE_Y(20));
     lv_obj_set_style_bg_color(bar_progress, UITheme::BG_BLACK, LV_PART_MAIN);
     lv_obj_set_style_bg_color(bar_progress, UITheme::UI_SUCCESS, LV_PART_INDICATOR);
@@ -84,7 +157,7 @@ void UITabMacros::create(lv_obj_t *tab) {
     lv_label_set_text(lbl_percent, "0%");
     lv_obj_set_style_text_font(lbl_percent, &lv_font_montserrat_14, 0);
     lv_obj_set_style_text_color(lbl_percent, UITheme::UI_SUCCESS, 0);
-    lv_obj_set_pos(lbl_percent, UI_SCALE_X(510), UI_SCALE_Y(18));
+    lv_obj_set_pos(lbl_percent, UI_SCALE_X(398), UI_SCALE_Y(18));
     
     // Message label
     lbl_message = lv_label_create(progress_container);
@@ -93,7 +166,7 @@ void UITabMacros::create(lv_obj_t *tab) {
     lv_obj_set_style_text_color(lbl_message, UITheme::UI_INFO, 0);
     lv_obj_set_pos(lbl_message, 0, UI_SCALE_Y(40));
     lv_label_set_long_mode(lbl_message, LV_LABEL_LONG_DOT);
-    lv_obj_set_width(lbl_message, UI_SCALE_X(620));
+    lv_obj_set_width(lbl_message, UI_SCALE_X(505));
 
     // Edit button (upper right corner, absolute positioning on tab)
     btn_edit = lv_btn_create(tab);
@@ -107,11 +180,21 @@ void UITabMacros::create(lv_obj_t *tab) {
     lv_obj_set_style_text_font(edit_label, &lv_font_montserrat_16, 0);
     lv_obj_center(edit_label);
 
+    btn_record = lv_btn_create(tab);
+    lv_obj_set_size(btn_record, UI_SCALE_X(120), UI_SCALE_Y(45));
+    lv_obj_set_pos(btn_record, UI_SCALE_X(540), UI_SCALE_Y(15));
+    lv_obj_add_event_cb(btn_record, onRecordToggle, LV_EVENT_CLICKED, nullptr);
+    lv_obj_t *record_label = lv_label_create(btn_record);
+    lv_label_set_text(record_label, "Rec");
+    lv_obj_set_style_text_font(record_label, &lv_font_montserrat_16, 0);
+    lv_obj_center(record_label);
+    updateRecordButtonState();
+
     // Add button (initially hidden)
     btn_add = lv_btn_create(tab);
     lv_obj_set_size(btn_add, UI_SCALE_X(120), UI_SCALE_Y(45));
     lv_obj_set_style_bg_color(btn_add, UITheme::BTN_PLAY, 0);
-    lv_obj_set_pos(btn_add, UI_SCALE_X(545), UI_SCALE_Y(15));  // Left of Done button
+    lv_obj_set_pos(btn_add, UI_SCALE_X(540), UI_SCALE_Y(15));  // Left of Done button
     lv_obj_add_event_cb(btn_add, onAddMacro, LV_EVENT_CLICKED, nullptr);
     lv_obj_add_flag(btn_add, LV_OBJ_FLAG_HIDDEN);
     
@@ -146,7 +229,7 @@ void UITabMacros::create(lv_obj_t *tab) {
 
     // Empty message label (shown when no macros configured)
     lbl_empty_message = lv_label_create(macro_container);
-    lv_label_set_text(lbl_empty_message, "No macros configured.\n\nClick " LV_SYMBOL_EDIT " Edit to add macros.\n\nMacro files must be on machine SD card in /fluidtouch/macros directory.");
+    lv_label_set_text(lbl_empty_message, macroNoMacroMessage());
     lv_obj_set_style_text_font(lbl_empty_message, &lv_font_montserrat_24, 0);
     lv_obj_set_style_text_color(lbl_empty_message, UITheme::TEXT_LIGHT, 0);
     lv_obj_set_style_text_align(lbl_empty_message, LV_TEXT_ALIGN_CENTER, 0);
@@ -156,6 +239,7 @@ void UITabMacros::create(lv_obj_t *tab) {
 
     // Macros already loaded at line 52, just refresh the display
     refreshMacroList();
+    updateRecordButtonState();
 }
 
 // Load macros from Preferences
@@ -362,6 +446,7 @@ void UITabMacros::refreshMacroList() {
             lv_obj_set_style_bg_color(macro_buttons[i], getColorByIndex(macros[i].color_index), 0);
             lv_obj_set_style_pad_all(macro_buttons[i], UI_SCALE_Y(10), 0);
             lv_obj_add_event_cb(macro_buttons[i], onMacroClicked, LV_EVENT_CLICKED, (void*)(intptr_t)i);
+            lv_obj_add_event_cb(macro_buttons[i], onMacroLongPressed, LV_EVENT_LONG_PRESSED, (void*)(intptr_t)i);
             
             lv_obj_t *label = lv_label_create(macro_buttons[i]);
             lv_label_set_text(label, macros[i].name);
@@ -379,7 +464,7 @@ void UITabMacros::refreshMacroList() {
         
         // Recreate empty message label since we cleared the container
         lbl_empty_message = lv_label_create(macro_container);
-        lv_label_set_text(lbl_empty_message, "No macros configured.\n\nClick " LV_SYMBOL_EDIT " Edit to add macros.\n\nMacro files must be on machine SD card in /fluidtouch/macros directory.");
+        lv_label_set_text(lbl_empty_message, macroNoMacroMessage());
         lv_obj_set_style_text_font(lbl_empty_message, &lv_font_montserrat_24, 0);
         lv_obj_set_style_text_color(lbl_empty_message, UITheme::TEXT_LIGHT, 0);
         lv_obj_set_style_text_align(lbl_empty_message, LV_TEXT_ALIGN_CENTER, 0);
@@ -410,50 +495,92 @@ bool UITabMacros::findNextConfiguredIndex(int current_index) {
 
 // Toggle between Normal and Edit modes
 void UITabMacros::onEditModeToggle(lv_event_t *e) {
+    if (!is_edit_mode && is_recording) {
+        Serial.println("[Macros] Stop recording before entering edit mode");
+        return;
+    }
     is_edit_mode = !is_edit_mode;
     
     if (is_edit_mode) {
         lv_obj_add_flag(btn_edit, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(btn_record, LV_OBJ_FLAG_HIDDEN);
         lv_obj_clear_flag(btn_add, LV_OBJ_FLAG_HIDDEN);
         lv_obj_clear_flag(btn_done, LV_OBJ_FLAG_HIDDEN);
         hideProgress();  // Hide progress in edit mode
     } else {
         lv_obj_clear_flag(btn_edit, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(btn_record, LV_OBJ_FLAG_HIDDEN);
         lv_obj_add_flag(btn_add, LV_OBJ_FLAG_HIDDEN);
         lv_obj_add_flag(btn_done, LV_OBJ_FLAG_HIDDEN);
     }
     
+    updateRecordButtonState();
     refreshMacroList();
+}
+
+bool UITabMacros::isLocalMacro(int index) {
+#if defined(FT_PLATFORM_PC)
+    return index >= 0 && index < MAX_MACROS && macros[index].is_configured;
+#else
+    (void)index;
+    return false;
+#endif
+}
+
+void UITabMacros::executeMacro(int index, int repeat_count) {
+    if (index < 0 || index >= MAX_MACROS || !macros[index].is_configured) {
+        return;
+    }
+    if (repeat_count < 1) {
+        repeat_count = 1;
+    }
+
+    Serial.printf("Macro execute requested: %s (%s), repeat=%d\n",
+                  macros[index].name, macros[index].file_path, repeat_count);
+
+    // Store the macro name for progress display
+    strncpy(running_macro_name, macros[index].name, sizeof(running_macro_name) - 1);
+    running_macro_name[sizeof(running_macro_name) - 1] = '\0';
+    updateRecordButtonState();
+
+    UITabMacros::updateProgress(0, running_macro_name, "Starting...");
+    UITabMacros::showProgress();
+
+    char command[320];
+    if (repeat_count > 1 && isLocalMacro(index)) {
+#if defined(FT_PLATFORM_PC)
+        snprintf(command, sizeof(command), "$LocalFS/RunRepeat=%d|%s/%s\n",
+                 repeat_count, macroStoragePathCommand(), macros[index].file_path);
+#else
+        snprintf(command, sizeof(command), "%s%s/%s\n",
+                 macroRunCommandPrefix(), macroStoragePathCommand(), macros[index].file_path);
+#endif
+    } else {
+        snprintf(command, sizeof(command), "%s%s/%s\n",
+                 macroRunCommandPrefix(), macroStoragePathCommand(), macros[index].file_path);
+    }
+
+    Serial.printf("Executing macro command: %s\n", command);
+    CommManager::sendCommand(command);
 }
 
 // Handle macro button click (execute macro)
 void UITabMacros::onMacroClicked(lv_event_t *e) {
     int index = (int)(intptr_t)lv_event_get_user_data(e);
-    
-    if (index < 0 || index >= MAX_MACROS || !macros[index].is_configured) {
+    if (suppress_next_macro_click) {
+        suppress_next_macro_click = false;
         return;
     }
-    
-    Serial.printf("Macro clicked: %s (%s)\n", macros[index].name, macros[index].file_path);
-    
-    // Store the macro name for progress display
-    // Use the display name (not filename) since we just need to track that ANY macro from this tab is running
-    strncpy(running_macro_name, macros[index].name, sizeof(running_macro_name) - 1);
-    running_macro_name[sizeof(running_macro_name) - 1] = '\0';
-    Serial.printf("[Macros] Set running_macro_name to: '%s'\n", running_macro_name);
-    
-    // Initialize progress display with macro name and 0%
-    UITabMacros::updateProgress(0, running_macro_name, "Starting...");
-    UITabMacros::showProgress();
-    Serial.printf("[Macros] Progress display initialized and shown\n");
-    
-    // Build the $SD/Run command with full path
-    // FluidNC expects: $SD/Run=/sd/fluidtouch/macros/filename.gcode
-    char command[256];
-    snprintf(command, sizeof(command), "$SD/Run=/sd/fluidtouch/macros/%s\n", macros[index].file_path);
-    
-    Serial.printf("Executing macro: %s\n", command);
-    CommManager::sendCommand(command);
+    executeMacro(index, 1);
+}
+
+void UITabMacros::onMacroLongPressed(lv_event_t *e) {
+    int index = (int)(intptr_t)lv_event_get_user_data(e);
+    if (!isLocalMacro(index) || isMacroRunning() || is_recording) {
+        return;
+    }
+    suppress_next_macro_click = true;
+    showRepeatDialog(index);
 }
 
 // Show Add Macro dialog
@@ -474,6 +601,210 @@ void UITabMacros::onAddMacro(lv_event_t *e) {
 void UITabMacros::onRefreshFiles(lv_event_t *e) {
     Serial.println("[Macros] Refresh button clicked");
     loadMacroFilesFromSD();
+}
+
+int UITabMacros::findFirstEmptySlot() {
+    for (int i = 0; i < MAX_MACROS; i++) {
+        if (!macros[i].is_configured) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+bool UITabMacros::isCommandRecordable(const char *command) {
+    if (!command || command[0] == '\0') {
+        return false;
+    }
+    for (const char *p = command; *p; ++p) {
+        const unsigned char c = static_cast<unsigned char>(*p);
+        if ((c < 32 || c > 126) && c != '\r' && c != '\n' && c != '\t') {
+            return false;
+        }
+    }
+    return true;
+}
+
+std::string UITabMacros::normalizeRecordedCommand(const char *command) {
+    if (!command) {
+        return std::string();
+    }
+    std::string normalized(command);
+    while (!normalized.empty() &&
+           (normalized.back() == '\r' || normalized.back() == '\n')) {
+        normalized.pop_back();
+    }
+    if (normalized.empty()) {
+        return std::string();
+    }
+    normalized.push_back('\n');
+    return normalized;
+}
+
+std::string UITabMacros::sanitizeFilenameBase(const char *name) {
+    std::string out;
+    if (!name) {
+        return out;
+    }
+    for (const char *p = name; *p; ++p) {
+        const unsigned char c = static_cast<unsigned char>(*p);
+        if (std::isalnum(c)) {
+            out.push_back(static_cast<char>(std::tolower(c)));
+        } else if (c == ' ' || c == '-' || c == '_') {
+            out.push_back('_');
+        }
+    }
+    while (!out.empty() && out.back() == '_') {
+        out.pop_back();
+    }
+    if (out.empty()) {
+        out = "recorded_macro";
+    }
+    if (out.length() > 24) {
+        out.resize(24);
+    }
+    return out;
+}
+
+bool UITabMacros::writeRecordedMacroFile(const char *filename, std::string &local_path_out) {
+    if (!filename || filename[0] == '\0') {
+        return false;
+    }
+#if defined(FT_PLATFORM_PC)
+    const std::string dir_macros = EnvPlatform::macroLocalBaseDir();
+    const size_t macros_sep = dir_macros.find_last_of('/');
+    const std::string dir_fluidtouch = (macros_sep == std::string::npos) ? "." : dir_macros.substr(0, macros_sep);
+    const size_t fluidtouch_sep = dir_fluidtouch.find_last_of('/');
+    const std::string dir_localfs = (fluidtouch_sep == std::string::npos) ? "." : dir_fluidtouch.substr(0, fluidtouch_sep);
+
+    if ((mkdir(dir_localfs.c_str(), 0777) != 0) && errno != EEXIST) {
+        Serial.printf("[Macros] Failed to create %s (errno=%d)\n", dir_localfs.c_str(), errno);
+        return false;
+    }
+    if ((mkdir(dir_fluidtouch.c_str(), 0777) != 0) && errno != EEXIST) {
+        Serial.printf("[Macros] Failed to create %s (errno=%d)\n", dir_fluidtouch.c_str(), errno);
+        return false;
+    }
+    if ((mkdir(dir_macros.c_str(), 0777) != 0) && errno != EEXIST) {
+        Serial.printf("[Macros] Failed to create %s (errno=%d)\n", dir_macros.c_str(), errno);
+        return false;
+    }
+
+    local_path_out = dir_macros + "/" + filename;
+    std::ofstream out(local_path_out.c_str(), std::ios::out | std::ios::trunc);
+    if (!out.is_open()) {
+        Serial.printf("[Macros] Failed to open local recording file: %s\n", local_path_out.c_str());
+        return false;
+    }
+    for (const std::string &line : recordedCommandsStorage()) {
+        out << line;
+    }
+    out.close();
+    return true;
+#else
+    if (!UploadManager::init()) {
+        Serial.println("[Macros] Failed to initialize SD for macro recording");
+        return false;
+    }
+
+    SD.mkdir("/fluidtouch");
+    SD.mkdir("/fluidtouch/macros");
+    local_path_out = std::string("/fluidtouch/macros/") + filename;
+
+    if (SD.exists(local_path_out.c_str())) {
+        SD.remove(local_path_out.c_str());
+    }
+    File file = SD.open(local_path_out.c_str(), FILE_WRITE);
+    if (!file) {
+        Serial.printf("[Macros] Failed to open recording file: %s\n", local_path_out.c_str());
+        return false;
+    }
+    for (const std::string &line : recordedCommandsStorage()) {
+        file.print(line.c_str());
+    }
+    file.close();
+    return true;
+#endif
+}
+
+bool UITabMacros::addRecordedMacroConfig(const char *macro_name, const char *filename) {
+    int slot = findFirstEmptySlot();
+    if (slot < 0) {
+        Serial.println("[Macros] No empty macro slot available for recorded macro");
+        return false;
+    }
+    strncpy(macros[slot].name, macro_name, sizeof(macros[slot].name) - 1);
+    macros[slot].name[sizeof(macros[slot].name) - 1] = '\0';
+    strncpy(macros[slot].file_path, filename, sizeof(macros[slot].file_path) - 1);
+    macros[slot].file_path[sizeof(macros[slot].file_path) - 1] = '\0';
+    macros[slot].color_index = slot % 8;
+    macros[slot].is_configured = true;
+    saveMacros();
+    refreshMacroList();
+    return true;
+}
+
+void UITabMacros::updateRecordButtonState() {
+    if (!btn_record) {
+        return;
+    }
+    const bool macro_running = isMacroRunning();
+    const bool stop_mode = is_recording || macro_running;
+    lv_obj_set_style_bg_color(btn_record,
+                              stop_mode ? UITheme::STATE_ALARM : UITheme::ACCENT_PRIMARY,
+                              0);
+    lv_obj_t *label = lv_obj_get_child(btn_record, 0);
+    if (label) {
+        lv_label_set_text(label, stop_mode ? "Stop" : "Rec");
+    }
+}
+
+void UITabMacros::onRecordToggle(lv_event_t *e) {
+    (void)e;
+    if (!is_recording && isMacroRunning()) {
+        Serial.println("[Macros] Stop requested for running macro");
+#if defined(FT_PLATFORM_PC)
+        CommManager::sendCommand("$LocalFS/Stop\n");
+#else
+        // Best-effort immediate stop for active SD/streamed macro execution.
+        CommManager::sendCommand("!\n");
+#endif
+        clearRunningMacro();
+        hideProgress();
+        updateRecordButtonState();
+        return;
+    }
+
+    if (!is_recording) {
+        if (findFirstEmptySlot() < 0) {
+            Serial.println("[Macros] Cannot start recording: all macro slots are in use");
+            return;
+        }
+        recordedCommandsStorage().clear();
+        is_recording = true;
+        CommManager::setCommandTap([](const char *command) {
+            if (!UITabMacros::is_recording || !UITabMacros::isCommandRecordable(command)) {
+                return;
+            }
+            std::string normalized = UITabMacros::normalizeRecordedCommand(command);
+            if (!normalized.empty()) {
+                recordedCommandsStorage().push_back(normalized);
+            }
+        });
+        Serial.println("[Macros] Command recording started");
+        updateRecordButtonState();
+        return;
+    }
+
+    is_recording = false;
+    CommManager::clearCommandTap();
+    updateRecordButtonState();
+
+    if (recordedCommandsStorage().empty()) {
+        Serial.println("[Macros] No recordable commands captured");
+        return;
+    }
+    showRecordSaveDialog();
 }
 
 // Show Edit Macro dialog
@@ -572,7 +903,7 @@ void UITabMacros::showConfigDialog(bool is_add) {
     
     // File Path label
     lv_obj_t *path_label = lv_label_create(dialog);
-    lv_label_set_text(path_label, "File: /sd/fluidtouch/macros/");
+    lv_label_set_text_fmt(path_label, "File: %s", macroStoragePathDisplay());
     lv_obj_set_style_text_font(path_label, &lv_font_montserrat_20, 0);
     lv_obj_set_pos(path_label, 0, UI_SCALE_Y(145));
     
@@ -598,19 +929,19 @@ void UITabMacros::showConfigDialog(bool is_add) {
     lv_obj_center(refresh_icon);
     
     // Populate dropdown with files
-    if (UITabMacros::macro_files.empty()) {
+    if (macroFilesStorage().empty()) {
         lv_dropdown_set_options(config_path_dropdown, "Loading files...");
     } else {
         // Files already loaded, populate dropdown and select current file
         String options = "-- Select a file --";  // Add blank placeholder at top
         int selected_idx = 0;  // Default to placeholder
         
-        for (size_t i = 0; i < UITabMacros::macro_files.size(); i++) {
+        for (size_t i = 0; i < macroFilesStorage().size(); i++) {
             options += "\n";
-            options += UITabMacros::macro_files[i].c_str();
+            options += macroFilesStorage()[i].c_str();
             
             // Find the currently selected file if editing (add 1 to index for placeholder offset)
-            if (!is_add && strcmp(macro_files[i].c_str(), macros[editing_index].file_path) == 0) {
+            if (!is_add && strcmp(macroFilesStorage()[i].c_str(), macros[editing_index].file_path) == 0) {
                 selected_idx = i + 1;  // +1 for placeholder at index 0
             }
         }
@@ -845,6 +1176,267 @@ void UITabMacros::onDeleteCancel(lv_event_t *e) {
     hideDeleteConfirmDialog();
 }
 
+void UITabMacros::showRecordSaveDialog() {
+    hideRecordSaveDialog();
+
+    record_save_dialog = lv_obj_create(lv_scr_act());
+    lv_obj_set_size(record_save_dialog, LV_PCT(100), LV_PCT(100));
+    lv_obj_set_style_bg_color(record_save_dialog, lv_color_make(0, 0, 0), 0);
+    lv_obj_set_style_bg_opa(record_save_dialog, LV_OPA_70, 0);
+    lv_obj_set_style_border_width(record_save_dialog, 0, 0);
+    lv_obj_clear_flag(record_save_dialog, LV_OBJ_FLAG_SCROLLABLE);
+
+    lv_obj_t *dialog = lv_obj_create(record_save_dialog);
+    lv_obj_set_size(dialog, UI_SCALE_X(560), UI_SCALE_Y(300));
+    lv_obj_center(dialog);
+    lv_obj_set_style_bg_color(dialog, UITheme::BG_DARK, 0);
+    lv_obj_set_style_border_width(dialog, 2, 0);
+    lv_obj_set_style_border_color(dialog, UITheme::ACCENT_PRIMARY, 0);
+    lv_obj_set_style_pad_all(dialog, UI_SCALE_Y(20), 0);
+    lv_obj_clear_flag(dialog, LV_OBJ_FLAG_SCROLLABLE);
+
+    lv_obj_t *title = lv_label_create(dialog);
+    lv_label_set_text(title, "Save Recorded Macro");
+    lv_obj_set_style_text_font(title, &lv_font_montserrat_24, 0);
+    lv_obj_set_style_text_color(title, UITheme::ACCENT_PRIMARY, 0);
+    lv_obj_set_pos(title, 0, 0);
+
+    lv_obj_t *desc = lv_label_create(dialog);
+    lv_label_set_text_fmt(desc, "Captured commands: %d", (int)recordedCommandsStorage().size());
+    lv_obj_set_style_text_font(desc, &lv_font_montserrat_18, 0);
+    lv_obj_set_style_text_color(desc, UITheme::TEXT_LIGHT, 0);
+    lv_obj_set_pos(desc, 0, UI_SCALE_Y(45));
+
+    lv_obj_t *name_label = lv_label_create(dialog);
+    lv_label_set_text(name_label, "Macro Name:");
+    lv_obj_set_style_text_font(name_label, &lv_font_montserrat_20, 0);
+    lv_obj_set_pos(name_label, 0, UI_SCALE_Y(85));
+
+    record_name_textarea = lv_textarea_create(dialog);
+    lv_obj_set_size(record_name_textarea, UI_SCALE_X(520), UI_SCALE_Y(52));
+    lv_obj_set_pos(record_name_textarea, 0, UI_SCALE_Y(120));
+    lv_obj_set_style_text_font(record_name_textarea, &lv_font_montserrat_20, 0);
+    lv_textarea_set_max_length(record_name_textarea, 31);
+    lv_textarea_set_one_line(record_name_textarea, true);
+    lv_textarea_set_text(record_name_textarea, "Recorded Macro");
+    lv_obj_add_event_cb(record_name_textarea, onTextareaFocused, LV_EVENT_FOCUSED, nullptr);
+
+    lv_obj_t *btn_cancel = lv_btn_create(dialog);
+    lv_obj_set_size(btn_cancel, UI_SCALE_X(170), UI_SCALE_Y(50));
+    lv_obj_set_pos(btn_cancel, UI_SCALE_X(90), UI_SCALE_Y(220));
+    lv_obj_set_style_bg_color(btn_cancel, UITheme::BG_MEDIUM, 0);
+    lv_obj_add_event_cb(btn_cancel, onRecordSaveCancel, LV_EVENT_CLICKED, nullptr);
+    lv_obj_t *cancel_label = lv_label_create(btn_cancel);
+    lv_label_set_text(cancel_label, "Discard");
+    lv_obj_set_style_text_font(cancel_label, &lv_font_montserrat_18, 0);
+    lv_obj_center(cancel_label);
+
+    lv_obj_t *btn_save = lv_btn_create(dialog);
+    lv_obj_set_size(btn_save, UI_SCALE_X(170), UI_SCALE_Y(50));
+    lv_obj_set_pos(btn_save, UI_SCALE_X(300), UI_SCALE_Y(220));
+    lv_obj_set_style_bg_color(btn_save, UITheme::BTN_PLAY, 0);
+    lv_obj_add_event_cb(btn_save, onRecordSaveConfirm, LV_EVENT_CLICKED, nullptr);
+    lv_obj_t *save_label = lv_label_create(btn_save);
+    lv_label_set_text(save_label, "Save");
+    lv_obj_set_style_text_font(save_label, &lv_font_montserrat_18, 0);
+    lv_obj_center(save_label);
+}
+
+void UITabMacros::hideRecordSaveDialog() {
+    if (record_save_dialog != nullptr) {
+        if (keyboard != nullptr) {
+            hideKeyboard();
+        }
+        lv_obj_del(record_save_dialog);
+        record_save_dialog = nullptr;
+        record_name_textarea = nullptr;
+    }
+}
+
+void UITabMacros::onRecordSaveCancel(lv_event_t *e) {
+    (void)e;
+    recordedCommandsStorage().clear();
+    hideRecordSaveDialog();
+}
+
+void UITabMacros::onRecordSaveConfirm(lv_event_t *e) {
+    (void)e;
+    if (recordedCommandsStorage().empty()) {
+        hideRecordSaveDialog();
+        return;
+    }
+
+    if (findFirstEmptySlot() < 0) {
+        Serial.println("[Macros] Cannot save recording: all macro slots are in use");
+        hideRecordSaveDialog();
+        recordedCommandsStorage().clear();
+        return;
+    }
+
+    const char *macro_name = record_name_textarea ? lv_textarea_get_text(record_name_textarea) : "";
+    if (!macro_name || macro_name[0] == '\0') {
+        Serial.println("[Macros] Recording name is required");
+        return;
+    }
+
+    const std::string base = sanitizeFilenameBase(macro_name);
+    char filename[80];
+    snprintf(filename, sizeof(filename), "%s_%lu.gcode", base.c_str(), (unsigned long)millis());
+
+    std::string local_path;
+    if (!writeRecordedMacroFile(filename, local_path)) {
+        Serial.println("[Macros] Failed to write recorded macro file");
+        hideRecordSaveDialog();
+        recordedCommandsStorage().clear();
+        return;
+    }
+
+#if defined(FT_PLATFORM_PC)
+    if (!addRecordedMacroConfig(macro_name, filename)) {
+        Serial.println("[Macros] Recorded file saved but macro config could not be added");
+        hideRecordSaveDialog();
+        recordedCommandsStorage().clear();
+        return;
+    }
+#else
+    bool upload_ok = false;
+    const char *upload_error = nullptr;
+    char remote_dir[96];
+    snprintf(remote_dir, sizeof(remote_dir), "%s/", macroStoragePathCommand());
+    UploadManager::uploadFile(
+        local_path.c_str(),
+        filename,
+        nullptr,
+        [&](bool success, const char *error) {
+            upload_ok = success;
+            upload_error = error;
+        },
+        remote_dir);
+
+    if (!upload_ok) {
+        Serial.printf("[Macros] Failed to upload recorded macro: %s\n", upload_error ? upload_error : "unknown");
+        hideRecordSaveDialog();
+        recordedCommandsStorage().clear();
+        return;
+    }
+
+    if (!addRecordedMacroConfig(macro_name, filename)) {
+        Serial.println("[Macros] Recorded file uploaded but macro config could not be added");
+        hideRecordSaveDialog();
+        recordedCommandsStorage().clear();
+        return;
+    }
+#endif
+
+    Serial.printf("[Macros] Recorded macro saved as %s\n", filename);
+    hideRecordSaveDialog();
+    recordedCommandsStorage().clear();
+}
+
+void UITabMacros::showRepeatDialog(int index) {
+    if (index < 0 || index >= MAX_MACROS || !macros[index].is_configured) {
+        return;
+    }
+    hideRepeatDialog();
+    repeat_macro_index = index;
+
+    repeat_dialog = lv_obj_create(lv_scr_act());
+    lv_obj_set_size(repeat_dialog, LV_PCT(100), LV_PCT(100));
+    lv_obj_set_style_bg_color(repeat_dialog, lv_color_make(0, 0, 0), 0);
+    lv_obj_set_style_bg_opa(repeat_dialog, LV_OPA_70, 0);
+    lv_obj_set_style_border_width(repeat_dialog, 0, 0);
+    lv_obj_clear_flag(repeat_dialog, LV_OBJ_FLAG_SCROLLABLE);
+
+    lv_obj_t *dialog = lv_obj_create(repeat_dialog);
+    lv_obj_set_size(dialog, UI_SCALE_X(520), UI_SCALE_Y(300));
+    lv_obj_center(dialog);
+    lv_obj_set_style_bg_color(dialog, UITheme::BG_MEDIUM, 0);
+    lv_obj_set_style_border_width(dialog, 3, 0);
+    lv_obj_set_style_border_color(dialog, UITheme::ACCENT_SECONDARY, 0);
+    lv_obj_set_style_pad_all(dialog, UI_SCALE_Y(20), 0);
+    lv_obj_clear_flag(dialog, LV_OBJ_FLAG_SCROLLABLE);
+
+    lv_obj_t *title = lv_label_create(dialog);
+    lv_label_set_text(title, LV_SYMBOL_LOOP " Macro Repeat");
+    lv_obj_set_style_text_font(title, &lv_font_montserrat_24, 0);
+    lv_obj_set_style_text_color(title, UITheme::ACCENT_SECONDARY, 0);
+    lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 0);
+
+    lv_obj_t *desc = lv_label_create(dialog);
+    lv_label_set_text_fmt(desc, "Run \"%s\" how many times?", macros[index].name);
+    lv_obj_set_style_text_font(desc, &lv_font_montserrat_18, 0);
+    lv_obj_set_style_text_color(desc, UITheme::TEXT_LIGHT, 0);
+    lv_obj_set_style_text_align(desc, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_set_width(desc, UI_SCALE_X(460));
+    lv_obj_align(desc, LV_ALIGN_TOP_MID, 0, UI_SCALE_Y(55));
+
+    repeat_count_textarea = lv_textarea_create(dialog);
+    lv_obj_set_size(repeat_count_textarea, UI_SCALE_X(120), UI_SCALE_Y(52));
+    lv_obj_align(repeat_count_textarea, LV_ALIGN_TOP_MID, 0, UI_SCALE_Y(130));
+    lv_obj_set_style_text_font(repeat_count_textarea, &lv_font_montserrat_24, 0);
+    lv_textarea_set_text(repeat_count_textarea, "2");
+    lv_textarea_set_max_length(repeat_count_textarea, 4);
+    lv_textarea_set_one_line(repeat_count_textarea, true);
+    lv_obj_add_event_cb(repeat_count_textarea, onTextareaFocused, LV_EVENT_FOCUSED, nullptr);
+
+    lv_obj_t *btn_cancel = lv_btn_create(dialog);
+    lv_obj_set_size(btn_cancel, UI_SCALE_X(140), UI_SCALE_Y(50));
+    lv_obj_align(btn_cancel, LV_ALIGN_BOTTOM_MID, -UI_SCALE_X(85), 0);
+    lv_obj_set_style_bg_color(btn_cancel, UITheme::BG_BUTTON, 0);
+    lv_obj_add_event_cb(btn_cancel, onRepeatCancel, LV_EVENT_CLICKED, nullptr);
+
+    lv_obj_t *cancel_label = lv_label_create(btn_cancel);
+    lv_label_set_text(cancel_label, "Cancel");
+    lv_obj_set_style_text_font(cancel_label, &lv_font_montserrat_18, 0);
+    lv_obj_center(cancel_label);
+
+    lv_obj_t *btn_run = lv_btn_create(dialog);
+    lv_obj_set_size(btn_run, UI_SCALE_X(140), UI_SCALE_Y(50));
+    lv_obj_align(btn_run, LV_ALIGN_BOTTOM_MID, UI_SCALE_X(85), 0);
+    lv_obj_set_style_bg_color(btn_run, UITheme::BTN_PLAY, 0);
+    lv_obj_add_event_cb(btn_run, onRepeatConfirm, LV_EVENT_CLICKED, nullptr);
+
+    lv_obj_t *run_label = lv_label_create(btn_run);
+    lv_label_set_text(run_label, "Run");
+    lv_obj_set_style_text_font(run_label, &lv_font_montserrat_18, 0);
+    lv_obj_center(run_label);
+}
+
+void UITabMacros::hideRepeatDialog() {
+    if (keyboard != nullptr) {
+        hideKeyboard();
+    }
+    if (repeat_dialog != nullptr) {
+        lv_obj_del(repeat_dialog);
+        repeat_dialog = nullptr;
+        repeat_count_textarea = nullptr;
+    }
+    repeat_macro_index = -1;
+}
+
+void UITabMacros::onRepeatConfirm(lv_event_t *e) {
+    (void)e;
+    if (repeat_macro_index < 0 || repeat_count_textarea == nullptr) {
+        hideRepeatDialog();
+        return;
+    }
+    const char *text = lv_textarea_get_text(repeat_count_textarea);
+    int repeat_count = atoi(text ? text : "1");
+    if (repeat_count < 1) {
+        repeat_count = 1;
+    } else if (repeat_count > 999) {
+        repeat_count = 999;
+    }
+    int index = repeat_macro_index;
+    hideRepeatDialog();
+    executeMacro(index, repeat_count);
+}
+
+void UITabMacros::onRepeatCancel(lv_event_t *e) {
+    (void)e;
+    hideRepeatDialog();
+}
+
 // Handle color button clicked
 void UITabMacros::onColorButtonClicked(lv_event_t *e) {
     int color_index = (int)(intptr_t)lv_event_get_user_data(e);
@@ -917,9 +1509,58 @@ void UITabMacros::hideKeyboard() {
 
 // Load macro files from SD card
 void UITabMacros::loadMacroFilesFromSD() {
-    UITabMacros::macro_files.clear();
-    
-    Serial.println("[Macros] Requesting file list from SD card");
+    macroFilesStorage().clear();
+
+#if defined(FT_PLATFORM_PC)
+    Serial.println("[Macros] Loading macro files from local filesystem");
+    const std::string macros_dir = EnvPlatform::macroLocalBaseDir();
+    DIR *dir = opendir(macros_dir.c_str());
+    if (dir) {
+        struct dirent *entry = nullptr;
+        while ((entry = readdir(dir)) != nullptr) {
+            const char *name = entry->d_name;
+            if (!name || strcmp(name, ".") == 0 || strcmp(name, "..") == 0) {
+                continue;
+            }
+#ifdef DT_REG
+            if (entry->d_type != DT_REG && entry->d_type != DT_UNKNOWN) {
+                continue;
+            }
+#endif
+            macroFilesStorage().emplace_back(name);
+        }
+        closedir(dir);
+    }
+    std::sort(macroFilesStorage().begin(), macroFilesStorage().end(),
+        [](const std::string &a, const std::string &b) {
+            std::string a_lower = a;
+            std::string b_lower = b;
+            std::transform(a_lower.begin(), a_lower.end(), a_lower.begin(), ::tolower);
+            std::transform(b_lower.begin(), b_lower.end(), b_lower.begin(), ::tolower);
+            return a_lower < b_lower;
+        });
+
+    if (UITabMacros::config_path_dropdown) {
+        String options = "-- Select a file --";
+        int selected_idx = 0;
+        for (size_t i = 0; i < macroFilesStorage().size(); i++) {
+            options += "\n";
+            options += macroFilesStorage()[i].c_str();
+            if (UITabMacros::editing_index >= 0 &&
+                strcmp(macroFilesStorage()[i].c_str(),
+                       UITabMacros::macros[UITabMacros::editing_index].file_path) == 0) {
+                selected_idx = i + 1;
+            }
+        }
+        lv_dropdown_set_options(UITabMacros::config_path_dropdown, options.c_str());
+        if (UITabMacros::editing_index >= 0) {
+            lv_dropdown_set_selected(UITabMacros::config_path_dropdown, selected_idx);
+        }
+    }
+    return;
+#endif
+
+    Serial.println("[Macros] Requesting file list from machine storage");
     
     // Register callback to receive JSON file list response
     CommManager::setMessageCallback([](const char* message) {
@@ -944,13 +1585,13 @@ void UITabMacros::loadMacroFilesFromSD() {
                     for (JsonObject file : files) {
                         if (file["name"].is<const char*>()) {
                             const char* filename = file["name"];
-                            UITabMacros::macro_files.push_back(filename);
+                            macroFilesStorage().push_back(filename);
                         }
                     }
-                    Serial.printf("[Macros] Found %d macro files\n", UITabMacros::macro_files.size());
+                    Serial.printf("[Macros] Found %d macro files\n", macroFilesStorage().size());
                     
                     // Sort files alphabetically (case-insensitive)
-                    std::sort(UITabMacros::macro_files.begin(), UITabMacros::macro_files.end(),
+                    std::sort(macroFilesStorage().begin(), macroFilesStorage().end(),
                         [](const std::string &a, const std::string &b) {
                             std::string a_lower = a;
                             std::string b_lower = b;
@@ -964,13 +1605,13 @@ void UITabMacros::loadMacroFilesFromSD() {
                         String options = "-- Select a file --";  // Add blank placeholder at top
                         int selected_idx = 0;  // Default to placeholder
                         
-                        for (size_t i = 0; i < UITabMacros::macro_files.size(); i++) {
+                        for (size_t i = 0; i < macroFilesStorage().size(); i++) {
                             options += "\n";
-                            options += UITabMacros::macro_files[i].c_str();
+                            options += macroFilesStorage()[i].c_str();
                             
                             // Find matching file if editing (add 1 to index for placeholder offset)
                             if (UITabMacros::editing_index >= 0 && 
-                                strcmp(UITabMacros::macro_files[i].c_str(), 
+                                strcmp(macroFilesStorage()[i].c_str(), 
                                        UITabMacros::macros[UITabMacros::editing_index].file_path) == 0) {
                                 selected_idx = i + 1;  // +1 for placeholder at index 0
                             }
@@ -1013,13 +1654,13 @@ void UITabMacros::loadMacroFilesFromSD() {
                     for (JsonObject file : files) {
                         if (file["name"].is<const char*>()) {
                             const char* filename = file["name"];
-                            UITabMacros::macro_files.push_back(filename);
+                            macroFilesStorage().push_back(filename);
                         }
                     }
-                    Serial.printf("[Macros] Found %d macro files\n", UITabMacros::macro_files.size());
+                    Serial.printf("[Macros] Found %d macro files\n", macroFilesStorage().size());
                     
                     // Sort files alphabetically (case-insensitive)
-                    std::sort(UITabMacros::macro_files.begin(), UITabMacros::macro_files.end(),
+                    std::sort(macroFilesStorage().begin(), macroFilesStorage().end(),
                         [](const std::string &a, const std::string &b) {
                             std::string a_lower = a;
                             std::string b_lower = b;
@@ -1033,13 +1674,13 @@ void UITabMacros::loadMacroFilesFromSD() {
                         String options = "-- Select a file --";  // Add blank placeholder at top
                         int selected_idx = 0;  // Default to placeholder
                         
-                        for (size_t i = 0; i < UITabMacros::macro_files.size(); i++) {
+                        for (size_t i = 0; i < macroFilesStorage().size(); i++) {
                             options += "\n";
-                            options += UITabMacros::macro_files[i].c_str();
+                            options += macroFilesStorage()[i].c_str();
                             
                             // Find matching file if editing (add 1 to index for placeholder offset)
                             if (UITabMacros::editing_index >= 0 && 
-                                strcmp(UITabMacros::macro_files[i].c_str(), 
+                                strcmp(macroFilesStorage()[i].c_str(), 
                                        UITabMacros::macros[UITabMacros::editing_index].file_path) == 0) {
                                 selected_idx = i + 1;  // +1 for placeholder at index 0
                             }
@@ -1086,7 +1727,9 @@ void UITabMacros::loadMacroFilesFromSD() {
     });
     
     // Send command to list files from macros directory
-    CommManager::sendCommand("$Files/ListGcode=/sd/fluidtouch/macros\n");
+    char command[128];
+    snprintf(command, sizeof(command), "$Files/ListGcode=%s\n", macroStoragePathCommand());
+    CommManager::sendCommand(command);
 }
 
 // Update progress display
@@ -1143,6 +1786,7 @@ bool UITabMacros::isMacroRunning() {
 void UITabMacros::clearRunningMacro() {
     Serial.printf("[Macros] Clearing running macro: '%s'\n", running_macro_name);
     running_macro_name[0] = '\0';
+    updateRecordButtonState();
 }
 
 // Get the name of the currently running macro

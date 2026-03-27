@@ -18,6 +18,15 @@
 #endif
 
 namespace {
+size_t bounded_strlen(const char *text, size_t max_len)
+{
+    size_t len = 0;
+    while (text && len < max_len && text[len] != '\0') {
+        ++len;
+    }
+    return len;
+}
+
 #if defined(__linux__)
 constexpr int kMaxQtdialDevices = 3;
 constexpr uint32_t kScanIntervalMs = 1000;
@@ -380,7 +389,7 @@ bool UsbHostManager::sendDisplaySelectScreen(uint8_t slot, const char *screen_na
     }
     const size_t max_payload = QtdialHidProtocol::kReportSizeBytes - 2;
     const size_t max_key = (max_payload > 4) ? (max_payload - 4) : 0;
-    const size_t key_len = strnlen(screen_name, max_key);
+    const size_t key_len = bounded_strlen(screen_name, max_key);
     if (key_len == 0 || (4 + key_len) > max_payload) {
         return false;
     }
@@ -466,9 +475,9 @@ bool UsbHostManager::sendDisplaySetField(uint8_t slot, const char *field_name, c
     }
     const size_t max_payload = QtdialHidProtocol::kReportSizeBytes - 2;
     const size_t max_data = (max_payload > 4) ? (max_payload - 4) : 0;
-    const size_t key_len = strnlen(field_name, max_data);
+    const size_t key_len = bounded_strlen(field_name, max_data);
     const size_t remaining = (key_len < max_data) ? (max_data - key_len) : 0;
-    const size_t val_len = strnlen(value, remaining);
+    const size_t val_len = bounded_strlen(value, remaining);
     if (key_len == 0 || (4 + key_len + val_len) > max_payload) {
         return false;
     }

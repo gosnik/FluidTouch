@@ -95,6 +95,7 @@ $RECYCLE.BIN/
 build/
 dist/
 out/
+.tools/
 
 # Documentation
 docs/_build/

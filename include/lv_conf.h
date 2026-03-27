@@ -47,7 +47,11 @@
  * - LV_STDLIB_RTTHREAD:    RT-Thread implementation
  * - LV_STDLIB_CUSTOM:      Implement the functions externally
  */
-#define LV_USE_STDLIB_MALLOC    LV_STDLIB_BUILTIN
+#if defined(ESP_PLATFORM)
+    #define LV_USE_STDLIB_MALLOC    LV_STDLIB_BUILTIN
+#else
+    #define LV_USE_STDLIB_MALLOC    LV_STDLIB_CLIB
+#endif
 
 /** Possible values
  * - LV_STDLIB_BUILTIN:     LVGL's built in implementation
@@ -56,7 +60,11 @@
  * - LV_STDLIB_RTTHREAD:    RT-Thread implementation
  * - LV_STDLIB_CUSTOM:      Implement the functions externally
  */
-#define LV_USE_STDLIB_STRING    LV_STDLIB_BUILTIN
+#if defined(ESP_PLATFORM)
+    #define LV_USE_STDLIB_STRING    LV_STDLIB_BUILTIN
+#else
+    #define LV_USE_STDLIB_STRING    LV_STDLIB_CLIB
+#endif
 
 /** Possible values
  * - LV_STDLIB_BUILTIN:     LVGL's built in implementation
@@ -65,7 +73,11 @@
  * - LV_STDLIB_RTTHREAD:    RT-Thread implementation
  * - LV_STDLIB_CUSTOM:      Implement the functions externally
  */
-#define LV_USE_STDLIB_SPRINTF   LV_STDLIB_BUILTIN
+#if defined(ESP_PLATFORM)
+    #define LV_USE_STDLIB_SPRINTF   LV_STDLIB_BUILTIN
+#else
+    #define LV_USE_STDLIB_SPRINTF   LV_STDLIB_CLIB
+#endif
 
 #define LV_STDINT_INCLUDE       <stdint.h>
 #define LV_STDDEF_INCLUDE       <stddef.h>

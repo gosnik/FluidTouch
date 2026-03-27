@@ -4,7 +4,7 @@
 #include <Arduino.h>
 
 // Static cache members
-MachineConfig MachineConfigManager::cached_machines[MAX_MACHINES];
+MachineConfig MachineConfigManager::cached_machines[MAX_MACHINES] = {};
 bool MachineConfigManager::cache_valid = false;
 
 void MachineConfigManager::loadMachines(MachineConfig machines[MAX_MACHINES]) {
@@ -15,6 +15,8 @@ void MachineConfigManager::loadMachines(MachineConfig machines[MAX_MACHINES]) {
         return;
     }
     
+    resetMachineConfigArray(machines);
+
     Preferences prefs;
     prefs.begin(PREFS_NAMESPACE, true); // Read-only
     
@@ -29,7 +31,11 @@ void MachineConfigManager::loadMachines(MachineConfig machines[MAX_MACHINES]) {
         
         if (machines[i].is_configured) {
             prefs.getString((prefix + "name").c_str(), machines[i].name, sizeof(machines[i].name));
+#if defined(FT_PLATFORM_RPI)
+            machines[i].connection_type = (ConnectionType)prefs.getUChar((prefix + "type").c_str(), CONN_UART);
+#else
             machines[i].connection_type = (ConnectionType)prefs.getUChar((prefix + "type").c_str(), CONN_WIRELESS);
+#endif
             prefs.getString((prefix + "ssid").c_str(), machines[i].ssid, sizeof(machines[i].ssid));
             prefs.getString((prefix + "pwd").c_str(), machines[i].password, sizeof(machines[i].password));
             prefs.getString((prefix + "url").c_str(), machines[i].fluidnc_url, sizeof(machines[i].fluidnc_url));
@@ -175,8 +181,7 @@ bool MachineConfigManager::deleteMachine(int index) {
     MachineConfig machines[MAX_MACHINES];
     loadMachines(machines);
     
-    machines[index] = MachineConfig(); // Reset to defaults
-    machines[index].is_configured = false;
+    resetMachineConfig(machines[index]);
     
     saveMachines(machines);
     return true;

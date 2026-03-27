@@ -126,6 +126,7 @@ bool SettingsManager::exportSettings(const char* filepath) {
     JsonObject ui = system["ui"].to<JsonObject>();
     ui["show_machine_select"] = prefs.getBool("show_mach_sel", true);
     ui["folders_on_top"] = prefs.getBool("folders_on_top", false);
+    ui["fullscreen_mode"] = prefs.getBool("fullscreen_mode", true);
     prefs.end();
     
     // Selected machine index
@@ -321,6 +322,7 @@ bool SettingsManager::importSettings(const char* filepath) {
             prefs.begin(PREFS_SYSTEM_NAMESPACE, false);  // Read-write
             prefs.putBool("show_mach_sel", ui["show_machine_select"] | true);
             prefs.putBool("folders_on_top", ui["folders_on_top"] | false);
+            prefs.putBool("fullscreen_mode", ui["fullscreen_mode"] | true);
             prefs.end();
         }
         

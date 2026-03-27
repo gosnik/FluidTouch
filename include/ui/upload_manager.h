@@ -13,7 +13,8 @@ public:
     static bool uploadFile(const char* localPath, 
                           const char* filename,
                           ProgressCallback onProgress,
-                          CompleteCallback onComplete);
+                          CompleteCallback onComplete,
+                          const char* remoteDir = nullptr);
     static bool isUploading();
 
 private:

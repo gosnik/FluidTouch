@@ -10,6 +10,9 @@
 #endif
 #include <esp_heap_caps.h>
 #include <lvgl.h>
+#if !defined(FT_PLATFORM_RPI)
+#include <ctime>
+#endif
 
 bool UploadManager::_uploading = false;
 
@@ -50,7 +53,8 @@ bool UploadManager::init() {
 bool UploadManager::uploadFile(const char* localPath, 
                                const char* filename,
                                ProgressCallback onProgress,
-                               CompleteCallback onComplete) {
+                               CompleteCallback onComplete,
+                               const char* remoteDir) {
     if (_uploading) {
         Serial.println("[UploadManager] Upload already in progress");
         if (onComplete) onComplete(false, "Upload already in progress");
@@ -144,15 +148,21 @@ bool UploadManager::uploadFile(const char* localPath,
     }
     
     // FluidNC expects path as directory only, filename goes in form field name
-    String destDir = String(FLUIDNC_UPLOAD_PATH);
+    String destDir = String((remoteDir && remoteDir[0] != '\0') ? remoteDir : FLUIDNC_UPLOAD_PATH);
+    if (!destDir.endsWith("/")) {
+        destDir += "/";
+    }
     String fullPath = destDir + filenameStr;
     
-    // Get current timestamp
+    char timestamp[32];
+#if defined(FT_PLATFORM_RPI)
+    snprintf(timestamp, sizeof(timestamp), "boot-%lu", static_cast<unsigned long>(millis()));
+#else
     time_t now = time(nullptr);
     struct tm timeinfo;
     localtime_r(&now, &timeinfo);
-    char timestamp[32];
     strftime(timestamp, sizeof(timestamp), "%Y-%m-%dT%H:%M:%S", &timeinfo);
+#endif
     
     String url = "http://" + machineIP + "/upload";
     Serial.printf("[UploadManager] Uploading to %s (path: %s)\n", url.c_str(), fullPath.c_str());

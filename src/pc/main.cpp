@@ -27,9 +27,80 @@
 #include "ui/tabs/control/ui_tab_control_jog.h"
 #include "ui/tabs/settings/ui_tab_settings_about.h"
 #include "ui/machine_config.h"
+#include <Preferences.h>
+#include <cmath>
 
 namespace {
 bool g_running = true;
+
+bool read_fullscreen_preference() {
+    Preferences prefs;
+    if (!prefs.begin(PREFS_SYSTEM_NAMESPACE, true)) {
+        return true;
+    }
+    const bool fullscreen_mode = prefs.getBool("fullscreen_mode", true);
+    prefs.end();
+    return fullscreen_mode;
+}
+
+void apply_fullscreen_preference(lv_display_t *display, bool fullscreen_mode) {
+    SDL_Renderer *renderer = static_cast<SDL_Renderer *>(lv_sdl_window_get_renderer(display));
+    if (!renderer) {
+        return;
+    }
+
+    SDL_Window *window = SDL_RenderGetWindow(renderer);
+    if (!window) {
+        return;
+    }
+
+    const Uint32 flags = fullscreen_mode ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0;
+    if (SDL_SetWindowFullscreen(window, flags) != 0) {
+        std::fprintf(stderr, "SDL_SetWindowFullscreen failed: %s\n", SDL_GetError());
+    } else {
+        Serial.printf("FT PC: fullscreen_mode=%d applied\n", fullscreen_mode ? 1 : 0);
+    }
+}
+
+SDL_Window *get_window_from_display(lv_display_t *display) {
+    SDL_Renderer *renderer = static_cast<SDL_Renderer *>(lv_sdl_window_get_renderer(display));
+    if (!renderer) {
+        return nullptr;
+    }
+    return SDL_RenderGetWindow(renderer);
+}
+
+void update_window_scaling(lv_display_t *display) {
+    SDL_Window *window = get_window_from_display(display);
+    if (!window) {
+        return;
+    }
+
+    int window_w = 0;
+    int window_h = 0;
+    SDL_GetWindowSize(window, &window_w, &window_h);
+    if (window_w <= 0 || window_h <= 0) {
+        return;
+    }
+
+    // Keep a stable logical canvas and scale it to fit current window size.
+    const float zoom_x = static_cast<float>(window_w) / static_cast<float>(UI_BASE_WIDTH);
+    const float zoom_y = static_cast<float>(window_h) / static_cast<float>(UI_BASE_HEIGHT);
+    float zoom = (zoom_x < zoom_y) ? zoom_x : zoom_y;
+    if (zoom < 0.1f) {
+        zoom = 0.1f;
+    }
+
+    if (lv_display_get_horizontal_resolution(display) != UI_BASE_WIDTH ||
+        lv_display_get_vertical_resolution(display) != UI_BASE_HEIGHT) {
+        lv_display_set_resolution(display, UI_BASE_WIDTH, UI_BASE_HEIGHT);
+    }
+
+    const float current_zoom = lv_sdl_window_get_zoom(display);
+    if (std::fabs(current_zoom - zoom) > 0.01f) {
+        lv_sdl_window_set_zoom(display, zoom);
+    }
+}
 
 void pump_sdl_events() {
     SDL_Event event;
@@ -144,6 +215,22 @@ void update_ui_from_status() {
         UITabStatus::updateFileProgress(status.is_sd_printing, status.sd_percent,
                                         status.sd_filename, status.sd_elapsed_ms);
         UITabStatus::updateMessage(status.last_message);
+
+        // Keep Macros running panel in sync for local macro playback.
+        if (UITabMacros::isMacroRunning()) {
+            if (status.is_sd_printing) {
+                UITabMacros::updateProgress(static_cast<int>(status.sd_percent),
+                                            UITabMacros::getRunningMacroName(),
+                                            status.last_message);
+                UITabMacros::showProgress();
+            } else {
+                UITabMacros::clearRunningMacro();
+                UITabMacros::hideProgress();
+            }
+        } else {
+            UITabMacros::hideProgress();
+        }
+
         UITabControlOverride::updateValues(status.feed_override, status.rapid_override, status.spindle_override);
         UITabSettingsAbout::update();
         PowerManager::update(status.state);
@@ -160,11 +247,22 @@ void update_ui_from_status() {
         UITabStatus::updateRapidOverride(-9999.0f);
         UITabStatus::updateSpindle(-9999.0f, -9999.0f);
         UITabStatus::updateModalStates("---", "---", "---", "---", "---", "---", "---", "---", "---");
+        if (UITabMacros::isMacroRunning()) {
+            UITabMacros::clearRunningMacro();
+        }
+        UITabMacros::hideProgress();
         PowerManager::update(STATE_IDLE);
         send_hid_status(CommManager::getStatus(), false);
     }
 }
 }  // namespace
+
+void PCRequestExit() {
+    g_running = false;
+    SDL_Event quit_event;
+    quit_event.type = SDL_QUIT;
+    SDL_PushEvent(&quit_event);
+}
 
 int main() {
 #ifndef WIN32
@@ -179,8 +277,12 @@ int main() {
         return 1;
     }
 
-    lv_display_t *display = lv_sdl_window_create(SDL_HOR_RES, SDL_VER_RES);
+    lv_display_t *display = lv_sdl_window_create(UI_BASE_WIDTH, UI_BASE_HEIGHT);
+
     Serial.println("FT PC: window created");
+    bool fullscreen_mode_applied = read_fullscreen_preference();
+    apply_fullscreen_preference(display, fullscreen_mode_applied);
+    update_window_scaling(display);
     lv_sdl_mouse_create();
     lv_sdl_mousewheel_create();
     lv_sdl_keyboard_create();
@@ -214,6 +316,7 @@ int main() {
 
     uint32_t last_tick = SDL_GetTicks();
     uint32_t last_ui_update = 0;
+    uint32_t last_fullscreen_poll = 0;
 
     while (g_running) {
         pump_sdl_events();
@@ -231,6 +334,16 @@ int main() {
         if (now - last_ui_update >= 250) {
             last_ui_update = now;
             update_ui_from_status();
+        }
+
+        if (now - last_fullscreen_poll >= 500) {
+            last_fullscreen_poll = now;
+            const bool fullscreen_mode = read_fullscreen_preference();
+            if (fullscreen_mode != fullscreen_mode_applied) {
+                fullscreen_mode_applied = fullscreen_mode;
+                apply_fullscreen_preference(display, fullscreen_mode_applied);
+            }
+            update_window_scaling(display);
         }
 
         lv_timer_handler();

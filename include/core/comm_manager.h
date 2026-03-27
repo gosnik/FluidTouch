@@ -1,11 +1,14 @@
 #ifndef COMM_MANAGER_H
 #define COMM_MANAGER_H
 
+#include <functional>
+
 #include "core/comm_types.h"
 #include "ui/machine_config.h"
 
 class CommManager {
 public:
+    using CommandTap = std::function<void(const char *command)>;
     enum class EventType {
         CONNECTED,
         DISCONNECTED,
@@ -49,6 +52,8 @@ public:
     static void loop();
     static const FluidNCStatus& getStatus();
     static void sendCommand(const char* command);
+    static void setCommandTap(CommandTap tap);
+    static void clearCommandTap();
     static bool sendJog(const JogCommand &cmd);
     static bool sendJogRelative(float x, float y, float z, float feedrate);
     static bool sendJogRelativeAxis(char axis, float delta, float feedrate);
@@ -76,9 +81,6 @@ private:
     static ConnectionType currentType;
     static MachineConfig currentConfig;
     static bool initialized;
-    static MessageCallback messageCallback;
-    static MessageCallback terminalCallback;
-    static EventCallback eventCallback;
     static bool jog_soft_limit_x_enabled;
     static bool jog_soft_limit_y_enabled;
     static bool jog_soft_limit_z_enabled;
@@ -107,4 +109,3 @@ private:
 };
 
 #endif // COMM_MANAGER_H
-#include <functional>

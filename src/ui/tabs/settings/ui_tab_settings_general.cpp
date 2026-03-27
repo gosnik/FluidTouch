@@ -8,6 +8,7 @@
 static lv_obj_t *status_label = NULL;
 static lv_obj_t *show_machine_select_switch = NULL;
 static lv_obj_t *folders_on_top_switch = NULL;
+static lv_obj_t *fullscreen_mode_switch = NULL;
 
 // Forward declarations for event handlers
 static void btn_save_general_event_handler(lv_event_t *e);
@@ -27,9 +28,11 @@ void UITabSettingsGeneral::create(lv_obj_t *tab) {
     prefs.begin(PREFS_SYSTEM_NAMESPACE, true);  // Read-only
     bool show_machine_select = prefs.getBool("show_mach_sel", true);  // Default to true
     bool folders_on_top = prefs.getBool("folders_on_top", false);  // Default to false (folders at bottom)
+    bool fullscreen_mode = prefs.getBool("fullscreen_mode", true);  // Default to true
     prefs.end();
     
-    Serial.printf("UITabSettingsGeneral: Loaded show_mach_sel=%d, folders_on_top=%d\n", show_machine_select, folders_on_top);
+    Serial.printf("UITabSettingsGeneral: Loaded show_mach_sel=%d, folders_on_top=%d, fullscreen_mode=%d\n",
+                  show_machine_select, folders_on_top, fullscreen_mode);
     
     // === Machine Selection Section ===
     lv_obj_t *section_title = lv_label_create(tab);
@@ -78,12 +81,18 @@ void UITabSettingsGeneral::create(lv_obj_t *tab) {
         lv_obj_add_state(folders_on_top_switch, LV_STATE_CHECKED);
     }
     
-    // Description text for folders setting
-    lv_obj_t *folders_desc_label = lv_label_create(tab);
-    lv_label_set_text(folders_desc_label, "When enabled, folders appear at the top\nof the file list instead of the bottom.");
-    lv_obj_set_style_text_font(folders_desc_label, &lv_font_montserrat_14, 0);
-    lv_obj_set_style_text_color(folders_desc_label, UITheme::TEXT_DISABLED, 0);
-    lv_obj_set_pos(folders_desc_label, UI_SCALE_X(20), UI_SCALE_Y(242));  // First column
+    // Fullscreen mode label and switch (below folders on top)
+    lv_obj_t *fullscreen_label = lv_label_create(tab);
+    lv_label_set_text(fullscreen_label, "Fullscreen:");
+    lv_obj_set_style_text_font(fullscreen_label, &lv_font_montserrat_18, 0);
+    lv_obj_set_style_text_color(fullscreen_label, UITheme::TEXT_LIGHT, 0);
+    lv_obj_set_pos(fullscreen_label, UI_SCALE_X(20), UI_SCALE_Y(245));
+
+    fullscreen_mode_switch = lv_switch_create(tab);
+    lv_obj_set_pos(fullscreen_mode_switch, UI_SCALE_X(200), UI_SCALE_Y(240));
+    if (fullscreen_mode) {
+        lv_obj_add_state(fullscreen_mode_switch, LV_STATE_CHECKED);
+    }
     
     // === Backup & Restore Section (Second column) ===
     lv_obj_t *backup_section_title = lv_label_create(tab);
@@ -159,8 +168,10 @@ static void btn_save_general_event_handler(lv_event_t *e) {
         // Save preferences
         bool show_machine_select = lv_obj_has_state(show_machine_select_switch, LV_STATE_CHECKED);
         bool folders_on_top = lv_obj_has_state(folders_on_top_switch, LV_STATE_CHECKED);
+        bool fullscreen_mode = lv_obj_has_state(fullscreen_mode_switch, LV_STATE_CHECKED);
         
-        Serial.printf("UITabSettingsGeneral: Saving show_mach_sel=%d, folders_on_top=%d\n", show_machine_select, folders_on_top);
+        Serial.printf("UITabSettingsGeneral: Saving show_mach_sel=%d, folders_on_top=%d, fullscreen_mode=%d\n",
+                      show_machine_select, folders_on_top, fullscreen_mode);
         
         Preferences prefs;
         if (!prefs.begin(PREFS_SYSTEM_NAMESPACE, false)) {  // Read-write
@@ -174,15 +185,18 @@ static void btn_save_general_event_handler(lv_event_t *e) {
         
         prefs.putBool("show_mach_sel", show_machine_select);
         prefs.putBool("folders_on_top", folders_on_top);
+        prefs.putBool("fullscreen_mode", fullscreen_mode);
         prefs.end();
         
         // Verify it was saved
         prefs.begin(PREFS_SYSTEM_NAMESPACE, true);
         bool verified_machine = prefs.getBool("show_mach_sel", true);
         bool verified_folders = prefs.getBool("folders_on_top", false);
+        bool verified_fullscreen = prefs.getBool("fullscreen_mode", true);
         prefs.end();
         
-        Serial.printf("UITabSettingsGeneral: Verified show_mach_sel=%d, folders_on_top=%d\n", verified_machine, verified_folders);
+        Serial.printf("UITabSettingsGeneral: Verified show_mach_sel=%d, folders_on_top=%d, fullscreen_mode=%d\n",
+                      verified_machine, verified_folders, verified_fullscreen);
         
         if (status_label != NULL) {
             lv_label_set_text(status_label, "Settings saved!");
@@ -195,9 +209,10 @@ static void btn_save_general_event_handler(lv_event_t *e) {
 static void btn_reset_event_handler(lv_event_t *e) {
     lv_event_code_t code = lv_event_get_code(e);
     if (code == LV_EVENT_CLICKED) {
-        // Reset to defaults (show machine selection enabled, folders at bottom)
+        // Reset to defaults (show machine selection enabled, folders at bottom, fullscreen enabled)
         lv_obj_add_state(show_machine_select_switch, LV_STATE_CHECKED);
         lv_obj_clear_state(folders_on_top_switch, LV_STATE_CHECKED);  // Default: folders at bottom
+        lv_obj_add_state(fullscreen_mode_switch, LV_STATE_CHECKED);   // Default: fullscreen enabled
         
         if (status_label != NULL) {
             lv_label_set_text(status_label, "Reset to defaults");

@@ -35,7 +35,7 @@ public:
     static void showPowerOffConfirmDialog();
     static void showConnectingPopup(const char *machine_name, const char *ssid);
     static void hideConnectingPopup();
-    static void showConnectionErrorDialog(const char *title, const char *message);
+    static void showConnectionErrorDialog(const char *title, const char *message, bool force_show = false);
     static void hideConnectionErrorDialog();
     static void checkConnectionTimeout();  // Non-blocking timeout check
     

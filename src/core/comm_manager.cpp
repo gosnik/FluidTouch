@@ -2,30 +2,80 @@
 #include "core/grbl_comm.h"
 #include "network/fluidnc_client.h"
 
-ConnectionType CommManager::currentType = CONN_WIRELESS;
-MachineConfig CommManager::currentConfig;
-bool CommManager::initialized = false;
-MessageCallback CommManager::messageCallback = nullptr;
-MessageCallback CommManager::terminalCallback = nullptr;
-CommManager::EventCallback CommManager::eventCallback = nullptr;
-bool CommManager::jog_soft_limit_x_enabled = false;
-bool CommManager::jog_soft_limit_y_enabled = false;
-bool CommManager::jog_soft_limit_z_enabled = false;
-float CommManager::jog_soft_limit_x_min = 0.0f;
-float CommManager::jog_soft_limit_x_max = 0.0f;
-float CommManager::jog_soft_limit_y_min = 0.0f;
-float CommManager::jog_soft_limit_y_max = 0.0f;
-float CommManager::jog_soft_limit_z_min = 0.0f;
-float CommManager::jog_soft_limit_z_max = 0.0f;
-bool CommManager::jog_pending_valid = false;
-float CommManager::jog_pending_x = 0.0f;
-float CommManager::jog_pending_y = 0.0f;
-float CommManager::jog_pending_z = 0.0f;
-int32_t CommManager::jog_pending_command_count = 0;
-float CommManager::jog_last_reported_x = 0.0f;
-float CommManager::jog_last_reported_y = 0.0f;
-float CommManager::jog_last_reported_z = 0.0f;
-MachineState CommManager::jog_last_state = STATE_DISCONNECTED;
+namespace {
+
+struct CommManagerState {
+    ConnectionType currentType = CONN_WIRELESS;
+    MachineConfig currentConfig{};
+    bool initialized = false;
+    bool jog_soft_limit_x_enabled = false;
+    bool jog_soft_limit_y_enabled = false;
+    bool jog_soft_limit_z_enabled = false;
+    float jog_soft_limit_x_min = 0.0f;
+    float jog_soft_limit_x_max = 0.0f;
+    float jog_soft_limit_y_min = 0.0f;
+    float jog_soft_limit_y_max = 0.0f;
+    float jog_soft_limit_z_min = 0.0f;
+    float jog_soft_limit_z_max = 0.0f;
+    bool jog_pending_valid = false;
+    float jog_pending_x = 0.0f;
+    float jog_pending_y = 0.0f;
+    float jog_pending_z = 0.0f;
+    int32_t jog_pending_command_count = 0;
+    float jog_last_reported_x = 0.0f;
+    float jog_last_reported_y = 0.0f;
+    float jog_last_reported_z = 0.0f;
+    MachineState jog_last_state = STATE_DISCONNECTED;
+};
+
+CommManagerState &commManagerState() {
+    static CommManagerState state;
+    return state;
+}
+
+MessageCallback &messageCallbackStorage() {
+    static MessageCallback callback;
+    return callback;
+}
+
+MessageCallback &terminalCallbackStorage() {
+    static MessageCallback callback;
+    return callback;
+}
+
+CommManager::CommandTap &commandTapStorage() {
+    static CommManager::CommandTap callback;
+    return callback;
+}
+
+CommManager::EventCallback &eventCallbackStorage() {
+    static CommManager::EventCallback callback;
+    return callback;
+}
+
+}  // namespace
+
+#define currentType commManagerState().currentType
+#define currentConfig commManagerState().currentConfig
+#define initialized commManagerState().initialized
+#define jog_soft_limit_x_enabled commManagerState().jog_soft_limit_x_enabled
+#define jog_soft_limit_y_enabled commManagerState().jog_soft_limit_y_enabled
+#define jog_soft_limit_z_enabled commManagerState().jog_soft_limit_z_enabled
+#define jog_soft_limit_x_min commManagerState().jog_soft_limit_x_min
+#define jog_soft_limit_x_max commManagerState().jog_soft_limit_x_max
+#define jog_soft_limit_y_min commManagerState().jog_soft_limit_y_min
+#define jog_soft_limit_y_max commManagerState().jog_soft_limit_y_max
+#define jog_soft_limit_z_min commManagerState().jog_soft_limit_z_min
+#define jog_soft_limit_z_max commManagerState().jog_soft_limit_z_max
+#define jog_pending_valid commManagerState().jog_pending_valid
+#define jog_pending_x commManagerState().jog_pending_x
+#define jog_pending_y commManagerState().jog_pending_y
+#define jog_pending_z commManagerState().jog_pending_z
+#define jog_pending_command_count commManagerState().jog_pending_command_count
+#define jog_last_reported_x commManagerState().jog_last_reported_x
+#define jog_last_reported_y commManagerState().jog_last_reported_y
+#define jog_last_reported_z commManagerState().jog_last_reported_z
+#define jog_last_state commManagerState().jog_last_state
 
 void CommManager::init() {
     if (initialized) {
@@ -97,6 +147,9 @@ const FluidNCStatus& CommManager::getStatus() {
 }
 
 void CommManager::sendCommand(const char* command) {
+    if (commandTapStorage()) {
+        commandTapStorage()(command);
+    }
     if (useGrbl()) {
         GrblComm::sendCommand(command);
         return;
@@ -251,72 +304,80 @@ String CommManager::getMachineIP() {
 }
 
 void CommManager::setMessageCallback(MessageCallback callback) {
-    messageCallback = callback;
+    messageCallbackStorage() = callback;
     applyCallbacks();
 }
 
 void CommManager::clearMessageCallback() {
-    messageCallback = nullptr;
+    messageCallbackStorage() = nullptr;
     applyCallbacks();
 }
 
 void CommManager::setTerminalCallback(MessageCallback callback) {
-    terminalCallback = callback;
+    terminalCallbackStorage() = callback;
     applyCallbacks();
 }
 
 void CommManager::clearTerminalCallback() {
-    terminalCallback = nullptr;
+    terminalCallbackStorage() = nullptr;
     applyCallbacks();
 }
 
+void CommManager::setCommandTap(CommandTap tap) {
+    commandTapStorage() = tap;
+}
+
+void CommManager::clearCommandTap() {
+    commandTapStorage() = nullptr;
+}
+
 void CommManager::setEventCallback(EventCallback callback) {
-    eventCallback = callback;
+    eventCallbackStorage() = callback;
 }
 
 void CommManager::clearEventCallback() {
-    eventCallback = nullptr;
+    eventCallbackStorage() = nullptr;
 }
 
 void CommManager::emitConnected() {
-    if (!eventCallback) {
+    if (!eventCallbackStorage()) {
         return;
     }
     Event event{};
     event.type = EventType::CONNECTED;
     event.message = nullptr;
-    eventCallback(event);
+    eventCallbackStorage()(event);
 }
 
 void CommManager::emitDisconnected(const char *message) {
-    if (!eventCallback) {
+    if (!eventCallbackStorage()) {
         return;
     }
     Event event{};
     event.type = EventType::DISCONNECTED;
     event.message = message;
-    eventCallback(event);
+    eventCallbackStorage()(event);
 }
 
 void CommManager::emitConnectionError(const char *message) {
-    if (!eventCallback) {
+    if (!eventCallbackStorage()) {
         return;
     }
     Event event{};
     event.type = EventType::CONNECTION_ERROR;
     event.message = message;
-    eventCallback(event);
+    eventCallbackStorage()(event);
 }
 
 void CommManager::emitProbeResult(float x, float y, float z, bool success) {
-    if (!eventCallback) {
+    if (!eventCallbackStorage()) {
         return;
     }
     Event event{};
     event.type = EventType::PROBE_RESULT;
     event.message = nullptr;
     event.probe = {x, y, z, success};
-    eventCallback(event);
+    eventCallbackStorage()(event);
 }
 
 ConnectionType CommManager::getConnectionType() {
@@ -332,17 +393,17 @@ bool CommManager::useGrbl() {
 }
 
 void CommManager::applyCallbacks() {
-    if (messageCallback) {
-        FluidNCClient::setMessageCallback(messageCallback);
-        GrblComm::setMessageCallback(messageCallback);
+    if (messageCallbackStorage()) {
+        FluidNCClient::setMessageCallback(messageCallbackStorage());
+        GrblComm::setMessageCallback(messageCallbackStorage());
     } else {
         FluidNCClient::clearMessageCallback();
         GrblComm::clearMessageCallback();
     }
 
-    if (terminalCallback) {
-        FluidNCClient::setTerminalCallback(terminalCallback);
-        GrblComm::setTerminalCallback(terminalCallback);
+    if (terminalCallbackStorage()) {
+        FluidNCClient::setTerminalCallback(terminalCallbackStorage());
+        GrblComm::setTerminalCallback(terminalCallbackStorage());
     } else {
         FluidNCClient::clearTerminalCallback();
         GrblComm::clearTerminalCallback();

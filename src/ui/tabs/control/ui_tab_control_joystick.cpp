@@ -50,6 +50,21 @@ static int last_displayed_z_feedrate = -1;
 static const unsigned long JOG_INTERVAL_MS = 50;  // Send jog command every 50ms (20Hz for balance of smoothness and performance)
 static const float JOG_TIME_INCREMENT = 0.050f;   // 50ms in seconds (nominal dt)
 
+static bool getEventPoint(lv_event_t *e, lv_point_t *point) {
+    if (!point) {
+        return false;
+    }
+    lv_indev_t *indev = lv_event_get_indev(e);
+    if (!indev) {
+        indev = lv_indev_get_act();
+    }
+    if (!indev) {
+        return false;
+    }
+    lv_indev_get_point(indev, point);
+    return true;
+}
+
 // Apply response curve to joystick input for fine-grained control near center
 // Uses quadratic curve: output = sign(input) * (input/100)^2 * 100
 // This gives smooth, precise control near center and quick ramp-up at edges
@@ -79,18 +94,14 @@ static void xy_joystick_event_handler(lv_event_t *e) {
     // Safety check: ensure object is still valid
     if (!knob || !lv_obj_is_valid(knob)) return;
     
-    if (code == LV_EVENT_PRESSING) {
+    if (code == LV_EVENT_PRESSING || code == LV_EVENT_PRESSED) {
         lv_obj_t *bg = lv_obj_get_parent(knob);
         
         // Safety check: ensure parent is valid
         if (!bg || !lv_obj_is_valid(bg)) return;
         
-        lv_indev_t *indev = lv_indev_get_act();
-        
-        if (indev == NULL) return;
-        
         lv_point_t point;
-        lv_indev_get_point(indev, &point);
+        if (!getEventPoint(e, &point)) return;
         
         // Get background dimensions
         int32_t bg_w = lv_obj_get_width(bg);
@@ -193,7 +204,7 @@ static void xy_joystick_event_handler(lv_event_t *e) {
             }
         }
     }
-    else if (code == LV_EVENT_RELEASED) {
+    else if (code == LV_EVENT_RELEASED || code == LV_EVENT_PRESS_LOST) {
         // Return knob to center when released
         lv_obj_center(knob);
         
@@ -227,18 +238,14 @@ static void z_joystick_event_handler(lv_event_t *e) {
     // Safety check: ensure object is still valid
     if (!knob || !lv_obj_is_valid(knob)) return;
     
-    if (code == LV_EVENT_PRESSING) {
+    if (code == LV_EVENT_PRESSING || code == LV_EVENT_PRESSED) {
         lv_obj_t *bg = lv_obj_get_parent(knob);
         
         // Safety check: ensure parent is valid
         if (!bg || !lv_obj_is_valid(bg)) return;
         
-        lv_indev_t *indev = lv_indev_get_act();
-        
-        if (indev == NULL) return;
-        
         lv_point_t point;
-        lv_indev_get_point(indev, &point);
+        if (!getEventPoint(e, &point)) return;
         
         // Get background dimensions
         int32_t bg_h = lv_obj_get_height(bg);
@@ -316,7 +323,7 @@ static void z_joystick_event_handler(lv_event_t *e) {
             }
         }
     }
-    else if (code == LV_EVENT_RELEASED) {
+    else if (code == LV_EVENT_RELEASED || code == LV_EVENT_PRESS_LOST) {
         // Return knob to center when released
         lv_obj_center(knob);
         
@@ -348,15 +355,12 @@ static void x_joystick_event_handler(lv_event_t *e) {
     
     if (!knob || !lv_obj_is_valid(knob)) return;
     
-    if (code == LV_EVENT_PRESSING) {
+    if (code == LV_EVENT_PRESSING || code == LV_EVENT_PRESSED) {
         lv_obj_t *bg = lv_obj_get_parent(knob);
         if (!bg || !lv_obj_is_valid(bg)) return;
         
-        lv_indev_t *indev = lv_indev_get_act();
-        if (indev == NULL) return;
-        
         lv_point_t point;
-        lv_indev_get_point(indev, &point);
+        if (!getEventPoint(e, &point)) return;
         
         int32_t bg_w = lv_obj_get_width(bg);
         lv_area_t bg_coords;
@@ -409,7 +413,7 @@ static void x_joystick_event_handler(lv_event_t *e) {
             }
         }
     }
-    else if (code == LV_EVENT_RELEASED) {
+    else if (code == LV_EVENT_RELEASED || code == LV_EVENT_PRESS_LOST) {
         lv_obj_center(knob);
         if (xy_percent_label != NULL) lv_label_set_text(xy_percent_label, "X: 0%");
         if (xy_feedrate_label != NULL) lv_label_set_text(xy_feedrate_label, "0 mm/min");
@@ -430,15 +434,12 @@ static void y_joystick_event_handler(lv_event_t *e) {
     
     if (!knob || !lv_obj_is_valid(knob)) return;
     
-    if (code == LV_EVENT_PRESSING) {
+    if (code == LV_EVENT_PRESSING || code == LV_EVENT_PRESSED) {
         lv_obj_t *bg = lv_obj_get_parent(knob);
         if (!bg || !lv_obj_is_valid(bg)) return;
         
-        lv_indev_t *indev = lv_indev_get_act();
-        if (indev == NULL) return;
-        
         lv_point_t point;
-        lv_indev_get_point(indev, &point);
+        if (!getEventPoint(e, &point)) return;
         
         int32_t bg_h = lv_obj_get_height(bg);
         lv_area_t bg_coords;
@@ -491,7 +492,7 @@ static void y_joystick_event_handler(lv_event_t *e) {
             }
         }
     }
-    else if (code == LV_EVENT_RELEASED) {
+    else if (code == LV_EVENT_RELEASED || code == LV_EVENT_PRESS_LOST) {
         lv_obj_center(knob);
         if (xy_percent_label != NULL) lv_label_set_text(xy_percent_label, "Y: 0%");
         if (xy_feedrate_label != NULL) lv_label_set_text(xy_feedrate_label, "0 mm/min");
@@ -556,8 +557,10 @@ static void rebuildJoystick() {
         lv_obj_center(xy_knob_label);
         
         lv_obj_add_flag(xy_knob, LV_OBJ_FLAG_CLICKABLE);
+        lv_obj_add_event_cb(xy_knob, xy_joystick_event_handler, LV_EVENT_PRESSED, NULL);
         lv_obj_add_event_cb(xy_knob, xy_joystick_event_handler, LV_EVENT_PRESSING, NULL);
         lv_obj_add_event_cb(xy_knob, xy_joystick_event_handler, LV_EVENT_RELEASED, NULL);
+        lv_obj_add_event_cb(xy_knob, xy_joystick_event_handler, LV_EVENT_PRESS_LOST, NULL);
     }
     else if (current_axis_mode == MODE_X) {
         // Create horizontal X slider (220x80, centered vertically to align knob with Z knob)
@@ -592,8 +595,10 @@ static void rebuildJoystick() {
         lv_obj_center(x_knob_label);
         
         lv_obj_add_flag(xy_knob, LV_OBJ_FLAG_CLICKABLE);
+        lv_obj_add_event_cb(xy_knob, x_joystick_event_handler, LV_EVENT_PRESSED, NULL);
         lv_obj_add_event_cb(xy_knob, x_joystick_event_handler, LV_EVENT_PRESSING, NULL);
         lv_obj_add_event_cb(xy_knob, x_joystick_event_handler, LV_EVENT_RELEASED, NULL);
+        lv_obj_add_event_cb(xy_knob, x_joystick_event_handler, LV_EVENT_PRESS_LOST, NULL);
     }
     else if (current_axis_mode == MODE_Y) {
         // Create vertical Y slider (80x220, centered horizontally to align knob with XY center)
@@ -628,8 +633,10 @@ static void rebuildJoystick() {
         lv_obj_center(y_knob_label);
         
         lv_obj_add_flag(xy_knob, LV_OBJ_FLAG_CLICKABLE);
+        lv_obj_add_event_cb(xy_knob, y_joystick_event_handler, LV_EVENT_PRESSED, NULL);
         lv_obj_add_event_cb(xy_knob, y_joystick_event_handler, LV_EVENT_PRESSING, NULL);
         lv_obj_add_event_cb(xy_knob, y_joystick_event_handler, LV_EVENT_RELEASED, NULL);
+        lv_obj_add_event_cb(xy_knob, y_joystick_event_handler, LV_EVENT_PRESS_LOST, NULL);
     }
 }
 
@@ -897,6 +904,8 @@ void UITabControlJoystick::create(lv_obj_t *parent) {
     
     // Add drag event to knob
     lv_obj_add_flag(z_knob, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_event_cb(z_knob, z_joystick_event_handler, LV_EVENT_PRESSED, NULL);
     lv_obj_add_event_cb(z_knob, z_joystick_event_handler, LV_EVENT_PRESSING, NULL);
     lv_obj_add_event_cb(z_knob, z_joystick_event_handler, LV_EVENT_RELEASED, NULL);
+    lv_obj_add_event_cb(z_knob, z_joystick_event_handler, LV_EVENT_PRESS_LOST, NULL);
 }

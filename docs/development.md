@@ -153,6 +153,121 @@ Notes:
 - WiFi and hardware-specific drivers are stubbed for the emulator build.
 - If no machines are configured, a default `Simulator` machine is created automatically.
 
+### Raspberry Pi Cross-Compile
+
+The `emulator_rpi` environment cross-compiles the SDL emulator for Raspberry Pi
+using a GNU cross toolchain.
+
+Requirements:
+- Cross compiler toolchain (`arm-linux-gnueabihf-*` by default)
+- SDL2 development package for the target rootfs/sysroot
+- Target `pkg-config` (default: `<triplet>-pkg-config`) or manual SDL2 flags
+
+Build examples:
+
+```bash
+# Raspberry Pi OS 32-bit (default)
+platformio run -e emulator_rpi
+
+# Raspberry Pi OS 64-bit
+FT_RPI_TRIPLET=aarch64-linux-gnu platformio run -e emulator_rpi
+
+# Optional: explicit sysroot for headers/libs
+FT_RPI_SYSROOT=/opt/rpi-sysroot platformio run -e emulator_rpi
+```
+
+Useful environment variables:
+- `FT_RPI_TRIPLET`: toolchain prefix (default: `arm-linux-gnueabihf`)
+- `FT_RPI_SYSROOT`: optional sysroot path passed as `--sysroot`
+- `FT_RPI_PKG_CONFIG`: optional pkg-config binary override
+- `FT_RPI_SDL_CFLAGS`: optional manual SDL2 compile flags (for example `-I/opt/rpi-sysroot/usr/include/SDL2`)
+- `FT_RPI_SDL_LIBS`: optional manual SDL2 link flags (for example `-L/opt/rpi-sysroot/usr/lib/arm-linux-gnueabihf -lSDL2`)
+
+### Raspberry Pi Circle Bare-Metal Target
+
+The `rpi_circle` environment builds a Raspberry Pi bare-metal bootstrap target
+using the [Circle](https://github.com/rsta2/circle) programming environment,
+the `circle-stdlib` integration layer, and Circle's LVGL addon. These
+dependencies are tracked in-repo as Git submodules under `third_party/`. This
+is intentionally a bring-up target for the porting work, not a full replacement
+for the ESP32 firmware.
+
+Requirements:
+- Repository submodules initialized
+- `make`
+- For 32-bit builds: `arm-none-eabi-*`
+- For local Raspberry Pi 4 / 64-bit builds: `aarch64-none-elf-*`
+
+Repository setup:
+
+```bash
+git submodule update --init --recursive
+```
+
+Build example:
+
+```bash
+platformio run -e rpi_circle
+```
+
+By default the env targets Raspberry Pi 4 in 64-bit mode and uses
+`aarch64-none-elf-*`. If that toolchain is not already installed, the PlatformIO
+hook bootstraps a repo-local copy under `.tools/` using Arm GNU Toolchain
+14.3.Rel1. You can override the target:
+
+```bash
+# Raspberry Pi 3, 64-bit
+FT_CIRCLE_AARCH=64 FT_CIRCLE_RASPPI=3 \
+  FT_CIRCLE_PREFIX64=aarch64-none-elf- \
+  platformio run -e rpi_circle
+```
+
+Useful environment variables:
+- `FT_CIRCLE_STDLIB_HOME`: optional override for the `circle-stdlib` checkout path
+- `FT_CIRCLE_HOME`: optional override for a plain Circle checkout path
+- `FT_CIRCLE_AARCH`: `32` or `64`
+- `FT_CIRCLE_RASPPI`: Circle target selector (`1`, `2`, `3`, `4`, or `5` depending on architecture)
+- `FT_CIRCLE_PREFIX32`: 32-bit toolchain prefix (default: `arm-none-eabi-`)
+- `FT_CIRCLE_PREFIX64`: 64-bit toolchain prefix (default: `aarch64-none-elf-`)
+
+Output:
+- Circle artifacts: `.pio/build/rpi_circle/circle/`
+- Bootable SD payload: `.pio/build/rpi_circle/circle/boot/`
+
+### `rpi_circle_dev` Netboot Workflow
+
+`rpi_circle_dev` builds the same Pi 4 Circle app but packages it for an Ethernet netboot workflow from the local build folder.
+
+Build it with:
+
+```sh
+platformio run -e rpi_circle_dev
+```
+
+Output:
+- Circle artifacts: `.pio/build/rpi_circle_dev/circle/`
+- Netboot payload root: `.pio/build/rpi_circle_dev/circle/boot/`
+- Netboot manifest: `.pio/build/rpi_circle_dev/circle/boot/netboot.json`
+
+Serve that payload with the built-in Node server:
+
+```sh
+sudo node scripts/rpi_circle_netboot_server.mjs \
+  --boot-dir .pio/build/rpi_circle_dev/circle/boot \
+  --iface eth0 \
+  --client-ip 10.42.0.9
+```
+
+Notes:
+- This server uses DHCP on UDP `67` and TFTP on UDP `69`, so it normally needs root privileges or equivalent capabilities.
+- By default it also exports the same build directory over NFS and advertises that export via DHCP root-path.
+- Host NFS tools are required for that mode: `exportfs`, `rpc.nfsd`, and `rpc.mountd`.
+- Pass `--no-nfs` if you want DHCP/TFTP only.
+- Use an isolated Ethernet link or isolated network segment for development booting.
+- The script auto-detects the host IPv4 from `--iface` and serves the Pi boot files directly from the build output.
+- The Raspberry Pi 4 EEPROM must already be configured for network boot.
+- The default initial boot file is `start4.elf`, which then loads `config.txt`, `cmdline.txt`, the Pi 4 DTB, and `kernel8-rpi4.img` from the same build folder.
+
 ---
 
 ## Project Architecture

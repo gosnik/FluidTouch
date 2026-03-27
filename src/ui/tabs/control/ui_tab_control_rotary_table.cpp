@@ -27,9 +27,9 @@ double UITabControlRotaryTable::start_y = 0.0;
 double UITabControlRotaryTable::current_x = 0.0;
 double UITabControlRotaryTable::current_y = 0.0;
 
-static const lv_coord_t RT_FIELD_H = UI_SCALE_Y(44);
-static const lv_coord_t RT_FIELD_W = UI_SCALE_X(180);
-static const lv_coord_t RT_LABEL_W = UI_SCALE_X(120);
+static lv_coord_t rtFieldH() { return UI_SCALE_Y(44); }
+static lv_coord_t rtFieldW() { return UI_SCALE_X(180); }
+static lv_coord_t rtLabelW() { return UI_SCALE_X(120); }
 
 static size_t get_active_encoder_index(lv_obj_t *field) {
     if (field == UITabControlRotaryTable::ta_center_x) {
@@ -64,10 +64,10 @@ void UITabControlRotaryTable::create(lv_obj_t *tab) {
         lv_obj_set_style_text_font(lbl, &lv_font_montserrat_18, 0);
         lv_obj_set_style_text_color(lbl, UITheme::TEXT_LIGHT, 0);
         lv_obj_set_pos(lbl, UI_SCALE_X(10), y + UI_SCALE_Y(8));
-        lv_obj_set_width(lbl, RT_LABEL_W);
+        lv_obj_set_width(lbl, rtLabelW());
 
         lv_obj_t *ta = lv_textarea_create(tab);
-        lv_obj_set_size(ta, RT_FIELD_W, RT_FIELD_H);
+        lv_obj_set_size(ta, rtFieldW(), rtFieldH());
         lv_obj_set_pos(ta, UI_SCALE_X(140), y);
         lv_textarea_set_one_line(ta, true);
         lv_textarea_set_accepted_chars(ta, "0123456789.-");
@@ -78,10 +78,10 @@ void UITabControlRotaryTable::create(lv_obj_t *tab) {
     };
 
     make_field("Center X:", start_y, &ta_center_x);
-    make_field("Center Y:", start_y + (RT_FIELD_H + row_gap), &ta_center_y);
-    make_field("Radius:", start_y + 2 * (RT_FIELD_H + row_gap), &ta_radius);
-    make_field("Arc Len:", start_y + 3 * (RT_FIELD_H + row_gap), &ta_arc);
-    make_field("Z Delta:", start_y + 4 * (RT_FIELD_H + row_gap), &ta_z);
+    make_field("Center Y:", start_y + (rtFieldH() + row_gap), &ta_center_y);
+    make_field("Radius:", start_y + 2 * (rtFieldH() + row_gap), &ta_radius);
+    make_field("Arc Len:", start_y + 3 * (rtFieldH() + row_gap), &ta_arc);
+    make_field("Z Delta:", start_y + 4 * (rtFieldH() + row_gap), &ta_z);
 
     lv_textarea_set_text(ta_center_x, "0");
     lv_textarea_set_text(ta_center_y, "0");
@@ -96,7 +96,7 @@ void UITabControlRotaryTable::create(lv_obj_t *tab) {
     lv_obj_set_pos(feed_lbl, UI_SCALE_X(360), start_y + UI_SCALE_Y(8));
 
     ta_feed = lv_textarea_create(tab);
-    lv_obj_set_size(ta_feed, RT_FIELD_W, RT_FIELD_H);
+    lv_obj_set_size(ta_feed, rtFieldW(), rtFieldH());
     lv_obj_set_pos(ta_feed, UI_SCALE_X(430), start_y);
     lv_textarea_set_one_line(ta_feed, true);
     lv_textarea_set_accepted_chars(ta_feed, "0123456789");

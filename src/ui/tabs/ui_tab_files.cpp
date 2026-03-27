@@ -12,6 +12,41 @@
 #include <SD.h>
 #include <SPI.h>
 
+namespace {
+
+std::vector<std::string> &fileNamesStorage() {
+    static std::vector<std::string> names;
+    return names;
+}
+
+std::string &currentPathStorage() {
+    static std::string path("/sd/");
+    return path;
+}
+
+UITabFiles::StorageCache &fluidncSdCacheStorage() {
+    static UITabFiles::StorageCache cache{"", false, {}};
+    return cache;
+}
+
+UITabFiles::StorageCache &fluidncFlashCacheStorage() {
+    static UITabFiles::StorageCache cache{"", false, {}};
+    return cache;
+}
+
+UITabFiles::StorageCache &displaySdCacheStorage() {
+    static UITabFiles::StorageCache cache{"", false, {}};
+    return cache;
+}
+
+}  // namespace
+
+#define file_names fileNamesStorage()
+#define current_path currentPathStorage()
+#define fluidnc_sd_cache fluidncSdCacheStorage()
+#define fluidnc_flash_cache fluidncFlashCacheStorage()
+#define display_sd_cache displaySdCacheStorage()
+
 // Static member initialization
 lv_obj_t *UITabFiles::file_list_container = nullptr;
 lv_obj_t *UITabFiles::status_label = nullptr;
@@ -21,25 +56,18 @@ lv_obj_t *UITabFiles::upload_dialog = nullptr;
 lv_obj_t *UITabFiles::upload_progress_dialog = nullptr;
 lv_obj_t *UITabFiles::upload_progress_bar = nullptr;
 lv_obj_t *UITabFiles::upload_progress_label = nullptr;
-std::vector<std::string> UITabFiles::file_names;
-std::string UITabFiles::current_path = "/sd/";  // Default to SD card root
 bool UITabFiles::initial_load_done = false;     // Track initial load
 bool UITabFiles::refresh_pending = false;       // Track pending refresh request
 StorageSource UITabFiles::current_storage = StorageSource::FLUIDNC_SD;
 
-// Cache for each storage source
-UITabFiles::StorageCache UITabFiles::fluidnc_sd_cache = {"", false, {}};
-UITabFiles::StorageCache UITabFiles::fluidnc_flash_cache = {"", false, {}};
-UITabFiles::StorageCache UITabFiles::display_sd_cache = {"", false, {}};
-
 // Helper to get current storage cache
 static UITabFiles::StorageCache* getCurrentCache() {
     if (UITabFiles::current_storage == StorageSource::FLUIDNC_SD) {
-        return &UITabFiles::fluidnc_sd_cache;
+        return &fluidncSdCacheStorage();
     } else if (UITabFiles::current_storage == StorageSource::FLUIDNC_FLASH) {
-        return &UITabFiles::fluidnc_flash_cache;
+        return &fluidncFlashCacheStorage();
     } else {
-        return &UITabFiles::display_sd_cache;
+        return &displaySdCacheStorage();
     }
 }
 
@@ -505,11 +533,11 @@ static void directory_button_event_cb(lv_event_t *e) {
         
         // Invalidate cache for current storage when navigating
         if (UITabFiles::current_storage == StorageSource::FLUIDNC_SD) {
-            UITabFiles::fluidnc_sd_cache.is_cached = false;
+            fluidnc_sd_cache.is_cached = false;
         } else if (UITabFiles::current_storage == StorageSource::FLUIDNC_FLASH) {
-            UITabFiles::fluidnc_flash_cache.is_cached = false;
+            fluidnc_flash_cache.is_cached = false;
         } else if (UITabFiles::current_storage == StorageSource::DISPLAY_SD) {
-            UITabFiles::display_sd_cache.is_cached = false;
+            display_sd_cache.is_cached = false;
         }
         
         // Handle Display SD navigation differently
