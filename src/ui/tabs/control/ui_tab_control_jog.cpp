@@ -457,10 +457,20 @@ void UITabControlJog::create(lv_obj_t *tab) {
     lv_obj_set_style_text_color(lbl_cancel, lv_color_white(), 0);
     lv_obj_center(lbl_cancel);
 
-    // Soft limits
+    if (!encoder_timer) {
+        encoder_timer = lv_timer_create(encoderTimerCb, 50, nullptr);
+    }
+
+    for (size_t i = 0; i < 3; ++i) {
+        last_encoder_counts[i] = get_encoder_value(i);
+    }
+    reset_override_encoder_count();
+}
+
+void UITabControlJog::createSoftLimits(lv_obj_t *tab) {
     soft_limits_panel = lv_obj_create(tab);
     lv_obj_set_size(soft_limits_panel, UI_SCALE_X(360), UI_SCALE_Y(360));
-    lv_obj_set_pos(soft_limits_panel, UI_SCALE_X(355), UI_SCALE_Y(0));
+    lv_obj_set_pos(soft_limits_panel, 0, 0);
     lv_obj_set_style_bg_color(soft_limits_panel, UITheme::BG_MEDIUM, 0);
     lv_obj_set_style_pad_all(soft_limits_panel, UI_SCALE_X(5), 0);
     lv_obj_set_style_border_width(soft_limits_panel, 0, LV_PART_MAIN);
@@ -593,15 +603,6 @@ void UITabControlJog::create(lv_obj_t *tab) {
     lv_obj_set_style_text_color(jog_pending_cmd_count_label, UITheme::TEXT_MEDIUM, 0);
     lv_obj_set_pos(jog_pending_cmd_count_label, UI_SCALE_X(5), UI_SCALE_Y(338));
 
-    if (!encoder_timer) {
-        encoder_timer = lv_timer_create(encoderTimerCb, 50, nullptr);
-    }
-
-    for (size_t i = 0; i < 3; ++i) {
-        last_encoder_counts[i] = get_encoder_value(i);
-    }
-    reset_override_encoder_count();
-
     syncSoftLimitsUI();
     updateJogDebugInfoUI();
 }
@@ -639,6 +640,122 @@ int UITabControlJog::getCurrentXYFeed() {
         }
     }
     return xy_current_feed;
+}
+
+void UITabControlJog::triggerMappedAction(QtdialButtonMappingTarget target) {
+    auto adjust_xy_feed = [](int adjustment) {
+        if (!xy_feedrate_label) {
+            return;
+        }
+        int current_value = atoi(lv_label_get_text(xy_feedrate_label));
+        int new_value = current_value + adjustment;
+        if (new_value < 10) new_value = 10;
+        if (new_value > 10000) new_value = 10000;
+        char buf[16];
+        snprintf(buf, sizeof(buf), "%d", new_value);
+        lv_label_set_text(xy_feedrate_label, buf);
+        xy_current_feed = new_value;
+        update_xy_step_display();
+    };
+
+    auto adjust_z_feed = [](int adjustment) {
+        if (!z_feedrate_label) {
+            return;
+        }
+        int current_value = atoi(lv_label_get_text(z_feedrate_label));
+        int new_value = current_value + adjustment;
+        if (new_value < 10) new_value = 10;
+        if (new_value > 5000) new_value = 5000;
+        char buf[16];
+        snprintf(buf, sizeof(buf), "%d", new_value);
+        lv_label_set_text(z_feedrate_label, buf);
+        z_current_feed = new_value;
+        update_z_step_display();
+    };
+
+    auto set_x_step = [](int index) {
+        x_current_step_index = index;
+        x_current_step = UITheme::XY_STEP_VALUES[index];
+        update_xy_step_display();
+        update_x_step_button_styles();
+    };
+
+    auto set_y_step = [](int index) {
+        y_current_step_index = index;
+        y_current_step = UITheme::XY_STEP_VALUES[index];
+        update_xy_step_display();
+        update_y_step_button_styles();
+    };
+
+    auto set_z_step = [](int index) {
+        z_current_step_index = index;
+        z_current_step = UITheme::Z_STEP_VALUES[index];
+        update_z_step_display();
+        update_z_step_button_styles();
+    };
+
+    auto send_xy = [](float x_move, float y_move) {
+        if (!CommManager::isConnected()) {
+            return;
+        }
+        const int feedrate = xy_feedrate_label ? atoi(lv_label_get_text(xy_feedrate_label)) : xy_current_feed;
+        CommManager::sendJogRelative(x_move, y_move, 0.0f, static_cast<float>(feedrate));
+    };
+
+    auto send_z = [](int direction) {
+        if (!CommManager::isConnected()) {
+            return;
+        }
+        const int feedrate = z_feedrate_label ? atoi(lv_label_get_text(z_feedrate_label)) : z_current_feed;
+        CommManager::sendJogRelative(0.0f, 0.0f, z_current_step * direction, static_cast<float>(feedrate));
+    };
+
+    PowerManager::onUserActivity();
+
+    switch (target) {
+        case QtdialButtonMappingTarget::JogNorthWest: send_xy(-x_current_step, y_current_step); break;
+        case QtdialButtonMappingTarget::JogNorth: send_xy(0.0f, y_current_step); break;
+        case QtdialButtonMappingTarget::JogNorthEast: send_xy(x_current_step, y_current_step); break;
+        case QtdialButtonMappingTarget::JogWest: send_xy(-x_current_step, 0.0f); break;
+        case QtdialButtonMappingTarget::JogEast: send_xy(x_current_step, 0.0f); break;
+        case QtdialButtonMappingTarget::JogSouthWest: send_xy(-x_current_step, -y_current_step); break;
+        case QtdialButtonMappingTarget::JogSouth: send_xy(0.0f, -y_current_step); break;
+        case QtdialButtonMappingTarget::JogSouthEast: send_xy(x_current_step, -y_current_step); break;
+        case QtdialButtonMappingTarget::JogZPlus: send_z(1); break;
+        case QtdialButtonMappingTarget::JogZMinus: send_z(-1); break;
+        case QtdialButtonMappingTarget::Stop:
+            if (CommManager::isConnected()) {
+                CommManager::sendCommand("\x85");
+            }
+            break;
+        case QtdialButtonMappingTarget::XyFeedMinus100: adjust_xy_feed(-100); break;
+        case QtdialButtonMappingTarget::XyFeedMinus10: adjust_xy_feed(-10); break;
+        case QtdialButtonMappingTarget::XyFeedPlus10: adjust_xy_feed(10); break;
+        case QtdialButtonMappingTarget::XyFeedPlus100: adjust_xy_feed(100); break;
+        case QtdialButtonMappingTarget::ZFeedMinus100: adjust_z_feed(-100); break;
+        case QtdialButtonMappingTarget::ZFeedMinus10: adjust_z_feed(-10); break;
+        case QtdialButtonMappingTarget::ZFeedPlus10: adjust_z_feed(10); break;
+        case QtdialButtonMappingTarget::ZFeedPlus100: adjust_z_feed(100); break;
+        case QtdialButtonMappingTarget::XStep100: set_x_step(0); break;
+        case QtdialButtonMappingTarget::XStep50: set_x_step(1); break;
+        case QtdialButtonMappingTarget::XStep10: set_x_step(2); break;
+        case QtdialButtonMappingTarget::XStep1: set_x_step(3); break;
+        case QtdialButtonMappingTarget::XStep0_1: set_x_step(4); break;
+        case QtdialButtonMappingTarget::XStep0_01: set_x_step(5); break;
+        case QtdialButtonMappingTarget::YStep100: set_y_step(0); break;
+        case QtdialButtonMappingTarget::YStep50: set_y_step(1); break;
+        case QtdialButtonMappingTarget::YStep10: set_y_step(2); break;
+        case QtdialButtonMappingTarget::YStep1: set_y_step(3); break;
+        case QtdialButtonMappingTarget::YStep0_1: set_y_step(4); break;
+        case QtdialButtonMappingTarget::YStep0_01: set_y_step(5); break;
+        case QtdialButtonMappingTarget::ZStep50: set_z_step(0); break;
+        case QtdialButtonMappingTarget::ZStep25: set_z_step(1); break;
+        case QtdialButtonMappingTarget::ZStep10: set_z_step(2); break;
+        case QtdialButtonMappingTarget::ZStep1: set_z_step(3); break;
+        case QtdialButtonMappingTarget::ZStep0_1: set_z_step(4); break;
+        case QtdialButtonMappingTarget::ZStep0_01: set_z_step(5); break;
+        case QtdialButtonMappingTarget::Count: break;
+    }
 }
 
 // X Step button event handler
@@ -902,7 +1019,12 @@ void UITabControlJog::soft_limits_textarea_focused_event_cb(lv_event_t *e) {
         axis = 'Z';
     }
     setActiveNumericTextarea(ta, axis);
-    showSoftLimitsKeyboard(ta);
+    UICommon::registerKeyboardTarget(ta, UITabControlJog::showSoftLimitsKeyboard, UITabControlJog::hideSoftLimitsKeyboard);
+    if (UICommon::isOnScreenKeyboardEnabled()) {
+        showSoftLimitsKeyboard(ta);
+    } else {
+        hideSoftLimitsKeyboard();
+    }
 }
 
 void UITabControlJog::showSoftLimitsKeyboard(lv_obj_t *ta) {
@@ -972,8 +1094,6 @@ void UITabControlJog::hideSoftLimitsKeyboard() {
     if (soft_limits_keyboard) {
         lv_obj_add_flag(soft_limits_keyboard, LV_OBJ_FLAG_HIDDEN);
     }
-    clearActiveNumericTextarea(soft_limits_active_ta);
-    soft_limits_active_ta = nullptr;
 }
 
 void UITabControlJog::loadSoftLimitsFromConfig() {

@@ -7,6 +7,7 @@
 class UITabs {
 public:
     static void createTabs();
+    static void updateKeyboardToggleButton();
     static void createStatusTab(lv_obj_t *tab);
     static void createControlTab(lv_obj_t *tab);
     static void createFilesTab(lv_obj_t *tab);
@@ -29,6 +30,8 @@ private:
     static lv_obj_t *tab_macros;
     static lv_obj_t *tab_terminal;
     static lv_obj_t *tab_settings;
+    static lv_obj_t *keyboard_toggle_btn;
+    static lv_obj_t *keyboard_toggle_label;
     
     // Event handler for tab changes
     static void tab_changed_event_cb(lv_event_t *e);

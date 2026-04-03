@@ -18,15 +18,17 @@ const char *screen_for_control_subtab(uint32_t tab_index)
             return "cnc_axis";
         case 1: // Jog
             return "cnc_jog_mode";
-        case 2: // Joystick
+        case 2: // Cross Slide
             return "cnc_jog_mode";
-        case 3: // Power Feed
+        case 3: // Soft Limits
+            return "cnc_setup_offsets";
+        case 4: // Power Feed
             return "cnc_power_feed_mode";
-        case 4: // Rotary Table
+        case 5: // Rotary Table
             return "cnc_setup_offsets";
-        case 5: // Probe
+        case 6: // Probe
             return "cnc_setup_offsets";
-        case 6: // Overrides
+        case 7: // Overrides
             return "cnc_run_mode";
         default:
             return "cnc_axis";
@@ -99,7 +101,8 @@ void UITabControl::create(lv_obj_t *tab) {
     // Add sub-tabs (reordered)
     lv_obj_t *tab_actions = lv_tabview_add_tab(sub_tabview, "Actions");
     lv_obj_t *tab_jog = lv_tabview_add_tab(sub_tabview, "Jog");
-    lv_obj_t *tab_joystick = lv_tabview_add_tab(sub_tabview, "Joystick");
+    lv_obj_t *tab_joystick = lv_tabview_add_tab(sub_tabview, "Cross Slide");
+    lv_obj_t *tab_soft_limits = lv_tabview_add_tab(sub_tabview, "Soft Limits");
     lv_obj_t *tab_power_feed = lv_tabview_add_tab(sub_tabview, "Power Feed");
     lv_obj_t *tab_rotary = lv_tabview_add_tab(sub_tabview, "Rotary Table");
     lv_obj_t *tab_probe = lv_tabview_add_tab(sub_tabview, "Probe");
@@ -109,6 +112,7 @@ void UITabControl::create(lv_obj_t *tab) {
     lv_obj_clear_flag(tab_actions, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_clear_flag(tab_jog, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_clear_flag(tab_joystick, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_clear_flag(tab_soft_limits, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_clear_flag(tab_power_feed, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_clear_flag(tab_rotary, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_clear_flag(tab_probe, LV_OBJ_FLAG_SCROLLABLE);
@@ -118,6 +122,7 @@ void UITabControl::create(lv_obj_t *tab) {
     lv_obj_set_style_bg_color(tab_actions, UITheme::BG_MEDIUM, 0);
     lv_obj_set_style_bg_color(tab_jog, UITheme::BG_MEDIUM, 0);
     lv_obj_set_style_bg_color(tab_joystick, UITheme::BG_MEDIUM, 0);
+    lv_obj_set_style_bg_color(tab_soft_limits, UITheme::BG_MEDIUM, 0);
     lv_obj_set_style_bg_color(tab_power_feed, UITheme::BG_MEDIUM, 0);
     lv_obj_set_style_bg_color(tab_rotary, UITheme::BG_MEDIUM, 0);
     lv_obj_set_style_bg_color(tab_probe, UITheme::BG_MEDIUM, 0);
@@ -127,6 +132,7 @@ void UITabControl::create(lv_obj_t *tab) {
     lv_obj_set_style_pad_all(tab_actions, 5, 0);
     lv_obj_set_style_pad_all(tab_jog, 5, 0);
     lv_obj_set_style_pad_all(tab_joystick, 5, 0);
+    lv_obj_set_style_pad_all(tab_soft_limits, 5, 0);
     lv_obj_set_style_pad_all(tab_power_feed, 5, 0);
     lv_obj_set_style_pad_all(tab_rotary, 5, 0);
     lv_obj_set_style_pad_all(tab_probe, 5, 0);
@@ -167,6 +173,7 @@ void UITabControl::create(lv_obj_t *tab) {
     UITabControlActions::create(tab_actions);
     UITabControlJog::create(tab_jog);
     UITabControlJoystick::create(tab_joystick);
+    UITabControlJog::createSoftLimits(tab_soft_limits);
     UITabControlPowerFeed::create(tab_power_feed);
     UITabControlRotaryTable::create(tab_rotary);
     UITabControlProbe::create(tab_probe);

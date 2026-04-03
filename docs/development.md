@@ -161,7 +161,10 @@ using a GNU cross toolchain.
 Requirements:
 - Cross compiler toolchain (`arm-linux-gnueabihf-*` by default)
 - SDL2 development package for the target rootfs/sysroot
-- Target `pkg-config` (default: `<triplet>-pkg-config`) or manual SDL2 flags
+- `pkg-config` for the target metadata
+  (the build prefers `<triplet>-pkg-config` when present and otherwise falls back
+  to `pkg-config` with target-aware search paths)
+  or manual SDL2 flags
 
 Build examples:
 

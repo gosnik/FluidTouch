@@ -24,6 +24,10 @@ FluidTouch is the primary UI/UX application that runs on the ESP32-based touchsc
 - The HID protocol and report layouts are defined in `include/core/qtdial_hid_protocol.h`.
  - Control sub-tab changes can drive qtdial XML screen selection (see `src/ui/tabs/ui_tab_control.cpp`).
 
+## Circle SDK Changes
+- Do not leave project-specific edits as direct modifications inside `third_party/circle-stdlib/libs/circle`.
+- Any required Circle SDK customization must be captured as patch files under `patches/circle/` and applied by `scripts/pio_circle_env.py` so `platformio run -e rpi_circle` is reproducible from a clean checkout.
+
 ## Expectations for Changes
 - Keep UI updates in the main loop efficient and non-blocking.
 - Prefer binary HID reports for status telemetry; avoid string-heavy updates unless required.

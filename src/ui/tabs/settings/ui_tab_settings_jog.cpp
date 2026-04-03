@@ -1,4 +1,5 @@
 #include "ui/tabs/settings/ui_tab_settings_jog.h"
+#include "ui/ui_common.h"
 #include "ui/ui_theme.h"
 #include "ui/machine_config.h"
 #include "config.h"
@@ -273,7 +274,12 @@ void UITabSettingsJog::setMaxZFeed(int value) { max_z_feed = value; }
 // Textarea focused event handler - show keyboard
 static void textarea_focused_event_handler(lv_event_t *e) {
     lv_obj_t *ta = (lv_obj_t *)lv_event_get_target(e);
-    UITabSettingsJog::showKeyboard(ta);
+    UICommon::registerKeyboardTarget(ta, UITabSettingsJog::showKeyboard, UITabSettingsJog::hideKeyboard);
+    if (UICommon::isOnScreenKeyboardEnabled()) {
+        UITabSettingsJog::showKeyboard(ta);
+    } else {
+        UITabSettingsJog::hideKeyboard();
+    }
 }
 
 // Show keyboard

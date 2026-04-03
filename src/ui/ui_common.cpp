@@ -12,6 +12,7 @@
 #include "network/screenshot_server.h"
 #include "config.h"
 #include <Preferences.h>
+#include <cstdint>
 #if FT_WIFI_ENABLED
 #include "network/wifi_manager.h"
 #endif
@@ -60,6 +61,11 @@ int UICommon::encoder_bind_axis = 0;
 bool UICommon::encoder_bind_enabled = true;
 bool UICommon::encoder_bind_visible = false;
 uint32_t UICommon::last_bind_display_ms = 0;
+bool UICommon::keyboard_toggle_overridden = false;
+bool UICommon::keyboard_toggle_enabled = true;
+lv_obj_t *UICommon::keyboard_target = nullptr;
+UICommon::KeyboardShowFn UICommon::keyboard_show_fn = nullptr;
+UICommon::KeyboardHideFn UICommon::keyboard_hide_fn = nullptr;
 
 // Cached values for delta checking
 float UICommon::last_wpos_x = -9999.0f;
@@ -257,6 +263,47 @@ static void on_machine_select_exit(lv_event_t *e) {
 
 void UICommon::init(lv_display_t *disp) {
     display = disp;
+}
+
+bool UICommon::isOnScreenKeyboardEnabled() {
+    if (keyboard_toggle_overridden) {
+        return keyboard_toggle_enabled;
+    }
+    return UsbHostManager::deviceCount() <= 0;
+}
+
+void UICommon::setOnScreenKeyboardEnabled(bool enabled) {
+    keyboard_toggle_overridden = true;
+    keyboard_toggle_enabled = enabled;
+
+    if (!enabled) {
+        if (keyboard_hide_fn) {
+            keyboard_hide_fn();
+        }
+    } else if (keyboard_target && lv_obj_is_valid(keyboard_target) && keyboard_show_fn) {
+        keyboard_show_fn(keyboard_target);
+    }
+
+    UITabs::updateKeyboardToggleButton();
+}
+
+void UICommon::toggleOnScreenKeyboardEnabled() {
+    setOnScreenKeyboardEnabled(!isOnScreenKeyboardEnabled());
+}
+
+void UICommon::registerKeyboardTarget(lv_obj_t *ta, KeyboardShowFn show_fn, KeyboardHideFn hide_fn) {
+    keyboard_target = ta;
+    keyboard_show_fn = show_fn;
+    keyboard_hide_fn = hide_fn;
+}
+
+void UICommon::clearKeyboardTarget(lv_obj_t *ta) {
+    if (ta && keyboard_target != ta) {
+        return;
+    }
+    keyboard_target = nullptr;
+    keyboard_show_fn = nullptr;
+    keyboard_hide_fn = nullptr;
 }
 
 void UICommon::setDisplayDriver(DisplayDriver* driver) {

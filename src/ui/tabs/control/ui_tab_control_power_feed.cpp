@@ -1,5 +1,6 @@
 #include "ui/tabs/control/ui_tab_control_power_feed.h"
 #include "ui/tabs/control/ui_tab_control_jog.h"
+#include "ui/ui_common.h"
 #include "ui/ui_theme.h"
 #include "core/comm_manager.h"
 #include "core/encoder.h"
@@ -243,11 +244,16 @@ void UITabControlPowerFeed::onTextareaFocused(lv_event_t *e) {
         axis = 'Z';
     }
     UITabControlJog::setActiveNumericTextarea(ta, axis);
+    UICommon::registerKeyboardTarget(ta, UITabControlPowerFeed::showKeyboard, UITabControlPowerFeed::hideKeyboard);
     if (encoder_enabled) {
         last_encoder_count = get_encoder_value(get_active_encoder_index(active_field));
         return;
     }
-    showKeyboard(ta);
+    if (UICommon::isOnScreenKeyboardEnabled()) {
+        showKeyboard(ta);
+    } else {
+        hideKeyboard();
+    }
 }
 
 void UITabControlPowerFeed::onTextareaDefocused(lv_event_t *e) {
@@ -256,6 +262,7 @@ void UITabControlPowerFeed::onTextareaDefocused(lv_event_t *e) {
         active_field = nullptr;
     }
     UITabControlJog::clearActiveNumericTextarea(ta);
+    UICommon::clearKeyboardTarget(ta);
 }
 
 void UITabControlPowerFeed::showKeyboard(lv_obj_t *ta) {
@@ -295,7 +302,6 @@ void UITabControlPowerFeed::hideKeyboard() {
         lv_obj_set_style_pad_bottom(parent_tab, 0, 0);
         lv_obj_scroll_to_y(parent_tab, 0, LV_ANIM_OFF);
     }
-    UITabControlJog::clearActiveNumericTextarea(active_field);
 }
 
 void UITabControlPowerFeed::onEncoderToggle(lv_event_t *e) {

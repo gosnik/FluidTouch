@@ -6,9 +6,8 @@
 
 namespace QtdialHidProtocol {
 
-// TODO: Replace with assigned VID/PID once available.
-constexpr uint16_t kUsbVendorId = 0x303A;  // Espressif default VID (dev placeholder)
-constexpr uint16_t kUsbProductId = 0xF1D1; // qtdial dev PID placeholder
+constexpr uint16_t kUsbVendorId = 0x1209;
+constexpr uint16_t kUsbProductId = 0xA183;
 
 // HID report ID used by the USBHIDVendor descriptor.
 constexpr uint8_t kHidReportId = 6; // HID_REPORT_ID_VENDOR
@@ -19,24 +18,65 @@ constexpr uint8_t kAppReportOutputDisplay = 0x02;
 constexpr uint8_t kAppReportFeatureConfig = 0x03;
 constexpr uint8_t kAppReportOutputStatus = 0x04;
 
-constexpr uint8_t kProtocolVersion = 1;
+constexpr uint8_t kProtocolVersion = 2;
 constexpr size_t kReportSizeBytes = 63; // USBHIDVendor payload size (bytes)
 constexpr uint8_t kInputStatusFlagEncoderReady = 0x01;
 constexpr uint8_t kInputStatusFlagHasDelta = 0x02;
 constexpr uint8_t kInputStatusFlagHasRate = 0x04;
 constexpr uint8_t kInputStatusFlagEncoderEnabled = 0x08;
+constexpr uint8_t kInputStatusFlagHasDisplay = 0x10;
+constexpr size_t kButtonCount = 32;
+
+enum class Button : uint8_t {
+    CycleStart = 0,
+    FeedHold,
+    Stop,
+    Reset,
+    AxisX,
+    AxisY,
+    AxisZ,
+    AxisA,
+    StepPlus,
+    StepMinus,
+    ModeContinuous,
+    ModeStep,
+    SpindleToggle,
+    CoolantToggle,
+    Home,
+    Probe,
+    Macro1,
+    Macro2,
+    Macro3,
+    Macro4,
+    JogFast,
+    JogSlow,
+    ZeroAxis,
+    ZeroAll,
+    SafeZ,
+    SpindlePlus,
+    SpindleMinus,
+    FeedPlus,
+    FeedMinus,
+    OverrideReset,
+    AxisB,
+    AxisC
+};
 
 // Input status report layout (device -> host), little-endian fields:
 // [0]  app_report_id = kAppReportInputStatus
 // [1]  protocol_version
-// [2]  flags (bit0=encoder_ready, bit1=has_delta, bit2=has_rate, bit3=encoder_enabled)
-// [3]  buttons bitfield (bit0=btn0, bit1=btn1, bit2=btn2, bit3=btn3)
-// [4]  delta_detents_le (int16)
-// [6]  rate_detents_per_s_le (int16)
-// [8]  uptime_ms_le (uint32)
-// [12] role_id (uint8)
-// [13] reserved
-// [14] seq_le (uint16)
+// [2]  flags (bit0=encoder_ready, bit1=has_delta, bit2=has_rate, bit3=encoder_enabled,
+//             bit4=has_display)
+// [3]  buttons bitfield bits 0..7
+// [4]  buttons bitfield bits 8..15
+// [5]  buttons bitfield bits 16..23
+// [6]  buttons bitfield bits 24..31
+// [7]  delta_detents_le (int16)
+// [9]  rate_detents_per_s_le (int16)
+// [11] uptime_ms_le (uint32)
+// [15] role_id (uint8)
+// [16] reserved
+// [17] seq_le (uint16)
 
 // Output display report layout (host -> device), little-endian fields:
 // [0]  app_report_id = kAppReportOutputDisplay

@@ -1,5 +1,6 @@
 #include "ui/tabs/control/ui_tab_control_rotary_table.h"
 #include "ui/tabs/control/ui_tab_control_jog.h"
+#include "ui/ui_common.h"
 #include "ui/ui_theme.h"
 #include "core/comm_manager.h"
 #include "core/encoder.h"
@@ -299,7 +300,12 @@ void UITabControlRotaryTable::onTextareaFocused(lv_event_t *e) {
         last_encoder_count = get_encoder_value(get_active_encoder_index(active_field));
         return;
     }
-    showKeyboard(ta);
+    UICommon::registerKeyboardTarget(ta, UITabControlRotaryTable::showKeyboard, UITabControlRotaryTable::hideKeyboard);
+    if (UICommon::isOnScreenKeyboardEnabled()) {
+        showKeyboard(ta);
+    } else {
+        hideKeyboard();
+    }
 }
 
 void UITabControlRotaryTable::onTextareaDefocused(lv_event_t *e) {
@@ -308,6 +314,7 @@ void UITabControlRotaryTable::onTextareaDefocused(lv_event_t *e) {
         active_field = nullptr;
     }
     UITabControlJog::clearActiveNumericTextarea(ta);
+    UICommon::clearKeyboardTarget(ta);
 }
 
 void UITabControlRotaryTable::showKeyboard(lv_obj_t *ta) {
@@ -347,7 +354,6 @@ void UITabControlRotaryTable::hideKeyboard() {
         lv_obj_set_style_pad_bottom(parent_tab, 0, 0);
         lv_obj_scroll_to_y(parent_tab, 0, LV_ANIM_OFF);
     }
-    UITabControlJog::clearActiveNumericTextarea(active_field);
 }
 
 void UITabControlRotaryTable::onEncoderToggle(lv_event_t *e) {

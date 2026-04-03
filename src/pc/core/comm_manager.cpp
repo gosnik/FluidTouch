@@ -25,10 +25,6 @@
 ConnectionType CommManager::currentType = CONN_WIRED;
 MachineConfig CommManager::currentConfig = {};
 bool CommManager::initialized = false;
-MessageCallback CommManager::messageCallback = nullptr;
-MessageCallback CommManager::terminalCallback = nullptr;
-CommManager::CommandTap CommManager::commandTap = nullptr;
-CommManager::EventCallback CommManager::eventCallback = nullptr;
 bool CommManager::jog_soft_limit_x_enabled = false;
 bool CommManager::jog_soft_limit_y_enabled = false;
 bool CommManager::jog_soft_limit_z_enabled = false;
@@ -49,6 +45,26 @@ float CommManager::jog_last_reported_z = 0.0f;
 MachineState CommManager::jog_last_state = STATE_DISCONNECTED;
 
 namespace {
+MessageCallback &messageCallbackStorage() {
+    static MessageCallback callback;
+    return callback;
+}
+
+MessageCallback &terminalCallbackStorage() {
+    static MessageCallback callback;
+    return callback;
+}
+
+CommManager::CommandTap &commandTapStorage() {
+    static CommManager::CommandTap callback;
+    return callback;
+}
+
+CommManager::EventCallback &eventCallbackStorage() {
+    static CommManager::EventCallback callback;
+    return callback;
+}
+
 bool g_connected = false;
 bool g_auto_reporting = false;
 FluidNCStatus g_status;
@@ -788,8 +804,8 @@ void CommManager::sendCommand(const char *command) {
     if (!command) {
         return;
     }
-    if (commandTap) {
-        commandTap(command);
+    if (commandTapStorage()) {
+        commandTapStorage()(command);
     }
 
     if (isStopLocalMacroCommand(command)) {
@@ -981,87 +997,87 @@ String CommManager::getMachineIP() {
 }
 
 void CommManager::setMessageCallback(MessageCallback callback) {
-    messageCallback = callback;
+    messageCallbackStorage() = callback;
 #if defined(__linux__)
     g_message_callback = callback;
 #endif
 }
 
 void CommManager::clearMessageCallback() {
-    messageCallback = nullptr;
+    messageCallbackStorage() = nullptr;
 #if defined(__linux__)
     g_message_callback = nullptr;
 #endif
 }
 
 void CommManager::setTerminalCallback(MessageCallback callback) {
-    terminalCallback = callback;
+    terminalCallbackStorage() = callback;
 #if defined(__linux__)
     g_terminal_callback = callback;
 #endif
 }
 
 void CommManager::clearTerminalCallback() {
-    terminalCallback = nullptr;
+    terminalCallbackStorage() = nullptr;
 #if defined(__linux__)
     g_terminal_callback = nullptr;
 #endif
 }
 
 void CommManager::setCommandTap(CommandTap tap) {
-    commandTap = tap;
+    commandTapStorage() = tap;
 }
 
 void CommManager::clearCommandTap() {
-    commandTap = nullptr;
+    commandTapStorage() = nullptr;
 }
 
 void CommManager::setEventCallback(EventCallback callback) {
-    eventCallback = callback;
+    eventCallbackStorage() = callback;
 }
 
 void CommManager::clearEventCallback() {
-    eventCallback = nullptr;
+    eventCallbackStorage() = nullptr;
 }
 
 void CommManager::emitConnected() {
-    if (!eventCallback) {
+    if (!eventCallbackStorage()) {
         return;
     }
     Event event{};
     event.type = EventType::CONNECTED;
     event.message = "Connected";
-    eventCallback(event);
+    eventCallbackStorage()(event);
 }
 
 void CommManager::emitDisconnected(const char *message) {
-    if (!eventCallback) {
+    if (!eventCallbackStorage()) {
         return;
     }
     Event event{};
     event.type = EventType::DISCONNECTED;
     event.message = message;
-    eventCallback(event);
+    eventCallbackStorage()(event);
 }
 
 void CommManager::emitConnectionError(const char *message) {
-    if (!eventCallback) {
+    if (!eventCallbackStorage()) {
         return;
     }
     Event event{};
     event.type = EventType::CONNECTION_ERROR;
     event.message = message;
-    eventCallback(event);
+    eventCallbackStorage()(event);
 }
 
 void CommManager::emitProbeResult(float x, float y, float z, bool success) {
-    if (!eventCallback) {
+    if (!eventCallbackStorage()) {
         return;
     }
     Event event{};
     event.type = EventType::PROBE_RESULT;
     event.probe = {x, y, z, success};
-    eventCallback(event);
+    eventCallbackStorage()(event);
 }
 
 ConnectionType CommManager::getConnectionType() {

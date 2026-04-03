@@ -216,6 +216,30 @@ def _sync_lvgl_config(project_dir: Path, circle_home: Path) -> None:
         _copy_file(project_lv_conf, circle_lv_conf)
 
 
+def _apply_patch_if_needed(repo_dir: Path, patch_path: Path) -> None:
+    check_cmd = ["git", "apply", "--check", str(patch_path)]
+    already_applied_cmd = ["git", "apply", "-R", "--check", str(patch_path)]
+
+    if subprocess.run(check_cmd, cwd=repo_dir, check=False).returncode == 0:
+        _run(["git", "apply", str(patch_path)], repo_dir)
+        return
+
+    if subprocess.run(already_applied_cmd, cwd=repo_dir, check=False).returncode == 0:
+        return
+
+    print(f"Error: could not apply Circle patch '{patch_path.name}' cleanly in {repo_dir}")
+    env.Exit(1)
+
+
+def _apply_circle_patches(project_dir: Path, circle_home: Path) -> None:
+    patches_dir = project_dir / "patches" / "circle"
+    if not patches_dir.is_dir():
+        return
+
+    for patch_path in sorted(patches_dir.glob("*.patch")):
+        _apply_patch_if_needed(circle_home, patch_path)
+
+
 def _copy_boot_payload(circle_home: Path, package_dir: Path, aarch: str) -> None:
     boot_dir = circle_home / "boot"
     overlays_dir = package_dir / "overlays"
@@ -377,6 +401,7 @@ def _build_circle() -> None:
     _ensure_repo_submodules(project_dir)
     circle_home, stdlib_home = _resolve_circle_paths(project_dir)
     _ensure_circle_sources(circle_home)
+    _apply_circle_patches(project_dir, circle_home)
     _sync_lvgl_config(project_dir, circle_home)
     kernel = _kernel_name(aarch, rasppi)
     lv_conf_path = project_dir / "include" / "lv_conf.h"

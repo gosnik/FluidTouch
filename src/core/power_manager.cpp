@@ -4,10 +4,54 @@
 #include "config.h"
 #include <Preferences.h>
 #include <Arduino.h>
+#include <lvgl.h>
 #if FT_WIFI_ENABLED
 #include "network/wifi_manager.h"
 #endif
 #include <esp_sleep.h>
+
+namespace {
+
+lv_obj_t *wake_blocker = nullptr;
+
+void wake_touch_cb(lv_event_t *e) {
+    LV_UNUSED(e);
+    PowerManager::onUserActivity();
+}
+
+void enter_dormant_touch_blocker() {
+    lv_obj_t *top = lv_layer_top();
+    if (!top) {
+        return;
+    }
+
+    lv_obj_add_flag(top, LV_OBJ_FLAG_CLICKABLE);
+
+    if (wake_blocker == nullptr) {
+        wake_blocker = lv_obj_create(top);
+        lv_obj_remove_style_all(wake_blocker);
+        lv_obj_set_size(wake_blocker, LV_PCT(100), LV_PCT(100));
+        lv_obj_center(wake_blocker);
+        lv_obj_add_flag(wake_blocker, LV_OBJ_FLAG_CLICKABLE);
+        lv_obj_add_event_cb(wake_blocker, wake_touch_cb, LV_EVENT_PRESSED, nullptr);
+    }
+
+    lv_obj_move_foreground(wake_blocker);
+    lv_obj_clear_flag(wake_blocker, LV_OBJ_FLAG_HIDDEN);
+}
+
+void exit_dormant_touch_blocker() {
+    if (wake_blocker) {
+        lv_obj_add_flag(wake_blocker, LV_OBJ_FLAG_HIDDEN);
+    }
+
+    lv_obj_t *top = lv_layer_top();
+    if (top) {
+        lv_obj_remove_flag(top, LV_OBJ_FLAG_CLICKABLE);
+    }
+}
+
+}  // namespace
 
 // Static member initialization
 DisplayDriver* PowerManager::display_driver = nullptr;
@@ -220,9 +264,11 @@ void PowerManager::applyNormalBrightness() {
         current_state = FULL_BRIGHTNESS;
         UsbHostManager::sendDisplayBrightnessAll(normal_brightness);
     }
+    exit_dormant_touch_blocker();
 }
 
 void PowerManager::enterFullBrightness() {
+    exit_dormant_touch_blocker();
     if (current_state != FULL_BRIGHTNESS) {
         Serial.printf("PowerManager: Entering FULL_BRIGHTNESS (brightness=%d)\n", normal_brightness);
         if (display_driver) {
@@ -244,6 +290,7 @@ void PowerManager::enterDimmed() {
         current_state = DIMMED;
         state_changed = true;
     }
+    enter_dormant_touch_blocker();
 }
 
 void PowerManager::enterScreenOff() {
@@ -255,6 +302,7 @@ void PowerManager::enterScreenOff() {
         current_state = SCREEN_OFF;
         state_changed = true;
     }
+    enter_dormant_touch_blocker();
 }
 
 void PowerManager::enterDeepSleep() {

@@ -1,5 +1,6 @@
 #include "ui/tabs/control/ui_tab_control_probe.h"
 #include "ui/tabs/control/ui_tab_control_jog.h"
+#include "ui/ui_common.h"
 #include "ui/tabs/settings/ui_tab_settings_probe.h"
 #include "ui/ui_theme.h"
 #include "core/comm_manager.h"
@@ -388,12 +389,18 @@ void UITabControlProbe::updateResult(float x, float y, float z, bool success) {
 static void textarea_focused_event_handler(lv_event_t *e) {
     lv_obj_t *ta = (lv_obj_t *)lv_event_get_target(e);
     UITabControlJog::setActiveNumericTextarea(ta, 'X');
-    UITabControlProbe::showKeyboard(ta);
+    UICommon::registerKeyboardTarget(ta, UITabControlProbe::showKeyboard, UITabControlProbe::hideKeyboard);
+    if (UICommon::isOnScreenKeyboardEnabled()) {
+        UITabControlProbe::showKeyboard(ta);
+    } else {
+        UITabControlProbe::hideKeyboard();
+    }
 }
 
 static void textarea_defocused_event_handler(lv_event_t *e) {
     lv_obj_t *ta = (lv_obj_t *)lv_event_get_target(e);
     UITabControlJog::clearActiveNumericTextarea(ta);
+    UICommon::clearKeyboardTarget(ta);
 }
 
 // Show keyboard
@@ -458,5 +465,4 @@ void UITabControlProbe::hideKeyboard() {
             lv_obj_scroll_to_y(parent_tab, 0, LV_ANIM_ON); // Reset scroll position
         }
     }
-    UITabControlJog::clearActiveNumericTextarea(nullptr);
 }

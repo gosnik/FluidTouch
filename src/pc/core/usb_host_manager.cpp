@@ -1,4 +1,5 @@
 #include "core/usb_host_manager.h"
+#include "core/qtdial_button_mapping.h"
 #include "core/qtdial_hid_protocol.h"
 #include <Arduino.h>
 
@@ -30,6 +31,8 @@ size_t bounded_strlen(const char *text, size_t max_len)
 #if defined(__linux__)
 constexpr int kMaxQtdialDevices = 3;
 constexpr uint32_t kScanIntervalMs = 1000;
+constexpr uint32_t kButtonPressRearmMs = 150;
+constexpr int32_t kEncoderCountsPerDetent = 4;
 
 struct QtdialDevice {
     bool in_use = false;
@@ -39,15 +42,17 @@ struct QtdialDevice {
     uint16_t pid = 0;
     char serial[128] = {0};
     int32_t count = 0;
+    int32_t encoder_residual = 0;
     struct {
         uint8_t protocol_version = 0;
         uint8_t flags = 0;
-        uint8_t buttons = 0;
+        uint32_t buttons = 0;
         int16_t delta = 0;
         int16_t rate = 0;
         uint32_t uptime_ms = 0;
         uint8_t role_id = 0;
         uint16_t seq = 0;
+        uint32_t last_button_press_ms[QtdialHidProtocol::kButtonCount] = {};
     } last_input;
 };
 
@@ -136,12 +141,33 @@ bool send_feature_config(uint8_t slot, uint8_t role_id)
     uint8_t payload[4] = {};
     payload[0] = role_id;
     payload[1] = 5;
-    payload[2] = 1;
+    payload[2] = 4;
     payload[3] = 0;
     return UsbHostManager::sendOutputReport(slot,
                                             QtdialHidProtocol::kAppReportFeatureConfig,
                                             payload,
                                             sizeof(payload));
+}
+
+bool device_accepts_app_report(const QtdialDevice &device, uint8_t app_report_id)
+{
+    if (app_report_id != QtdialHidProtocol::kAppReportOutputDisplay
+        && app_report_id != QtdialHidProtocol::kAppReportOutputStatus) {
+        return true;
+    }
+
+    return (device.last_input.flags & QtdialHidProtocol::kInputStatusFlagHasDisplay) != 0;
+}
+
+void apply_encoder_delta(QtdialDevice &dev, int16_t delta)
+{
+    dev.encoder_residual += static_cast<int32_t>(delta);
+    const int32_t steps = dev.encoder_residual / kEncoderCountsPerDetent;
+    if (steps == 0) {
+        return;
+    }
+    dev.count += steps;
+    dev.encoder_residual -= steps * kEncoderCountsPerDetent;
 }
 
 void parse_input_report(int slot, const uint8_t *data, size_t len)
@@ -184,29 +210,64 @@ void parse_input_report(int slot, const uint8_t *data, size_t len)
         payload_len--;
     }
 
-    if (payload_len < 16) {
-        return;
-    }
     if (payload[0] != QtdialHidProtocol::kAppReportInputStatus ||
-        payload[1] != QtdialHidProtocol::kProtocolVersion) {
+        (payload[1] != 1 && payload[1] != QtdialHidProtocol::kProtocolVersion)) {
         return;
     }
 
     QtdialDevice &dev = g_state.devices[slot];
+    const uint32_t previous_buttons = dev.last_input.buttons;
     dev.last_input.protocol_version = payload[1];
     dev.last_input.flags = payload[2];
-    dev.last_input.buttons = payload[3];
-    dev.last_input.delta = static_cast<int16_t>(payload[4] | (payload[5] << 8));
-    dev.last_input.rate = static_cast<int16_t>(payload[6] | (payload[7] << 8));
-    dev.last_input.uptime_ms = static_cast<uint32_t>(payload[8]) |
-                               (static_cast<uint32_t>(payload[9]) << 8) |
-                               (static_cast<uint32_t>(payload[10]) << 16) |
-                               (static_cast<uint32_t>(payload[11]) << 24);
-    dev.last_input.role_id = payload[12];
-    dev.last_input.seq = static_cast<uint16_t>(payload[14] | (payload[15] << 8));
+    if (dev.last_input.protocol_version == 1) {
+        if (payload_len < 16) {
+            return;
+        }
+        dev.last_input.buttons = payload[3];
+        dev.last_input.delta = static_cast<int16_t>(payload[4] | (payload[5] << 8));
+        dev.last_input.rate = static_cast<int16_t>(payload[6] | (payload[7] << 8));
+        dev.last_input.uptime_ms = static_cast<uint32_t>(payload[8]) |
+                                   (static_cast<uint32_t>(payload[9]) << 8) |
+                                   (static_cast<uint32_t>(payload[10]) << 16) |
+                                   (static_cast<uint32_t>(payload[11]) << 24);
+        dev.last_input.role_id = payload[12];
+        dev.last_input.seq = static_cast<uint16_t>(payload[14] | (payload[15] << 8));
+    } else {
+        if (payload_len < 19) {
+            return;
+        }
+        dev.last_input.buttons = static_cast<uint32_t>(payload[3]) |
+                                 (static_cast<uint32_t>(payload[4]) << 8) |
+                                 (static_cast<uint32_t>(payload[5]) << 16) |
+                                 (static_cast<uint32_t>(payload[6]) << 24);
+        dev.last_input.delta = static_cast<int16_t>(payload[7] | (payload[8] << 8));
+        dev.last_input.rate = static_cast<int16_t>(payload[9] | (payload[10] << 8));
+        dev.last_input.uptime_ms = static_cast<uint32_t>(payload[11]) |
+                                   (static_cast<uint32_t>(payload[12]) << 8) |
+                                   (static_cast<uint32_t>(payload[13]) << 16) |
+                                   (static_cast<uint32_t>(payload[14]) << 24);
+        dev.last_input.role_id = payload[15];
+        dev.last_input.seq = static_cast<uint16_t>(payload[17] | (payload[18] << 8));
+    }
 
     if (((dev.last_input.flags & QtdialHidProtocol::kInputStatusFlagHasDelta) != 0) || dev.last_input.delta != 0) {
-        dev.count += dev.last_input.delta;
+        apply_encoder_delta(dev, dev.last_input.delta);
+    }
+
+    const uint32_t pressed_buttons = dev.last_input.buttons & ~previous_buttons;
+    const uint32_t now_ms = millis();
+    for (uint8_t bit = 0; bit < QtdialHidProtocol::kButtonCount; ++bit) {
+        const uint32_t mask = (static_cast<uint32_t>(1) << bit);
+        if ((dev.last_input.buttons & mask) == 0) {
+            continue;
+        }
+        const bool is_new_edge = (pressed_buttons & mask) != 0;
+        const bool rearmed = (now_ms - dev.last_input.last_button_press_ms[bit]) >= kButtonPressRearmMs;
+        if (!is_new_edge && !rearmed) {
+            continue;
+        }
+        dev.last_input.last_button_press_ms[bit] = now_ms;
+        QtdialButtonMappingManager::handleButtonPressed(bit);
     }
 }
 
@@ -355,6 +416,9 @@ bool UsbHostManager::sendOutputReport(uint8_t slot, uint8_t app_report_id, const
     }
     if (length > (QtdialHidProtocol::kReportSizeBytes - 2)) {
         return false;
+    }
+    if (!device_accepts_app_report(g_state.devices[slot], app_report_id)) {
+        return true;
     }
 
     uint8_t report[QtdialHidProtocol::kReportSizeBytes + 1] = {};

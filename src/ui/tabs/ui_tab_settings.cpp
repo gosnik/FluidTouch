@@ -2,6 +2,7 @@
 #include "ui/tabs/settings/ui_tab_settings_general.h"
 #include "ui/tabs/settings/ui_tab_settings_power.h"
 #include "ui/tabs/settings/ui_tab_settings_jog.h"
+#include "ui/tabs/settings/ui_tab_settings_qtdial.h"
 #include "ui/tabs/settings/ui_tab_settings_probe.h"
 #include "ui/tabs/settings/ui_tab_settings_about.h"
 #include "ui/ui_theme.h"
@@ -61,6 +62,7 @@ void UITabSettings::create(lv_obj_t *tab) {
     lv_obj_t *general_tab = lv_tabview_add_tab(sub_tabview, "General");
     lv_obj_t *power_tab = lv_tabview_add_tab(sub_tabview, "Power");
     lv_obj_t *jog_tab = lv_tabview_add_tab(sub_tabview, "Jog");
+    lv_obj_t *qtdial_tab = lv_tabview_add_tab(sub_tabview, "Qtdial");
     lv_obj_t *probe_tab = lv_tabview_add_tab(sub_tabview, "Probe");
     lv_obj_t *about_tab = lv_tabview_add_tab(sub_tabview, "About");
     
@@ -68,6 +70,7 @@ void UITabSettings::create(lv_obj_t *tab) {
     lv_obj_clear_flag(general_tab, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_clear_flag(power_tab, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_clear_flag(jog_tab, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_clear_flag(qtdial_tab, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_clear_flag(probe_tab, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_clear_flag(about_tab, LV_OBJ_FLAG_SCROLLABLE);
     
@@ -75,6 +78,7 @@ void UITabSettings::create(lv_obj_t *tab) {
     lv_obj_set_style_bg_color(general_tab, UITheme::BG_MEDIUM, 0);
     lv_obj_set_style_bg_color(power_tab, UITheme::BG_MEDIUM, 0);
     lv_obj_set_style_bg_color(jog_tab, UITheme::BG_MEDIUM, 0);
+    lv_obj_set_style_bg_color(qtdial_tab, UITheme::BG_MEDIUM, 0);
     lv_obj_set_style_bg_color(probe_tab, UITheme::BG_MEDIUM, 0);
     lv_obj_set_style_bg_color(about_tab, UITheme::BG_MEDIUM, 0);
     
@@ -82,6 +86,7 @@ void UITabSettings::create(lv_obj_t *tab) {
     lv_obj_set_style_pad_all(general_tab, 5, 0);
     lv_obj_set_style_pad_all(power_tab, 5, 0);
     lv_obj_set_style_pad_all(jog_tab, 5, 0);
+    lv_obj_set_style_pad_all(qtdial_tab, 5, 0);
     lv_obj_set_style_pad_all(probe_tab, 5, 0);
     lv_obj_set_style_pad_all(about_tab, 5, 0);
 
@@ -110,6 +115,7 @@ void UITabSettings::create(lv_obj_t *tab) {
     createGeneralTab(general_tab);
     createPowerTab(power_tab);
     createJogTab(jog_tab);
+    createQtdialTab(qtdial_tab);
     createProbeTab(probe_tab);
     createAboutTab(about_tab);
 }
@@ -124,6 +130,10 @@ void UITabSettings::createPowerTab(lv_obj_t *tab) {
 
 void UITabSettings::createJogTab(lv_obj_t *tab) {
     UITabSettingsJog::create(tab);
+}
+
+void UITabSettings::createQtdialTab(lv_obj_t *tab) {
+    UITabSettingsQtdial::create(tab);
 }
 
 void UITabSettings::createProbeTab(lv_obj_t *tab) {

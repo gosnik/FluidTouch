@@ -1,4 +1,5 @@
 #include "ui/ui_tabs.h"
+#include "ui/ui_common.h"
 #include "ui/ui_theme.h"
 #include "ui/tabs/ui_tab_status.h"
 #include "ui/tabs/ui_tab_control.h"
@@ -18,9 +19,12 @@ lv_obj_t *UITabs::tab_files = nullptr;
 lv_obj_t *UITabs::tab_macros = nullptr;
 lv_obj_t *UITabs::tab_terminal = nullptr;
 lv_obj_t *UITabs::tab_settings = nullptr;
+lv_obj_t *UITabs::keyboard_toggle_btn = nullptr;
+lv_obj_t *UITabs::keyboard_toggle_label = nullptr;
 
 namespace {
 void sync_hid_axis_screens(uint32_t active_tab);
+void keyboard_toggle_event_cb(lv_event_t *e);
 } // namespace
 
 // Create main tabview and all tabs
@@ -34,6 +38,9 @@ void UITabs::createTabs() {
     // Get the tab bar and set height
     lv_obj_t *tab_bar = lv_tabview_get_tab_bar(tabview);
     lv_obj_set_height(tab_bar, TAB_BUTTON_HEIGHT);
+    const lv_coord_t keyboard_toggle_w = UI_SCALE_X(54);
+    const lv_coord_t keyboard_toggle_gap = UI_SCALE_X(6);
+    //lv_obj_set_width(tab_bar, SCREEN_WIDTH - keyboard_toggle_w - keyboard_toggle_gap);
     
     // Remove padding from tabview content area
     lv_obj_set_style_pad_all(lv_tabview_get_content(tabview), 0, 0);
@@ -42,14 +49,15 @@ void UITabs::createTabs() {
     lv_obj_clear_flag(tab_bar, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_clear_flag(lv_tabview_get_content(tabview), LV_OBJ_FLAG_SCROLLABLE);
     
-    // Style tab buttons with larger font
-    lv_obj_set_style_text_font(tab_bar, &lv_font_montserrat_20, 0);  // Direct to tab bar
-    lv_obj_set_style_text_font(tabview, &lv_font_montserrat_20, LV_PART_ITEMS);
+    // Style tab buttons with slightly tighter spacing to leave room for the keyboard toggle.
+    lv_obj_set_style_text_font(tab_bar, &lv_font_montserrat_18, 0);  // Direct to tab bar
+    lv_obj_set_style_text_font(tabview, &lv_font_montserrat_18, LV_PART_ITEMS);
+    lv_obj_set_style_pad_hor(tabview, UI_SCALE_X(8), LV_PART_ITEMS);
     lv_obj_set_style_bg_color(tabview, UITheme::BG_BUTTON, LV_PART_ITEMS);
     lv_obj_set_style_text_color(tabview, UITheme::TEXT_LIGHT, LV_PART_ITEMS);
     lv_obj_set_style_bg_color(tabview, UITheme::ACCENT_PRIMARY, LV_PART_ITEMS | LV_STATE_CHECKED);
     lv_obj_set_style_text_color(tabview, lv_color_white(), LV_PART_ITEMS | LV_STATE_CHECKED);
-    
+
     // Add tabs
     tab_status = lv_tabview_add_tab(tabview, "Status");
     tab_control = lv_tabview_add_tab(tabview, "Control");
@@ -66,6 +74,19 @@ void UITabs::createTabs() {
     lv_obj_clear_flag(tab_terminal, LV_OBJ_FLAG_SCROLLABLE);
     // Settings tab may need scrolling, so leave it enabled
     
+
+    keyboard_toggle_btn = lv_button_create(tab_bar);
+    lv_obj_set_size(keyboard_toggle_btn, keyboard_toggle_w, TAB_BUTTON_HEIGHT - UI_SCALE_Y(10));
+    lv_obj_align(keyboard_toggle_btn, LV_ALIGN_RIGHT_MID, -UI_SCALE_X(4), 0);
+    lv_obj_add_event_cb(keyboard_toggle_btn, keyboard_toggle_event_cb, LV_EVENT_CLICKED, nullptr);
+    lv_obj_set_style_radius(keyboard_toggle_btn, UI_SCALE_Y(8), 0);
+
+    keyboard_toggle_label = lv_label_create(keyboard_toggle_btn);
+    lv_label_set_text(keyboard_toggle_label, "KB");
+    lv_obj_set_style_text_font(keyboard_toggle_label, &lv_font_montserrat_16, 0);
+    lv_obj_center(keyboard_toggle_label);
+    updateKeyboardToggleButton();
+
     // Create tab content
     createStatusTab(tab_status);
     createControlTab(tab_control);
@@ -82,6 +103,12 @@ void UITabs::createTabs() {
 }
 
 namespace {
+void keyboard_toggle_event_cb(lv_event_t *e)
+{
+    LV_UNUSED(e);
+    UICommon::toggleOnScreenKeyboardEnabled();
+}
+
 void sync_hid_axis_screens(uint32_t active_tab)
 {
     (void)active_tab;
@@ -93,10 +120,29 @@ void sync_hid_axis_screens(uint32_t active_tab)
 }
 } // namespace
 
+void UITabs::updateKeyboardToggleButton()
+{
+    if (!keyboard_toggle_btn || !keyboard_toggle_label) {
+        return;
+    }
+
+    const bool enabled = UICommon::isOnScreenKeyboardEnabled();
+    lv_obj_set_style_bg_color(keyboard_toggle_btn,
+                              enabled ? UITheme::ACCENT_PRIMARY : UITheme::BG_BUTTON,
+                              0);
+    lv_obj_set_style_text_color(keyboard_toggle_btn,
+                                enabled ? lv_color_white() : UITheme::TEXT_MEDIUM,
+                                0);
+    lv_obj_set_style_text_color(keyboard_toggle_label,
+                                enabled ? lv_color_white() : UITheme::TEXT_MEDIUM,
+                                0);
+}
+
 // Tab change event handler
 void UITabs::tab_changed_event_cb(lv_event_t *e) {
     lv_obj_t *tabview = (lv_obj_t*)lv_event_get_target(e);
     uint32_t active_tab = lv_tabview_get_tab_active(tabview);
+    updateKeyboardToggleButton();
     
     // Tab indices: 0=Status, 1=Control, 2=Files, 3=Macros, 4=Terminal, 5=Settings
     if (active_tab == 2) {  // Files tab

@@ -1,4 +1,5 @@
 #include "ui/tabs/settings/ui_tab_settings_probe.h"
+#include "ui/ui_common.h"
 #include "ui/ui_theme.h"
 #include "ui/machine_config.h"
 #include "config.h"
@@ -214,7 +215,12 @@ void UITabSettingsProbe::setDefaultThickness(float value) { default_thickness = 
 // Textarea focused event handler - show keyboard
 static void textarea_focused_event_handler(lv_event_t *e) {
     lv_obj_t *ta = (lv_obj_t *)lv_event_get_target(e);
-    UITabSettingsProbe::showKeyboard(ta);
+    UICommon::registerKeyboardTarget(ta, UITabSettingsProbe::showKeyboard, UITabSettingsProbe::hideKeyboard);
+    if (UICommon::isOnScreenKeyboardEnabled()) {
+        UITabSettingsProbe::showKeyboard(ta);
+    } else {
+        UITabSettingsProbe::hideKeyboard();
+    }
 }
 
 // Show keyboard

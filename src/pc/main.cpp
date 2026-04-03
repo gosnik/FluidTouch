@@ -32,6 +32,7 @@
 
 namespace {
 bool g_running = true;
+lv_display_t *g_display = nullptr;
 
 bool read_fullscreen_preference() {
     Preferences prefs;
@@ -106,6 +107,9 @@ void pump_sdl_events() {
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
         if (event.type == SDL_QUIT) {
+            g_running = false;
+        } else if (event.type == SDL_WINDOWEVENT &&
+                   event.window.event == SDL_WINDOWEVENT_CLOSE) {
             g_running = false;
         }
     }
@@ -278,6 +282,7 @@ int main() {
     }
 
     lv_display_t *display = lv_sdl_window_create(UI_BASE_WIDTH, UI_BASE_HEIGHT);
+    g_display = display;
 
     Serial.println("FT PC: window created");
     bool fullscreen_mode_applied = read_fullscreen_preference();
@@ -348,6 +353,14 @@ int main() {
 
         lv_timer_handler();
     }
+
+    SDL_Window *window = get_window_from_display(g_display);
+    if (window) {
+        SDL_DestroyWindow(window);
+    }
+    g_display = nullptr;
+    SDL_FlushEvents(SDL_FIRSTEVENT, SDL_LASTEVENT);
+    SDL_Quit();
 
     return 0;
 }

@@ -12,10 +12,12 @@ endif
 UI_CPP_SRCS := $(shell find $(PROJECTROOT)/src/ui -type f -name '*.cpp')
 UI_C_SRCS :=
 ENV_CPP_SRCS := $(shell find $(PROJECTROOT)/src/env/common $(PROJECTROOT)/src/env/rpi -type f -name '*.cpp')
+CORE_CPP_SRCS := $(PROJECTROOT)/src/core/qtdial_button_mapping.cpp
 
 OBJS = main.o \
        $(UI_CPP_SRCS:.cpp=.o) \
        $(UI_C_SRCS:.c=.o) \
+       $(CORE_CPP_SRCS:.cpp=.o) \
        $(ENV_CPP_SRCS:.cpp=.o)
 
 LIBS = $(if $(NEWLIBDIR),$(NEWLIBDIR)/lib/libm.a $(NEWLIBDIR)/lib/libc.a $(NEWLIBDIR)/lib/libcirclenewlib.a,) \
@@ -30,6 +32,7 @@ LIBS = $(if $(NEWLIBDIR),$(NEWLIBDIR)/lib/libm.a $(NEWLIBDIR)/lib/libc.a $(NEWLI
 
 EXTRACLEAN += $(UI_CPP_SRCS:.cpp=.o) $(UI_CPP_SRCS:.cpp=.d) \
               $(UI_C_SRCS:.c=.o) $(UI_C_SRCS:.c=.d) \
+              $(CORE_CPP_SRCS:.cpp=.o) $(CORE_CPP_SRCS:.cpp=.d) \
               $(ENV_CPP_SRCS:.cpp=.o) $(ENV_CPP_SRCS:.cpp=.d)
 
 ARDUINOJSON_INCLUDE := $(PROJECTROOT)/.pio/libdeps/$(PIOENV)/ArduinoJson/src

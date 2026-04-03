@@ -3,16 +3,19 @@
 
 #include <lvgl.h>
 #include <cstdint>
+#include "core/qtdial_button_mapping.h"
 
 struct FluidNCStatus;
 
 class UITabControlJog {
 public:
     static void create(lv_obj_t *tab);
+    static void createSoftLimits(lv_obj_t *tab);
     static void setActiveNumericTextarea(lv_obj_t *ta, char axis_hint);
     static void clearActiveNumericTextarea(lv_obj_t *ta);
     static bool isNumericTextareaCaptureActive();
     static int getCurrentXYFeed();
+    static void triggerMappedAction(QtdialButtonMappingTarget target);
 
 private:
     enum SoftLimitMode : int8_t {

@@ -10,6 +10,9 @@ class DisplayDriver;
 // UI state and shared objects
 class UICommon {
 public:
+    using KeyboardShowFn = void (*)(lv_obj_t *ta);
+    using KeyboardHideFn = void (*)();
+
     static void init(lv_display_t *disp);
     static void setDisplayDriver(DisplayDriver* driver);  // Set display driver reference
     static void createMainUI();  // Creates main UI screen, status bar, and tabs
@@ -28,6 +31,11 @@ public:
     static bool isEncoderBindVisible();
     static void updateEncoderBindVisibility();
     static void maybeSendEncoderBindDisplay(bool force_display = false);
+    static bool isOnScreenKeyboardEnabled();
+    static void setOnScreenKeyboardEnabled(bool enabled);
+    static void toggleOnScreenKeyboardEnabled();
+    static void registerKeyboardTarget(lv_obj_t *ta, KeyboardShowFn show_fn, KeyboardHideFn hide_fn);
+    static void clearKeyboardTarget(lv_obj_t *ta = nullptr);
     
     // Dialog functions
     static void showMachineSelectConfirmDialog();
@@ -92,6 +100,11 @@ private:
     static bool encoder_bind_enabled;
     static bool encoder_bind_visible;
     static uint32_t last_bind_display_ms;
+    static bool keyboard_toggle_overridden;
+    static bool keyboard_toggle_enabled;
+    static lv_obj_t *keyboard_target;
+    static KeyboardShowFn keyboard_show_fn;
+    static KeyboardHideFn keyboard_hide_fn;
     
     // Cached values for delta checking (prevent unnecessary redraws)
     static float last_wpos_x, last_wpos_y, last_wpos_z;
