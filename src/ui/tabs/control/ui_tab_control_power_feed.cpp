@@ -75,6 +75,9 @@ void UITabControlPowerFeed::create(lv_obj_t *tab) {
     make_field("X:", start_y, &ta_x);
     make_field("Y:", start_y + (pfFieldH() + row_gap), &ta_y);
     make_field("Z:", start_y + 2 * (pfFieldH() + row_gap), &ta_z);
+    UITabControlJog::registerNavigableNumericField(tab, ta_x, 'X');
+    UITabControlJog::registerNavigableNumericField(tab, ta_y, 'Y');
+    UITabControlJog::registerNavigableNumericField(tab, ta_z, 'Z');
 
     lv_coord_t right_x = UI_SCALE_X(320);
     lv_obj_t *feed_lbl = lv_label_create(tab);
@@ -92,6 +95,7 @@ void UITabControlPowerFeed::create(lv_obj_t *tab) {
     lv_obj_set_style_text_font(ta_feed, &lv_font_montserrat_18, 0);
     lv_obj_add_event_cb(ta_feed, onTextareaFocused, LV_EVENT_FOCUSED, nullptr);
     lv_obj_add_event_cb(ta_feed, onTextareaDefocused, LV_EVENT_DEFOCUSED, nullptr);
+    UITabControlJog::registerNavigableNumericField(tab, ta_feed, 'X');
 
     lv_obj_t *mode_lbl = lv_label_create(tab);
     lv_label_set_text(mode_lbl, "Absolute:");
@@ -102,6 +106,7 @@ void UITabControlPowerFeed::create(lv_obj_t *tab) {
     mode_switch = lv_switch_create(tab);
     lv_obj_set_pos(mode_switch, right_x + UI_SCALE_X(120), start_y + pfFieldH() + row_gap);
     lv_obj_add_state(mode_switch, LV_STATE_CHECKED);
+    UITabControlJog::registerNavigableSwitch(tab, mode_switch);
 
     lv_obj_t *encoder_lbl = lv_label_create(tab);
     lv_label_set_text(encoder_lbl, "Encoder:");
@@ -112,6 +117,7 @@ void UITabControlPowerFeed::create(lv_obj_t *tab) {
     encoder_switch = lv_switch_create(tab);
     lv_obj_set_pos(encoder_switch, right_x + UI_SCALE_X(120), start_y + 2 * (pfFieldH() + row_gap) - UI_SCALE_Y(10));
     lv_obj_add_event_cb(encoder_switch, onEncoderToggle, LV_EVENT_VALUE_CHANGED, nullptr);
+    UITabControlJog::registerNavigableSwitch(tab, encoder_switch);
 
     lv_obj_t *btn_go = lv_button_create(tab);
     lv_obj_set_size(btn_go, UI_SCALE_X(160), UI_SCALE_Y(50));

@@ -105,6 +105,7 @@ void close_device_slot(int slot)
     if (g_state.devices[slot].fd >= 0) {
         close(g_state.devices[slot].fd);
     }
+    QtdialButtonMappingManager::releaseAllButtons();
     g_state.devices[slot] = QtdialDevice{};
 }
 
@@ -255,6 +256,14 @@ void parse_input_report(int slot, const uint8_t *data, size_t len)
     }
 
     const uint32_t pressed_buttons = dev.last_input.buttons & ~previous_buttons;
+    const uint32_t released_buttons = previous_buttons & ~dev.last_input.buttons;
+    for (uint8_t bit = 0; bit < QtdialHidProtocol::kButtonCount; ++bit) {
+        const uint32_t mask = (static_cast<uint32_t>(1) << bit);
+        if ((released_buttons & mask) == 0) {
+            continue;
+        }
+        QtdialButtonMappingManager::handleButtonReleased(bit);
+    }
     const uint32_t now_ms = millis();
     for (uint8_t bit = 0; bit < QtdialHidProtocol::kButtonCount; ++bit) {
         const uint32_t mask = (static_cast<uint32_t>(1) << bit);

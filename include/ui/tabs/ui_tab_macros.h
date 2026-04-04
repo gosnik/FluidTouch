@@ -24,8 +24,19 @@ public:
     static void showProgress();
     static void hideProgress();
     static bool isMacroRunning();  // Check if a macro from this tab is running
+    static bool isRecording();
     static void clearRunningMacro();  // Clear running macro tracking
     static const char* getRunningMacroName();  // Get the name of the running macro
+    static void toggleRecording();
+    static bool isRecordSlotDialogActive();
+    static void selectRecordSlot(int index);
+    static void confirmRecordSlotSelection();
+    static bool hasMacro(int index);
+    static void executeMappedMacro(int index);
+    static void showMappedMacroRepeatDialog(int index);
+    static bool isRepeatDialogActiveForMacro(int index);
+    static void confirmRepeatDialogForMacro(int index);
+    static lv_obj_t *getNavigationPage();
     
 private:
     static lv_obj_t *parent_tab;
@@ -67,9 +78,16 @@ private:
     static lv_obj_t *delete_dialog;
     static lv_obj_t *record_save_dialog;
     static lv_obj_t *record_name_textarea;
+    static lv_obj_t *record_slot_dialog;
+    static lv_obj_t *record_slot_buttons[MAX_MACROS];
+    static lv_obj_t *record_slot_status_label;
     static lv_obj_t *repeat_dialog;
     static lv_obj_t *repeat_count_textarea;
+    static lv_timer_t *record_slot_encoder_timer;
     static int repeat_macro_index;
+    static int selected_record_slot;
+    static int32_t last_record_slot_encoder_count;
+    static bool last_record_slot_encoder_count_valid;
     static bool is_recording;
     static bool suppress_next_macro_click;
     // Helper functions
@@ -77,6 +95,7 @@ private:
     static void loadMacros();
     static void saveMacros();
     static int getConfiguredMacroCount();
+    static int nextRecordedMacroIndex();
     static void swapMacros(int index1, int index2);
     static lv_color_t getColorByIndex(int index);
     static bool findPreviousConfiguredIndex(int current_index);
@@ -87,8 +106,11 @@ private:
     static std::string normalizeRecordedCommand(const char *command);
     static std::string sanitizeFilenameBase(const char *name);
     static bool writeRecordedMacroFile(const char *filename, std::string &local_path_out);
-    static bool addRecordedMacroConfig(const char *macro_name, const char *filename);
+    static bool addRecordedMacroConfig(int slot, const char *macro_name, const char *filename);
     static void updateRecordButtonState();
+    static void updateRecordSlotDialogSelectionUI();
+    static void startRecordingWithSelectedSlot();
+    static void stopRecordingAndSave();
     static bool isLocalMacro(int index);
     static void executeMacro(int index, int repeat_count);
     
@@ -123,6 +145,12 @@ private:
     static void hideRecordSaveDialog();
     static void onRecordSaveConfirm(lv_event_t *e);
     static void onRecordSaveCancel(lv_event_t *e);
+    static void showRecordSlotDialog();
+    static void hideRecordSlotDialog();
+    static void onRecordSlotButtonClicked(lv_event_t *e);
+    static void onRecordSlotConfirm(lv_event_t *e);
+    static void onRecordSlotCancel(lv_event_t *e);
+    static void recordSlotEncoderTimerCb(lv_timer_t *timer);
     static void showRepeatDialog(int index);
     static void hideRepeatDialog();
     static void onRepeatConfirm(lv_event_t *e);

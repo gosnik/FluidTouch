@@ -1,9 +1,14 @@
 #include "ui/tabs/ui_tab_macros.h"
+#include "ui/tabs/control/ui_tab_control_jog.h"
+#include "ui/ui_common.h"
+#include "ui/ui_tabs.h"
 #include "ui/ui_theme.h"
 #include "ui/machine_config.h"
 #include "ui/upload_manager.h"
 #include "config.h"
 #include "core/comm_manager.h"
+#include "core/power_manager.h"
+#include "core/usb_host_manager.h"
 #include "env/platform.h"
 #include <Arduino.h>
 #include <Preferences.h>
@@ -105,9 +110,16 @@ int UITabMacros::editing_index = -1;
 lv_obj_t *UITabMacros::delete_dialog = nullptr;
 lv_obj_t *UITabMacros::record_save_dialog = nullptr;
 lv_obj_t *UITabMacros::record_name_textarea = nullptr;
+lv_obj_t *UITabMacros::record_slot_dialog = nullptr;
+lv_obj_t *UITabMacros::record_slot_buttons[MAX_MACROS] = {nullptr};
+lv_obj_t *UITabMacros::record_slot_status_label = nullptr;
 lv_obj_t *UITabMacros::repeat_dialog = nullptr;
 lv_obj_t *UITabMacros::repeat_count_textarea = nullptr;
+lv_timer_t *UITabMacros::record_slot_encoder_timer = nullptr;
 int UITabMacros::repeat_macro_index = -1;
+int UITabMacros::selected_record_slot = -1;
+int32_t UITabMacros::last_record_slot_encoder_count = 0;
+bool UITabMacros::last_record_slot_encoder_count_valid = false;
 bool UITabMacros::is_recording = false;
 bool UITabMacros::suppress_next_macro_click = false;
 
@@ -297,6 +309,15 @@ int UITabMacros::getConfiguredMacroCount() {
     return count;
 }
 
+int UITabMacros::nextRecordedMacroIndex() {
+    for (int i = 0; i < MAX_MACROS; ++i) {
+        if (!macros[i].is_configured) {
+            return i + 1;
+        }
+    }
+    return -1;
+}
+
 // Get color by index (0-7)
 lv_color_t UITabMacros::getColorByIndex(int index) {
     switch (index) {
@@ -452,6 +473,8 @@ void UITabMacros::refreshMacroList() {
             lv_label_set_text(label, macros[i].name);
             lv_obj_set_style_text_font(label, &lv_font_montserrat_20, 0);
             lv_obj_center(label);
+
+            UITabControlJog::registerNavigableButton(macro_container, macro_buttons[i]);
         }
     }
     
@@ -525,6 +548,36 @@ bool UITabMacros::isLocalMacro(int index) {
     (void)index;
     return false;
 #endif
+}
+
+bool UITabMacros::hasMacro(int index) {
+    return index >= 0 && index < MAX_MACROS && macros[index].is_configured;
+}
+
+void UITabMacros::executeMappedMacro(int index) {
+    executeMacro(index, 1);
+}
+
+void UITabMacros::showMappedMacroRepeatDialog(int index) {
+    showRepeatDialog(index);
+}
+
+bool UITabMacros::isRepeatDialogActiveForMacro(int index) {
+    return repeat_dialog != nullptr && repeat_macro_index == index;
+}
+
+void UITabMacros::confirmRepeatDialogForMacro(int index) {
+    if (!isRepeatDialogActiveForMacro(index)) {
+        return;
+    }
+    onRepeatConfirm(nullptr);
+}
+
+lv_obj_t *UITabMacros::getNavigationPage() {
+    if (repeat_dialog != nullptr && lv_obj_is_valid(repeat_dialog)) {
+        return repeat_dialog;
+    }
+    return macro_container;
 }
 
 void UITabMacros::executeMacro(int index, int repeat_count) {
@@ -727,17 +780,18 @@ bool UITabMacros::writeRecordedMacroFile(const char *filename, std::string &loca
 #endif
 }
 
-bool UITabMacros::addRecordedMacroConfig(const char *macro_name, const char *filename) {
-    int slot = findFirstEmptySlot();
-    if (slot < 0) {
-        Serial.println("[Macros] No empty macro slot available for recorded macro");
+bool UITabMacros::addRecordedMacroConfig(int slot, const char *macro_name, const char *filename) {
+    if (slot < 0 || slot >= MAX_MACROS) {
+        Serial.println("[Macros] Invalid slot for recorded macro");
         return false;
     }
     strncpy(macros[slot].name, macro_name, sizeof(macros[slot].name) - 1);
     macros[slot].name[sizeof(macros[slot].name) - 1] = '\0';
     strncpy(macros[slot].file_path, filename, sizeof(macros[slot].file_path) - 1);
     macros[slot].file_path[sizeof(macros[slot].file_path) - 1] = '\0';
-    macros[slot].color_index = slot % 8;
+    if (!macros[slot].is_configured) {
+        macros[slot].color_index = slot % 8;
+    }
     macros[slot].is_configured = true;
     saveMacros();
     refreshMacroList();
@@ -757,54 +811,12 @@ void UITabMacros::updateRecordButtonState() {
     if (label) {
         lv_label_set_text(label, stop_mode ? "Stop" : "Rec");
     }
+    UITabs::updateMacrosTabRecordingIndicator();
 }
 
 void UITabMacros::onRecordToggle(lv_event_t *e) {
     (void)e;
-    if (!is_recording && isMacroRunning()) {
-        Serial.println("[Macros] Stop requested for running macro");
-#if defined(FT_PLATFORM_PC)
-        CommManager::sendCommand("$LocalFS/Stop\n");
-#else
-        // Best-effort immediate stop for active SD/streamed macro execution.
-        CommManager::sendCommand("!\n");
-#endif
-        clearRunningMacro();
-        hideProgress();
-        updateRecordButtonState();
-        return;
-    }
-
-    if (!is_recording) {
-        if (findFirstEmptySlot() < 0) {
-            Serial.println("[Macros] Cannot start recording: all macro slots are in use");
-            return;
-        }
-        recordedCommandsStorage().clear();
-        is_recording = true;
-        CommManager::setCommandTap([](const char *command) {
-            if (!UITabMacros::is_recording || !UITabMacros::isCommandRecordable(command)) {
-                return;
-            }
-            std::string normalized = UITabMacros::normalizeRecordedCommand(command);
-            if (!normalized.empty()) {
-                recordedCommandsStorage().push_back(normalized);
-            }
-        });
-        Serial.println("[Macros] Command recording started");
-        updateRecordButtonState();
-        return;
-    }
-
-    is_recording = false;
-    CommManager::clearCommandTap();
-    updateRecordButtonState();
-
-    if (recordedCommandsStorage().empty()) {
-        Serial.println("[Macros] No recordable commands captured");
-        return;
-    }
-    showRecordSaveDialog();
+    toggleRecording();
 }
 
 // Show Edit Macro dialog
@@ -1176,18 +1188,30 @@ void UITabMacros::onDeleteCancel(lv_event_t *e) {
     hideDeleteConfirmDialog();
 }
 
-void UITabMacros::showRecordSaveDialog() {
-    hideRecordSaveDialog();
+void UITabMacros::showRecordSaveDialog() {}
 
-    record_save_dialog = lv_obj_create(lv_scr_act());
-    lv_obj_set_size(record_save_dialog, LV_PCT(100), LV_PCT(100));
-    lv_obj_set_style_bg_color(record_save_dialog, lv_color_make(0, 0, 0), 0);
-    lv_obj_set_style_bg_opa(record_save_dialog, LV_OPA_70, 0);
-    lv_obj_set_style_border_width(record_save_dialog, 0, 0);
-    lv_obj_clear_flag(record_save_dialog, LV_OBJ_FLAG_SCROLLABLE);
+void UITabMacros::hideRecordSaveDialog() {}
 
-    lv_obj_t *dialog = lv_obj_create(record_save_dialog);
-    lv_obj_set_size(dialog, UI_SCALE_X(560), UI_SCALE_Y(300));
+void UITabMacros::onRecordSaveCancel(lv_event_t *e) {
+    (void)e;
+}
+
+void UITabMacros::onRecordSaveConfirm(lv_event_t *e) {
+    (void)e;
+}
+
+void UITabMacros::showRecordSlotDialog() {
+    hideRecordSlotDialog();
+
+    record_slot_dialog = lv_obj_create(lv_scr_act());
+    lv_obj_set_size(record_slot_dialog, LV_PCT(100), LV_PCT(100));
+    lv_obj_set_style_bg_color(record_slot_dialog, lv_color_make(0, 0, 0), 0);
+    lv_obj_set_style_bg_opa(record_slot_dialog, LV_OPA_70, 0);
+    lv_obj_set_style_border_width(record_slot_dialog, 0, 0);
+    lv_obj_clear_flag(record_slot_dialog, LV_OBJ_FLAG_SCROLLABLE);
+
+    lv_obj_t *dialog = lv_obj_create(record_slot_dialog);
+    lv_obj_set_size(dialog, UI_SCALE_X(560), UI_SCALE_Y(430));
     lv_obj_center(dialog);
     lv_obj_set_style_bg_color(dialog, UITheme::BG_DARK, 0);
     lv_obj_set_style_border_width(dialog, 2, 0);
@@ -1196,105 +1220,176 @@ void UITabMacros::showRecordSaveDialog() {
     lv_obj_clear_flag(dialog, LV_OBJ_FLAG_SCROLLABLE);
 
     lv_obj_t *title = lv_label_create(dialog);
-    lv_label_set_text(title, "Save Recorded Macro");
+    lv_label_set_text(title, "Record Macro Slot");
     lv_obj_set_style_text_font(title, &lv_font_montserrat_24, 0);
     lv_obj_set_style_text_color(title, UITheme::ACCENT_PRIMARY, 0);
-    lv_obj_set_pos(title, 0, 0);
+    lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 0);
 
     lv_obj_t *desc = lv_label_create(dialog);
-    lv_label_set_text_fmt(desc, "Captured commands: %d", (int)recordedCommandsStorage().size());
+    lv_label_set_text(desc, "Choose macro slot 1-9.\nExisting macro in that slot will be overwritten.");
     lv_obj_set_style_text_font(desc, &lv_font_montserrat_18, 0);
     lv_obj_set_style_text_color(desc, UITheme::TEXT_LIGHT, 0);
-    lv_obj_set_pos(desc, 0, UI_SCALE_Y(45));
+    lv_obj_set_style_text_align(desc, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_set_width(desc, UI_SCALE_X(500));
+    lv_obj_align(desc, LV_ALIGN_TOP_MID, 0, UI_SCALE_Y(45));
 
-    lv_obj_t *name_label = lv_label_create(dialog);
-    lv_label_set_text(name_label, "Macro Name:");
-    lv_obj_set_style_text_font(name_label, &lv_font_montserrat_20, 0);
-    lv_obj_set_pos(name_label, 0, UI_SCALE_Y(85));
+    const lv_coord_t btn_w = UI_SCALE_X(90);
+    const lv_coord_t btn_h = UI_SCALE_Y(52);
+    const lv_coord_t gap_x = UI_SCALE_X(18);
+    const lv_coord_t gap_y = UI_SCALE_Y(14);
+    const lv_coord_t start_x = UI_SCALE_X(108);
+    const lv_coord_t start_y = UI_SCALE_Y(118);
+    for (int i = 0; i < MAX_MACROS; ++i) {
+        lv_obj_t *btn = lv_btn_create(dialog);
+        const int row = i / 3;
+        const int col = i % 3;
+        lv_obj_set_size(btn, btn_w, btn_h);
+        lv_obj_set_pos(btn,
+                       start_x + col * (btn_w + gap_x),
+                       start_y + row * (btn_h + gap_y));
+        lv_obj_add_event_cb(btn, onRecordSlotButtonClicked, LV_EVENT_CLICKED, (void *)(intptr_t)i);
+        record_slot_buttons[i] = btn;
 
-    record_name_textarea = lv_textarea_create(dialog);
-    lv_obj_set_size(record_name_textarea, UI_SCALE_X(520), UI_SCALE_Y(52));
-    lv_obj_set_pos(record_name_textarea, 0, UI_SCALE_Y(120));
-    lv_obj_set_style_text_font(record_name_textarea, &lv_font_montserrat_20, 0);
-    lv_textarea_set_max_length(record_name_textarea, 31);
-    lv_textarea_set_one_line(record_name_textarea, true);
-    lv_textarea_set_text(record_name_textarea, "Recorded Macro");
-    lv_obj_add_event_cb(record_name_textarea, onTextareaFocused, LV_EVENT_FOCUSED, nullptr);
+        lv_obj_t *label = lv_label_create(btn);
+        lv_label_set_text_fmt(label, "%d", i + 1);
+        lv_obj_set_style_text_font(label, &lv_font_montserrat_20, 0);
+        lv_obj_center(label);
+    }
+
+    record_slot_status_label = lv_label_create(dialog);
+    lv_obj_set_style_text_font(record_slot_status_label, &lv_font_montserrat_16, 0);
+    lv_obj_set_style_text_color(record_slot_status_label, UITheme::TEXT_MEDIUM, 0);
+    lv_obj_set_style_text_align(record_slot_status_label, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_set_width(record_slot_status_label, UI_SCALE_X(500));
+    lv_obj_align(record_slot_status_label, LV_ALIGN_TOP_MID, 0, UI_SCALE_Y(328));
 
     lv_obj_t *btn_cancel = lv_btn_create(dialog);
-    lv_obj_set_size(btn_cancel, UI_SCALE_X(170), UI_SCALE_Y(50));
-    lv_obj_set_pos(btn_cancel, UI_SCALE_X(90), UI_SCALE_Y(220));
+    lv_obj_set_size(btn_cancel, UI_SCALE_X(140), UI_SCALE_Y(46));
+    lv_obj_align(btn_cancel, LV_ALIGN_BOTTOM_MID, -UI_SCALE_X(90), -UI_SCALE_Y(18));
     lv_obj_set_style_bg_color(btn_cancel, UITheme::BG_MEDIUM, 0);
-    lv_obj_add_event_cb(btn_cancel, onRecordSaveCancel, LV_EVENT_CLICKED, nullptr);
+    lv_obj_add_event_cb(btn_cancel, onRecordSlotCancel, LV_EVENT_CLICKED, nullptr);
     lv_obj_t *cancel_label = lv_label_create(btn_cancel);
-    lv_label_set_text(cancel_label, "Discard");
+    lv_label_set_text(cancel_label, "Cancel");
     lv_obj_set_style_text_font(cancel_label, &lv_font_montserrat_18, 0);
     lv_obj_center(cancel_label);
 
-    lv_obj_t *btn_save = lv_btn_create(dialog);
-    lv_obj_set_size(btn_save, UI_SCALE_X(170), UI_SCALE_Y(50));
-    lv_obj_set_pos(btn_save, UI_SCALE_X(300), UI_SCALE_Y(220));
-    lv_obj_set_style_bg_color(btn_save, UITheme::BTN_PLAY, 0);
-    lv_obj_add_event_cb(btn_save, onRecordSaveConfirm, LV_EVENT_CLICKED, nullptr);
-    lv_obj_t *save_label = lv_label_create(btn_save);
-    lv_label_set_text(save_label, "Save");
-    lv_obj_set_style_text_font(save_label, &lv_font_montserrat_18, 0);
-    lv_obj_center(save_label);
-}
+    lv_obj_t *btn_start = lv_btn_create(dialog);
+    lv_obj_set_size(btn_start, UI_SCALE_X(140), UI_SCALE_Y(46));
+    lv_obj_align(btn_start, LV_ALIGN_BOTTOM_MID, UI_SCALE_X(90), -UI_SCALE_Y(18));
+    lv_obj_set_style_bg_color(btn_start, UITheme::BTN_PLAY, 0);
+    lv_obj_add_event_cb(btn_start, onRecordSlotConfirm, LV_EVENT_CLICKED, nullptr);
+    lv_obj_t *start_label = lv_label_create(btn_start);
+    lv_label_set_text(start_label, "Start");
+    lv_obj_set_style_text_font(start_label, &lv_font_montserrat_18, 0);
+    lv_obj_center(start_label);
 
-void UITabMacros::hideRecordSaveDialog() {
-    if (record_save_dialog != nullptr) {
-        if (keyboard != nullptr) {
-            hideKeyboard();
-        }
-        lv_obj_del(record_save_dialog);
-        record_save_dialog = nullptr;
-        record_name_textarea = nullptr;
+    int initial_slot = 0;
+    const int next_empty = findFirstEmptySlot();
+    if (next_empty >= 0) {
+        initial_slot = next_empty;
+    }
+    selectRecordSlot(initial_slot);
+    last_record_slot_encoder_count_valid = false;
+    if (!record_slot_encoder_timer) {
+        record_slot_encoder_timer = lv_timer_create(recordSlotEncoderTimerCb, 50, nullptr);
     }
 }
 
-void UITabMacros::onRecordSaveCancel(lv_event_t *e) {
-    (void)e;
-    recordedCommandsStorage().clear();
-    hideRecordSaveDialog();
+void UITabMacros::hideRecordSlotDialog() {
+    if (record_slot_dialog) {
+        lv_obj_del(record_slot_dialog);
+        record_slot_dialog = nullptr;
+    }
+    for (int i = 0; i < MAX_MACROS; ++i) {
+        record_slot_buttons[i] = nullptr;
+    }
+    record_slot_status_label = nullptr;
+    last_record_slot_encoder_count_valid = false;
 }
 
-void UITabMacros::onRecordSaveConfirm(lv_event_t *e) {
-    (void)e;
+void UITabMacros::updateRecordSlotDialogSelectionUI() {
+    if (!record_slot_dialog) {
+        return;
+    }
+    for (int i = 0; i < MAX_MACROS; ++i) {
+        if (!record_slot_buttons[i]) {
+            continue;
+        }
+        const bool selected = (i == selected_record_slot);
+        lv_obj_set_style_bg_color(record_slot_buttons[i],
+                                  selected ? UITheme::ACCENT_PRIMARY : UITheme::BG_BUTTON,
+                                  0);
+        lv_obj_set_style_border_width(record_slot_buttons[i], selected ? 3 : 1, 0);
+        lv_obj_set_style_border_color(record_slot_buttons[i],
+                                      selected ? lv_color_white() : UITheme::BORDER_MEDIUM,
+                                      0);
+    }
+    if (record_slot_status_label && selected_record_slot >= 0 && selected_record_slot < MAX_MACROS) {
+        if (macros[selected_record_slot].is_configured) {
+            lv_label_set_text_fmt(record_slot_status_label,
+                                  "Slot %d will overwrite \"%s\"",
+                                  selected_record_slot + 1,
+                                  macros[selected_record_slot].name);
+        } else {
+            lv_label_set_text_fmt(record_slot_status_label,
+                                  "Slot %d is empty",
+                                  selected_record_slot + 1);
+        }
+    }
+}
+
+void UITabMacros::startRecordingWithSelectedSlot() {
+    if (selected_record_slot < 0 || selected_record_slot >= MAX_MACROS) {
+        return;
+    }
+    hideRecordSlotDialog();
+    recordedCommandsStorage().clear();
+    is_recording = true;
+    CommManager::setCommandTap([](const char *command) {
+        if (!UITabMacros::is_recording || !UITabMacros::isCommandRecordable(command)) {
+            return;
+        }
+        std::string normalized = UITabMacros::normalizeRecordedCommand(command);
+        if (!normalized.empty()) {
+            recordedCommandsStorage().push_back(normalized);
+        }
+    });
+    Serial.printf("[Macros] Command recording started for slot %d\n", selected_record_slot + 1);
+    updateRecordButtonState();
+}
+
+void UITabMacros::stopRecordingAndSave() {
+    is_recording = false;
+    CommManager::clearCommandTap();
+    updateRecordButtonState();
+
     if (recordedCommandsStorage().empty()) {
-        hideRecordSaveDialog();
+        Serial.println("[Macros] No recordable commands captured");
+        selected_record_slot = -1;
         return;
     }
 
-    if (findFirstEmptySlot() < 0) {
-        Serial.println("[Macros] Cannot save recording: all macro slots are in use");
-        hideRecordSaveDialog();
+    if (selected_record_slot < 0 || selected_record_slot >= MAX_MACROS) {
+        Serial.println("[Macros] No selected slot for recorded macro");
         recordedCommandsStorage().clear();
         return;
     }
 
-    const char *macro_name = record_name_textarea ? lv_textarea_get_text(record_name_textarea) : "";
-    if (!macro_name || macro_name[0] == '\0') {
-        Serial.println("[Macros] Recording name is required");
-        return;
-    }
-
-    const std::string base = sanitizeFilenameBase(macro_name);
-    char filename[80];
-    snprintf(filename, sizeof(filename), "%s_%lu.gcode", base.c_str(), (unsigned long)millis());
+    char macro_name[8];
+    char filename[32];
+    snprintf(macro_name, sizeof(macro_name), "%d", selected_record_slot + 1);
+    snprintf(filename, sizeof(filename), "macro_%d.gcode", selected_record_slot + 1);
 
     std::string local_path;
     if (!writeRecordedMacroFile(filename, local_path)) {
         Serial.println("[Macros] Failed to write recorded macro file");
-        hideRecordSaveDialog();
         recordedCommandsStorage().clear();
         return;
     }
 
 #if defined(FT_PLATFORM_PC)
-    if (!addRecordedMacroConfig(macro_name, filename)) {
+    if (!addRecordedMacroConfig(selected_record_slot, macro_name, filename)) {
         Serial.println("[Macros] Recorded file saved but macro config could not be added");
-        hideRecordSaveDialog();
         recordedCommandsStorage().clear();
         return;
     }
@@ -1315,22 +1410,74 @@ void UITabMacros::onRecordSaveConfirm(lv_event_t *e) {
 
     if (!upload_ok) {
         Serial.printf("[Macros] Failed to upload recorded macro: %s\n", upload_error ? upload_error : "unknown");
-        hideRecordSaveDialog();
         recordedCommandsStorage().clear();
         return;
     }
 
-    if (!addRecordedMacroConfig(macro_name, filename)) {
+    if (!addRecordedMacroConfig(selected_record_slot, macro_name, filename)) {
         Serial.println("[Macros] Recorded file uploaded but macro config could not be added");
-        hideRecordSaveDialog();
         recordedCommandsStorage().clear();
         return;
     }
 #endif
 
-    Serial.printf("[Macros] Recorded macro saved as %s\n", filename);
-    hideRecordSaveDialog();
+    Serial.printf("[Macros] Recorded macro saved to slot %d as %s\n", selected_record_slot + 1, filename);
     recordedCommandsStorage().clear();
+    selected_record_slot = -1;
+}
+
+void UITabMacros::onRecordSlotButtonClicked(lv_event_t *e) {
+    const int index = (int)(intptr_t)lv_event_get_user_data(e);
+    selectRecordSlot(index);
+}
+
+void UITabMacros::onRecordSlotConfirm(lv_event_t *e) {
+    (void)e;
+    confirmRecordSlotSelection();
+}
+
+void UITabMacros::onRecordSlotCancel(lv_event_t *e) {
+    (void)e;
+    hideRecordSlotDialog();
+    selected_record_slot = -1;
+}
+
+void UITabMacros::recordSlotEncoderTimerCb(lv_timer_t *timer) {
+    LV_UNUSED(timer);
+    if (!isRecordSlotDialogActive()) {
+        return;
+    }
+
+    int32_t count = 0;
+    if (!UsbHostManager::getSingleDeviceCount(&count)) {
+        last_record_slot_encoder_count_valid = false;
+        return;
+    }
+
+    if (!last_record_slot_encoder_count_valid) {
+        last_record_slot_encoder_count = count;
+        last_record_slot_encoder_count_valid = true;
+        return;
+    }
+
+    const int32_t delta = count - last_record_slot_encoder_count;
+    last_record_slot_encoder_count = count;
+    if (delta == 0) {
+        return;
+    }
+
+    int slot = selected_record_slot;
+    if (slot < 0 || slot >= MAX_MACROS) {
+        slot = 0;
+    }
+    if (delta > 0) {
+        slot = (slot + (delta % MAX_MACROS)) % MAX_MACROS;
+    } else {
+        const int32_t steps = (-delta) % MAX_MACROS;
+        slot = (slot - steps + MAX_MACROS) % MAX_MACROS;
+    }
+    selectRecordSlot(slot);
+    PowerManager::onUserActivity();
 }
 
 void UITabMacros::showRepeatDialog(int index) {
@@ -1375,15 +1522,18 @@ void UITabMacros::showRepeatDialog(int index) {
     lv_obj_align(repeat_count_textarea, LV_ALIGN_TOP_MID, 0, UI_SCALE_Y(130));
     lv_obj_set_style_text_font(repeat_count_textarea, &lv_font_montserrat_24, 0);
     lv_textarea_set_text(repeat_count_textarea, "2");
+    lv_textarea_set_accepted_chars(repeat_count_textarea, "0123456789");
     lv_textarea_set_max_length(repeat_count_textarea, 4);
     lv_textarea_set_one_line(repeat_count_textarea, true);
     lv_obj_add_event_cb(repeat_count_textarea, onTextareaFocused, LV_EVENT_FOCUSED, nullptr);
+    UITabControlJog::registerNavigableNumericField(repeat_dialog, repeat_count_textarea, 'R');
 
     lv_obj_t *btn_cancel = lv_btn_create(dialog);
     lv_obj_set_size(btn_cancel, UI_SCALE_X(140), UI_SCALE_Y(50));
     lv_obj_align(btn_cancel, LV_ALIGN_BOTTOM_MID, -UI_SCALE_X(85), 0);
     lv_obj_set_style_bg_color(btn_cancel, UITheme::BG_BUTTON, 0);
     lv_obj_add_event_cb(btn_cancel, onRepeatCancel, LV_EVENT_CLICKED, nullptr);
+    UITabControlJog::registerNavigableButton(repeat_dialog, btn_cancel);
 
     lv_obj_t *cancel_label = lv_label_create(btn_cancel);
     lv_label_set_text(cancel_label, "Cancel");
@@ -1395,11 +1545,15 @@ void UITabMacros::showRepeatDialog(int index) {
     lv_obj_align(btn_run, LV_ALIGN_BOTTOM_MID, UI_SCALE_X(85), 0);
     lv_obj_set_style_bg_color(btn_run, UITheme::BTN_PLAY, 0);
     lv_obj_add_event_cb(btn_run, onRepeatConfirm, LV_EVENT_CLICKED, nullptr);
+    UITabControlJog::registerNavigableButton(repeat_dialog, btn_run);
 
     lv_obj_t *run_label = lv_label_create(btn_run);
     lv_label_set_text(run_label, "Run");
     lv_obj_set_style_text_font(run_label, &lv_font_montserrat_18, 0);
     lv_obj_center(run_label);
+
+    UITabControlJog::setActiveNumericTextarea(repeat_count_textarea, 'R');
+    lv_obj_send_event(repeat_count_textarea, LV_EVENT_FOCUSED, nullptr);
 }
 
 void UITabMacros::hideRepeatDialog() {
@@ -1474,7 +1628,12 @@ void UITabMacros::onColorButtonClicked(lv_event_t *e) {
 // Handle textarea focus (show keyboard)
 void UITabMacros::onTextareaFocused(lv_event_t *e) {
     lv_obj_t *textarea = (lv_obj_t*)lv_event_get_target(e);
-    showKeyboard(textarea);
+    UICommon::registerKeyboardTarget(textarea, UITabMacros::showKeyboard, UITabMacros::hideKeyboard);
+    if (UICommon::isOnScreenKeyboardEnabled()) {
+        showKeyboard(textarea);
+    } else {
+        hideKeyboard();
+    }
 }
 
 // Show keyboard
@@ -1488,6 +1647,7 @@ void UITabMacros::showKeyboard(lv_obj_t *textarea) {
     lv_obj_set_size(keyboard, SCREEN_WIDTH, UI_SCALE_Y(280));
     lv_obj_align(keyboard, LV_ALIGN_BOTTOM_MID, 0, 0);
     lv_obj_set_style_text_font(keyboard, &lv_font_montserrat_20, 0);  // Larger font for better visibility
+    lv_keyboard_set_mode(keyboard, LV_KEYBOARD_MODE_NUMBER);
     lv_keyboard_set_textarea(keyboard, textarea);
     
     // Add event handler for keyboard close button
@@ -1780,6 +1940,57 @@ bool UITabMacros::isMacroRunning() {
         Serial.printf("[Macros] isMacroRunning() = TRUE, name='%s'\n", running_macro_name);
     }
     return is_running;
+}
+
+bool UITabMacros::isRecording() {
+    return is_recording;
+}
+
+void UITabMacros::toggleRecording() {
+    if (!is_recording && isMacroRunning()) {
+        Serial.println("[Macros] Stop requested for running macro");
+#if defined(FT_PLATFORM_PC)
+        CommManager::sendCommand("$LocalFS/Stop\n");
+#else
+        CommManager::sendCommand("!\n");
+#endif
+        clearRunningMacro();
+        hideProgress();
+        updateRecordButtonState();
+        return;
+    }
+
+    if (!is_recording) {
+        if (isRecordSlotDialogActive()) {
+            confirmRecordSlotSelection();
+        } else {
+            showRecordSlotDialog();
+        }
+        return;
+    }
+
+    stopRecordingAndSave();
+}
+
+bool UITabMacros::isRecordSlotDialogActive() {
+    return record_slot_dialog != nullptr;
+}
+
+void UITabMacros::selectRecordSlot(int index) {
+    if (index < 0) {
+        index = 0;
+    } else if (index >= MAX_MACROS) {
+        index = MAX_MACROS - 1;
+    }
+    selected_record_slot = index;
+    updateRecordSlotDialogSelectionUI();
+}
+
+void UITabMacros::confirmRecordSlotSelection() {
+    if (!isRecordSlotDialogActive()) {
+        return;
+    }
+    startRecordingWithSelectedSlot();
 }
 
 // Clear running macro tracking (called when SD print finishes)

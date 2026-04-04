@@ -5,8 +5,24 @@
 
 class UITabControlActions {
 public:
+    enum class Action : uint8_t {
+        PauseResume,
+        Unlock,
+        SoftReset,
+        QuickStop,
+        HomeX,
+        HomeY,
+        HomeZ,
+        HomeAll,
+        ZeroX,
+        ZeroY,
+        ZeroZ,
+        ZeroAll
+    };
+
     static void create(lv_obj_t *tab);
     static void updatePauseButton(int machine_state);
+    static void triggerAction(Action action);
 
 private:
     // Event handlers

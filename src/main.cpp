@@ -11,6 +11,7 @@
 #include "core/display_driver.h"     // Display driver module
 #include "core/encoder.h"
 #include "core/power_manager.h"      // Power management module
+#include "core/qtdial_button_mapping.h"
 #include "core/usb_host_manager.h"
 #include "core/qtdial_hid_protocol.h"
 #include "network/screenshot_server.h"  // Screenshot web server
@@ -212,6 +213,7 @@ void loop()
 
     // Handle USB HID events (qtdial)
     UsbHostManager::poll();
+    QtdialButtonMappingManager::updateHeldButtons();
     
     // Check for connection timeout (non-blocking)
     UICommon::checkConnectionTimeout();
@@ -281,6 +283,7 @@ void loop()
             UITabStatus::updateMachinePosition(status.mpos_x, status.mpos_y, status.mpos_z);
             UITabStatus::updateFeedRate(status.feed_rate, status.feed_override);
             UITabStatus::updateRapidOverride(status.rapid_override);
+            UITabStatus::updateRapidJogState(UITabControlJog::isRapidFeedEnabled());
             UITabStatus::updateSpindle(status.spindle_speed, status.spindle_override);
             UITabStatus::updateModalStates(status.modal_wcs, status.modal_plane, status.modal_distance,
                                         status.modal_units, status.modal_motion, status.modal_feedrate,
@@ -381,6 +384,7 @@ void loop()
             UITabStatus::updateMachinePosition(-9999.0f, -9999.0f, -9999.0f);
             UITabStatus::updateFeedRate(-9999.0f, -9999.0f);  // Reset feed rate and override
             UITabStatus::updateRapidOverride(-9999.0f);        // Reset rapid override
+            UITabStatus::updateRapidJogState(UITabControlJog::isRapidFeedEnabled());
             UITabStatus::updateSpindle(-9999.0f, -9999.0f);    // Reset spindle and override
             UITabStatus::updateModalStates("---", "---", "---", "---", "---", "---", "---", "---", "---");
             

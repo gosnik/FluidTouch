@@ -83,6 +83,11 @@ void UITabControlRotaryTable::create(lv_obj_t *tab) {
     make_field("Radius:", start_y + 2 * (rtFieldH() + row_gap), &ta_radius);
     make_field("Arc Len:", start_y + 3 * (rtFieldH() + row_gap), &ta_arc);
     make_field("Z Delta:", start_y + 4 * (rtFieldH() + row_gap), &ta_z);
+    UITabControlJog::registerNavigableNumericField(tab, ta_center_x, 'X');
+    UITabControlJog::registerNavigableNumericField(tab, ta_center_y, 'Y');
+    UITabControlJog::registerNavigableNumericField(tab, ta_radius, 'X');
+    UITabControlJog::registerNavigableNumericField(tab, ta_arc, 'X');
+    UITabControlJog::registerNavigableNumericField(tab, ta_z, 'Z');
 
     lv_textarea_set_text(ta_center_x, "0");
     lv_textarea_set_text(ta_center_y, "0");
@@ -105,6 +110,7 @@ void UITabControlRotaryTable::create(lv_obj_t *tab) {
     lv_obj_set_style_text_font(ta_feed, &lv_font_montserrat_18, 0);
     lv_obj_add_event_cb(ta_feed, onTextareaFocused, LV_EVENT_FOCUSED, nullptr);
     lv_obj_add_event_cb(ta_feed, onTextareaDefocused, LV_EVENT_DEFOCUSED, nullptr);
+    UITabControlJog::registerNavigableNumericField(tab, ta_feed, 'X');
 
     lv_obj_t *encoder_lbl = lv_label_create(tab);
     lv_label_set_text(encoder_lbl, "Encoder:");
@@ -115,6 +121,7 @@ void UITabControlRotaryTable::create(lv_obj_t *tab) {
     encoder_switch = lv_switch_create(tab);
     lv_obj_set_pos(encoder_switch, UI_SCALE_X(450), start_y + UI_SCALE_Y(66));
     lv_obj_add_event_cb(encoder_switch, onEncoderToggle, LV_EVENT_VALUE_CHANGED, nullptr);
+    UITabControlJog::registerNavigableSwitch(tab, encoder_switch);
 
     lv_obj_t *btn_set = lv_button_create(tab);
     lv_obj_set_size(btn_set, UI_SCALE_X(200), UI_SCALE_Y(50));

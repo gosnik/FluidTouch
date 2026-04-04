@@ -20,6 +20,8 @@ public:
     static float getDefaultZStep();
     static int getDefaultXYFeed();
     static int getDefaultZFeed();
+    static int getRapidXYFeed();
+    static int getRapidZFeed();
     static int getMaxXYFeed();
     static int getMaxZFeed();
     
@@ -28,6 +30,8 @@ public:
     static void setDefaultZStep(float value);
     static void setDefaultXYFeed(int value);
     static void setDefaultZFeed(int value);
+    static void setRapidXYFeed(int value);
+    static void setRapidZFeed(int value);
     static void setMaxXYFeed(int value);
     static void setMaxZFeed(int value);
 

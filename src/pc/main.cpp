@@ -10,6 +10,7 @@
 #include "config.h"
 #include "core/comm_manager.h"
 #include "core/power_manager.h"
+#include "core/qtdial_button_mapping.h"
 #include "core/usb_host_manager.h"
 #include "core/qtdial_hid_protocol.h"
 #include "network/screenshot_server.h"
@@ -212,6 +213,7 @@ void update_ui_from_status() {
         UITabStatus::updateMachinePosition(status.mpos_x, status.mpos_y, status.mpos_z);
         UITabStatus::updateFeedRate(status.feed_rate, status.feed_override);
         UITabStatus::updateRapidOverride(status.rapid_override);
+        UITabStatus::updateRapidJogState(UITabControlJog::isRapidFeedEnabled());
         UITabStatus::updateSpindle(status.spindle_speed, status.spindle_override);
         UITabStatus::updateModalStates(status.modal_wcs, status.modal_plane, status.modal_distance,
                                        status.modal_units, status.modal_motion, status.modal_feedrate,
@@ -249,6 +251,7 @@ void update_ui_from_status() {
         UITabStatus::updateMachinePosition(-9999.0f, -9999.0f, -9999.0f);
         UITabStatus::updateFeedRate(-9999.0f, -9999.0f);
         UITabStatus::updateRapidOverride(-9999.0f);
+        UITabStatus::updateRapidJogState(UITabControlJog::isRapidFeedEnabled());
         UITabStatus::updateSpindle(-9999.0f, -9999.0f);
         UITabStatus::updateModalStates("---", "---", "---", "---", "---", "---", "---", "---", "---");
         if (UITabMacros::isMacroRunning()) {
@@ -332,6 +335,7 @@ int main() {
 
         CommManager::loop();
         UsbHostManager::poll();
+        QtdialButtonMappingManager::updateHeldButtons();
         UICommon::checkConnectionTimeout();
         UITabFiles::checkPendingRefresh();
         UITabTerminal::update();

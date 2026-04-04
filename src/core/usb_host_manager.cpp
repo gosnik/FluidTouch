@@ -206,6 +206,7 @@ static void release_device_slot(hid_host_device_handle_t handle)
     if (slot < 0) {
         return;
     }
+    QtdialButtonMappingManager::releaseAllButtons();
     g_state.devices[slot] = QtdialDevice{};
 }
 
@@ -447,6 +448,14 @@ static void handle_event(const HidEvent &event)
             }
 
             const uint32_t pressed_buttons = dev.last_input.buttons & ~previous_buttons;
+            const uint32_t released_buttons = previous_buttons & ~dev.last_input.buttons;
+            for (uint8_t bit = 0; bit < QtdialHidProtocol::kButtonCount; ++bit) {
+                const uint32_t mask = (static_cast<uint32_t>(1) << bit);
+                if ((released_buttons & mask) == 0) {
+                    continue;
+                }
+                QtdialButtonMappingManager::handleButtonReleased(bit);
+            }
             const uint32_t now_ms = millis();
             for (uint8_t bit = 0; bit < QtdialHidProtocol::kButtonCount; ++bit) {
                 const uint32_t mask = (static_cast<uint32_t>(1) << bit);

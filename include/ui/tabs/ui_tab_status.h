@@ -14,6 +14,7 @@ public:
     static void updateMachinePosition(float x, float y, float z);
     static void updateFeedRate(float rate, float override_pct);
     static void updateRapidOverride(float override_pct);
+    static void updateRapidJogState(bool enabled);
     static void updateSpindle(float speed, float override_pct);
     static void updateModalStates(const char *wcs, const char *plane, const char *dist, 
                                   const char *units, const char *motion, const char *feedrate,
@@ -42,6 +43,7 @@ private:
     static lv_obj_t *lbl_feed_override;
     static lv_obj_t *lbl_feed_units;
     static lv_obj_t *lbl_rapid_override;
+    static lv_obj_t *lbl_jog_mode_value;
     static lv_obj_t *lbl_spindle_value;
     static lv_obj_t *lbl_spindle_override;
     static lv_obj_t *lbl_spindle_units;
@@ -62,6 +64,7 @@ private:
     static float last_mpos_x, last_mpos_y, last_mpos_z;
     static float last_feed_rate, last_feed_override;
     static float last_rapid_override;
+    static bool last_rapid_jog_enabled;
     static float last_spindle_speed, last_spindle_override;
     static char last_state[16];
     static char last_modal_wcs[8];

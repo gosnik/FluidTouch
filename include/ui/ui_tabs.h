@@ -14,6 +14,11 @@ public:
     static void createMacrosTab(lv_obj_t *tab);
     static void createTerminalTab(lv_obj_t *tab);
     static void createSettingsTab(lv_obj_t *tab);
+    static void updateMacrosTabRecordingIndicator();
+    static void setActiveTab(uint32_t index, lv_anim_enable_t anim = LV_ANIM_OFF);
+    static uint32_t getActiveTab();
+    static uint32_t getTabCount();
+    static void cycleTabs();
     
     // Settings management
     static void loadSettings();
@@ -32,6 +37,7 @@ private:
     static lv_obj_t *tab_settings;
     static lv_obj_t *keyboard_toggle_btn;
     static lv_obj_t *keyboard_toggle_label;
+    static lv_timer_t *macros_record_indicator_timer;
     
     // Event handler for tab changes
     static void tab_changed_event_cb(lv_event_t *e);

@@ -2,6 +2,7 @@
 #define UI_TAB_CONTROL_JOG_H
 
 #include <lvgl.h>
+#include <cstddef>
 #include <cstdint>
 #include "core/qtdial_button_mapping.h"
 
@@ -11,10 +12,25 @@ class UITabControlJog {
 public:
     static void create(lv_obj_t *tab);
     static void createSoftLimits(lv_obj_t *tab);
+    static void registerNavigableNumericField(lv_obj_t *page, lv_obj_t *ta, char axis_hint);
+    static void registerNavigableSwitch(lv_obj_t *page, lv_obj_t *obj);
+    static void registerNavigableSlider(lv_obj_t *page, lv_obj_t *obj);
+    static void registerNavigableButton(lv_obj_t *page, lv_obj_t *obj);
+    static void registerNavigableButtons(lv_obj_t *page);
     static void setActiveNumericTextarea(lv_obj_t *ta, char axis_hint);
     static void clearActiveNumericTextarea(lv_obj_t *ta);
     static bool isNumericTextareaCaptureActive();
-    static int getCurrentXYFeed();
+    static bool hasActiveNumericTextarea();
+    static bool isFieldNavigationActive();
+    static bool navigateActiveFieldSelection(int direction);
+    static bool clickActiveNavigableSelection(bool long_press = false);
+    static void beginFieldNavigationHold();
+    static void endFieldNavigationHold();
+    static float getCurrentXYFeed();
+    static float getCurrentZFeed();
+    static bool isRapidFeedEnabled();
+    static void setRapidFeedEnabled(bool enabled);
+    static void toggleRapidFeedEnabled();
     static void triggerMappedAction(QtdialButtonMappingTarget target);
 
 private:
@@ -32,6 +48,7 @@ private:
     static lv_obj_t *z_step_buttons[6];
     static lv_obj_t *xy_feedrate_label;
     static lv_obj_t *z_feedrate_label;
+    static lv_obj_t *rapid_mode_label;
     static lv_obj_t *encoder_bind_container;
     static lv_obj_t *encoder_bind_buttons[3];
     static lv_timer_t *encoder_timer;
@@ -39,8 +56,10 @@ private:
     static lv_obj_t *soft_limits_overlay;
     static lv_obj_t *soft_limits_panel;
     static lv_obj_t *soft_limits_keyboard;
+    static lv_obj_t *jog_keyboard;
     static lv_obj_t *soft_limits_active_ta;
     static lv_obj_t *active_numeric_ta;
+    static lv_obj_t *active_navigable_obj;
     static char active_numeric_axis;
     static lv_obj_t *soft_limits_mode_slider_x;
     static lv_obj_t *soft_limits_mode_slider_y;
@@ -56,6 +75,22 @@ private:
     static lv_obj_t *soft_limits_z_max_ta;
     static lv_obj_t *jog_predicted_wpos_label;
     static lv_obj_t *jog_pending_cmd_count_label;
+    enum class NavigableFieldType : uint8_t {
+        Textarea,
+        Switch,
+        Slider,
+        Button
+    };
+    struct NavigableFieldEntry {
+        lv_obj_t *page;
+        lv_obj_t *obj;
+        NavigableFieldType type;
+        char axis_hint;
+    };
+    static constexpr size_t kMaxNavigableFields = 256;
+    static NavigableFieldEntry navigable_fields[kMaxNavigableFields];
+    static size_t navigable_field_count;
+    static bool field_navigation_moved;
     static int16_t last_encoder_counts[3];
     static int32_t last_override_count;
     static bool last_override_count_valid;
@@ -65,8 +100,9 @@ private:
     static int x_current_step_index;
     static int y_current_step_index;
     static int z_current_step_index;
-    static int xy_current_feed;
-    static int z_current_feed;
+    static float xy_current_feed;
+    static float z_current_feed;
+    static bool rapid_feed_enabled;
     static bool soft_limit_x_enabled;
     static bool soft_limit_y_enabled;
     static bool soft_limit_z_enabled;
@@ -105,6 +141,10 @@ private:
     static void soft_limit_mode_slider_event_cb(lv_event_t *e);
     static void soft_limits_textarea_focused_event_cb(lv_event_t *e);
     static void soft_limits_textarea_changed_event_cb(lv_event_t *e);
+    static void jog_feed_textarea_focused_event_cb(lv_event_t *e);
+    static void jog_feed_textarea_defocused_event_cb(lv_event_t *e);
+    static void showJogKeyboard(lv_obj_t *ta);
+    static void hideJogKeyboard();
     static void showSoftLimitsKeyboard(lv_obj_t *ta);
     static void hideSoftLimitsKeyboard();
     static void loadSoftLimitsFromConfig();
@@ -117,6 +157,15 @@ private:
     static void syncSoftLimitsUI();
     static void storeSoftLimitsFromUI();
     static void updateJogDebugInfoUI();
+    static float rapidXYFeedValue();
+    static float rapidZFeedValue();
+    static float effectiveXYFeedValue();
+    static float effectiveZFeedValue();
+    static void applyNavigableHighlight(lv_obj_t *obj, NavigableFieldType type, bool active);
+    static void registerNavigableField(lv_obj_t *page, lv_obj_t *obj, NavigableFieldType type, char axis_hint);
+    static void registerNavigableButtonsRecursive(lv_obj_t *page, lv_obj_t *root);
+    static bool setActiveNavigableObject(lv_obj_t *obj, NavigableFieldType type, char axis_hint);
+    static bool findNavigableEntry(lv_obj_t *obj, NavigableFieldEntry *entry_out = nullptr);
     
     // Jog button event handlers
     static void xy_jog_button_event_cb(lv_event_t *e);

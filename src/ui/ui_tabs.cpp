@@ -21,10 +21,12 @@ lv_obj_t *UITabs::tab_terminal = nullptr;
 lv_obj_t *UITabs::tab_settings = nullptr;
 lv_obj_t *UITabs::keyboard_toggle_btn = nullptr;
 lv_obj_t *UITabs::keyboard_toggle_label = nullptr;
+lv_timer_t *UITabs::macros_record_indicator_timer = nullptr;
 
 namespace {
 void sync_hid_axis_screens(uint32_t active_tab);
 void keyboard_toggle_event_cb(lv_event_t *e);
+void macros_record_indicator_timer_cb(lv_timer_t *timer);
 } // namespace
 
 // Create main tabview and all tabs
@@ -97,8 +99,12 @@ void UITabs::createTabs() {
     
     // Add event handler for tab changes
     lv_obj_add_event_cb(tabview, tab_changed_event_cb, LV_EVENT_VALUE_CHANGED, nullptr);
+    if (!macros_record_indicator_timer) {
+        macros_record_indicator_timer = lv_timer_create(macros_record_indicator_timer_cb, 250, nullptr);
+    }
 
     sync_hid_axis_screens(0);
+    updateMacrosTabRecordingIndicator();
     Serial.println("UITabs: createTabs done");
 }
 
@@ -118,6 +124,12 @@ void sync_hid_axis_screens(uint32_t active_tab)
     UsbHostManager::sendDisplaySelectScreenForRole(QtdialHidProtocol::kRoleZ, "cnc_axis", false);
 #endif
 }
+
+void macros_record_indicator_timer_cb(lv_timer_t *timer)
+{
+    LV_UNUSED(timer);
+    UITabs::updateMacrosTabRecordingIndicator();
+}
 } // namespace
 
 void UITabs::updateKeyboardToggleButton()
@@ -136,6 +148,48 @@ void UITabs::updateKeyboardToggleButton()
     lv_obj_set_style_text_color(keyboard_toggle_label,
                                 enabled ? lv_color_white() : UITheme::TEXT_MEDIUM,
                                 0);
+}
+
+void UITabs::updateMacrosTabRecordingIndicator()
+{
+    if (!tabview) {
+        return;
+    }
+
+    lv_obj_t *tab_bar = lv_tabview_get_tab_bar(tabview);
+    if (!tab_bar) {
+        return;
+    }
+
+    lv_obj_t *macros_tab_btn = lv_obj_get_child(tab_bar, 3);
+    if (!macros_tab_btn) {
+        return;
+    }
+    const bool is_selected = getActiveTab() == 3;
+    const lv_color_t normal_bg = lv_obj_get_style_bg_color(tabview, LV_PART_ITEMS | LV_STATE_DEFAULT);
+    const lv_color_t selected_bg = lv_obj_get_style_bg_color(tabview, LV_PART_ITEMS | LV_STATE_CHECKED);
+    const lv_opa_t normal_bg_opa = lv_obj_get_style_bg_opa(tabview, LV_PART_ITEMS | LV_STATE_DEFAULT);
+    const lv_opa_t selected_bg_opa = lv_obj_get_style_bg_opa(tabview, LV_PART_ITEMS | LV_STATE_CHECKED);
+
+    if (!UITabMacros::isRecording()) {
+        lv_obj_set_style_bg_color(macros_tab_btn,
+                                  is_selected ? selected_bg : normal_bg,
+                                  LV_PART_MAIN);
+        lv_obj_set_style_bg_opa(macros_tab_btn,
+                                is_selected ? selected_bg_opa : normal_bg_opa,
+                                LV_PART_MAIN);
+        return;
+    }
+
+    const uint32_t phase_ms = millis() % 1600U;
+    const bool pulse_on = phase_ms < 800U;
+    const lv_color_t bg_color = pulse_on
+        ? UITheme::STATE_NOTICE
+        : (is_selected ? selected_bg : normal_bg);
+    const lv_opa_t bg_opa = pulse_on ? LV_OPA_COVER : (is_selected ? selected_bg_opa : normal_bg_opa);
+
+    lv_obj_set_style_bg_color(macros_tab_btn, bg_color, LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(macros_tab_btn, bg_opa, LV_PART_MAIN);
 }
 
 // Tab change event handler
@@ -186,6 +240,37 @@ void UITabs::createTerminalTab(lv_obj_t *tab) {
 // Create Settings tab content (delegated to UITabSettings module)
 void UITabs::createSettingsTab(lv_obj_t *tab) {
     UITabSettings::create(tab);
+}
+
+void UITabs::setActiveTab(uint32_t index, lv_anim_enable_t anim) {
+    if (!tabview) {
+        return;
+    }
+    lv_tabview_set_active(tabview, index, anim);
+}
+
+uint32_t UITabs::getActiveTab() {
+    if (!tabview) {
+        return 0;
+    }
+    return lv_tabview_get_tab_active(tabview);
+}
+
+uint32_t UITabs::getTabCount() {
+    if (!tabview) {
+        return 0;
+    }
+    lv_obj_t *tab_bar = lv_tabview_get_tab_bar(tabview);
+    return tab_bar ? lv_obj_get_child_count(tab_bar) : 0;
+}
+
+void UITabs::cycleTabs() {
+    const uint32_t count = getTabCount();
+    if (count == 0) {
+        return;
+    }
+    const uint32_t next = (getActiveTab() + 1) % count;
+    setActiveTab(next, LV_ANIM_OFF);
 }
 
 // Public wrappers for settings functions

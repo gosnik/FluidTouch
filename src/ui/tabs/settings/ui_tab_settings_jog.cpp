@@ -59,7 +59,7 @@ void UITabSettingsJog::create(lv_obj_t *tab) {
     
     // Title - Column 2
     lv_obj_t *title2 = lv_label_create(tab);
-    lv_label_set_text(title2, "JOYSTICK CONTROL DEFAULTS");
+    lv_label_set_text(title2, "RAPID JOG");
     lv_obj_set_style_text_font(title2, &lv_font_montserrat_18, 0);
     lv_obj_set_style_text_color(title2, UITheme::TEXT_DISABLED, 0);  // Gray color
     lv_obj_set_pos(title2, col2_label_x, y_pos);
@@ -87,7 +87,7 @@ void UITabSettingsJog::create(lv_obj_t *tab) {
     
     // === Max XY Feed (Column 2) ===
     lv_obj_t *lbl_max_xy_feed = lv_label_create(tab);
-    lv_label_set_text(lbl_max_xy_feed, "Max XY (mm/min):");
+    lv_label_set_text(lbl_max_xy_feed, "Rapid XY (mm/min):");
     lv_obj_set_style_text_font(lbl_max_xy_feed, &lv_font_montserrat_18, 0);
     lv_obj_set_style_text_color(lbl_max_xy_feed, UITheme::TEXT_LIGHT, 0);
     lv_obj_set_pos(lbl_max_xy_feed, col2_label_x, y_pos + UI_SCALE_Y(12));  // Align with text area content
@@ -124,7 +124,7 @@ void UITabSettingsJog::create(lv_obj_t *tab) {
     
     // === Max Z Feed (Column 2) ===
     lv_obj_t *lbl_max_z_feed = lv_label_create(tab);
-    lv_label_set_text(lbl_max_z_feed, "Max Z (mm/min):");
+    lv_label_set_text(lbl_max_z_feed, "Rapid Z (mm/min):");
     lv_obj_set_style_text_font(lbl_max_z_feed, &lv_font_montserrat_18, 0);
     lv_obj_set_style_text_color(lbl_max_z_feed, UITheme::TEXT_LIGHT, 0);
     lv_obj_set_pos(lbl_max_z_feed, col2_label_x, y_pos + UI_SCALE_Y(12));  // Align with text area content
@@ -260,6 +260,8 @@ float UITabSettingsJog::getDefaultXYStep() { return default_xy_step; }
 float UITabSettingsJog::getDefaultZStep() { return default_z_step; }
 int UITabSettingsJog::getDefaultXYFeed() { return default_xy_feed; }
 int UITabSettingsJog::getDefaultZFeed() { return default_z_feed; }
+int UITabSettingsJog::getRapidXYFeed() { return max_xy_feed; }
+int UITabSettingsJog::getRapidZFeed() { return max_z_feed; }
 int UITabSettingsJog::getMaxXYFeed() { return max_xy_feed; }
 int UITabSettingsJog::getMaxZFeed() { return max_z_feed; }
 
@@ -268,6 +270,8 @@ void UITabSettingsJog::setDefaultXYStep(float value) { default_xy_step = value; 
 void UITabSettingsJog::setDefaultZStep(float value) { default_z_step = value; }
 void UITabSettingsJog::setDefaultXYFeed(int value) { default_xy_feed = value; }
 void UITabSettingsJog::setDefaultZFeed(int value) { default_z_feed = value; }
+void UITabSettingsJog::setRapidXYFeed(int value) { max_xy_feed = value; }
+void UITabSettingsJog::setRapidZFeed(int value) { max_z_feed = value; }
 void UITabSettingsJog::setMaxXYFeed(int value) { max_xy_feed = value; }
 void UITabSettingsJog::setMaxZFeed(int value) { max_z_feed = value; }
 
@@ -384,8 +388,8 @@ static void btn_save_jog_event_handler(lv_event_t *e) {
         UITabSettingsJog::setDefaultZStep(z_step_val);
         UITabSettingsJog::setDefaultXYFeed(xy_feed_val);
         UITabSettingsJog::setDefaultZFeed(z_feed_val);
-        UITabSettingsJog::setMaxXYFeed(max_xy_feed_val);
-        UITabSettingsJog::setMaxZFeed(max_z_feed_val);
+        UITabSettingsJog::setRapidXYFeed(max_xy_feed_val);
+        UITabSettingsJog::setRapidZFeed(max_z_feed_val);
         
         UITabSettingsJog::savePreferences();
         

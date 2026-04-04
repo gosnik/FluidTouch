@@ -10,6 +10,8 @@
 #include "core/usb_host_manager.h"
 #include <Arduino.h>
 
+lv_obj_t *UITabControl::sub_tabview = nullptr;
+
 namespace {
 const char *screen_for_control_subtab(uint32_t tab_index)
 {
@@ -59,7 +61,7 @@ void UITabControl::create(lv_obj_t *tab) {
     lv_obj_clear_flag(content, LV_OBJ_FLAG_SCROLLABLE);
 
     // Create vertical tabview on the left side
-    lv_obj_t *sub_tabview = lv_tabview_create(content);
+    sub_tabview = lv_tabview_create(content);
     lv_obj_set_size(sub_tabview, lv_pct(100), lv_pct(100));
     lv_obj_set_pos(sub_tabview, 0, 0);
     lv_tabview_set_tab_bar_position(sub_tabview, LV_DIR_LEFT);
@@ -171,11 +173,62 @@ void UITabControl::create(lv_obj_t *tab) {
     // Create Content for Each Sub-Tab
     // ============================================
     UITabControlActions::create(tab_actions);
+    UITabControlJog::registerNavigableButtons(tab_actions);
     UITabControlJog::create(tab_jog);
+    UITabControlJog::registerNavigableButtons(tab_jog);
     UITabControlJoystick::create(tab_joystick);
+    UITabControlJog::registerNavigableButtons(tab_joystick);
     UITabControlJog::createSoftLimits(tab_soft_limits);
+    UITabControlJog::registerNavigableButtons(tab_soft_limits);
     UITabControlPowerFeed::create(tab_power_feed);
+    UITabControlJog::registerNavigableButtons(tab_power_feed);
     UITabControlRotaryTable::create(tab_rotary);
+    UITabControlJog::registerNavigableButtons(tab_rotary);
     UITabControlProbe::create(tab_probe);
+    UITabControlJog::registerNavigableButtons(tab_probe);
     UITabControlOverride::create(tab_overrides);
+    UITabControlJog::registerNavigableButtons(tab_overrides);
+}
+
+void UITabControl::setActiveSubtab(uint32_t index, lv_anim_enable_t anim) {
+    if (!sub_tabview) {
+        return;
+    }
+    lv_tabview_set_active(sub_tabview, index, anim);
+}
+
+uint32_t UITabControl::getActiveSubtab() {
+    if (!sub_tabview) {
+        return 0;
+    }
+    return lv_tabview_get_tab_active(sub_tabview);
+}
+
+uint32_t UITabControl::getSubtabCount() {
+    if (!sub_tabview) {
+        return 0;
+    }
+    lv_obj_t *tab_bar = lv_tabview_get_tab_bar(sub_tabview);
+    return tab_bar ? lv_obj_get_child_count(tab_bar) : 0;
+}
+
+lv_obj_t *UITabControl::getActivePage() {
+    if (!sub_tabview) {
+        return nullptr;
+    }
+    lv_obj_t *content = lv_tabview_get_content(sub_tabview);
+    if (!content) {
+        return nullptr;
+    }
+    const uint32_t active = getActiveSubtab();
+    return lv_obj_get_child(content, active);
+}
+
+void UITabControl::cycleSubtabs() {
+    const uint32_t count = getSubtabCount();
+    if (count == 0) {
+        return;
+    }
+    const uint32_t next = (getActiveSubtab() + 1) % count;
+    setActiveSubtab(next, LV_ANIM_OFF);
 }

@@ -8,6 +8,8 @@
 #include "ui/ui_theme.h"
 #include "config.h"
 
+lv_obj_t *UITabSettings::sub_tabview = nullptr;
+
 void UITabSettings::create(lv_obj_t *tab) {
     // Remove padding from the tab itself
     lv_obj_set_style_pad_all(tab, 0, 0);
@@ -21,7 +23,7 @@ void UITabSettings::create(lv_obj_t *tab) {
     lv_obj_clear_flag(content, LV_OBJ_FLAG_SCROLLABLE);
 
     // Create vertical tabview on the left side
-    lv_obj_t *sub_tabview = lv_tabview_create(content);
+    sub_tabview = lv_tabview_create(content);
     lv_obj_set_size(sub_tabview, lv_pct(100), lv_pct(100));
     lv_obj_set_pos(sub_tabview, 0, 0);
     lv_tabview_set_tab_bar_position(sub_tabview, LV_DIR_LEFT);
@@ -142,4 +144,11 @@ void UITabSettings::createProbeTab(lv_obj_t *tab) {
 
 void UITabSettings::createAboutTab(lv_obj_t *tab) {
     UITabSettingsAbout::create(tab);
+}
+
+uint32_t UITabSettings::getActiveSubtab() {
+    if (!sub_tabview) {
+        return 0;
+    }
+    return lv_tabview_get_tab_active(sub_tabview);
 }

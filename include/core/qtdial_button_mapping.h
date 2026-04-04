@@ -5,7 +5,49 @@
 #include <cstdint>
 
 enum class QtdialButtonMappingTarget : uint8_t {
-    JogNorthWest = 0,
+    NavigateFieldsHold = 0,
+    ClickNavigateSelection,
+    CycleControlPages,
+    CycleTopTabs,
+    Stop,
+    ActionPauseResume,
+    ActionUnlock,
+    ActionSoftReset,
+    ActionQuickStop,
+    ActionHomeX,
+    ActionHomeY,
+    ActionHomeZ,
+    ActionHomeAll,
+    ActionZeroX,
+    ActionZeroY,
+    ActionZeroZ,
+    ActionZeroAll,
+    SelectAxisX,
+    SelectAxisY,
+    SelectAxisZ,
+    Step100,
+    Step50,
+    Step25,
+    Step10,
+    Step1,
+    Step0_1,
+    Step0_01,
+    FeedMinus100,
+    FeedMinus10,
+    FeedPlus10,
+    FeedPlus100,
+    RapidFeedToggle,
+    MacroRecordToggle,
+    MacroSlot1,
+    MacroSlot2,
+    MacroSlot3,
+    MacroSlot4,
+    MacroSlot5,
+    MacroSlot6,
+    MacroSlot7,
+    MacroSlot8,
+    MacroSlot9,
+    JogNorthWest,
     JogNorth,
     JogNorthEast,
     JogWest,
@@ -15,33 +57,6 @@ enum class QtdialButtonMappingTarget : uint8_t {
     JogSouthEast,
     JogZPlus,
     JogZMinus,
-    Stop,
-    XyFeedMinus100,
-    XyFeedMinus10,
-    XyFeedPlus10,
-    XyFeedPlus100,
-    ZFeedMinus100,
-    ZFeedMinus10,
-    ZFeedPlus10,
-    ZFeedPlus100,
-    XStep100,
-    XStep50,
-    XStep10,
-    XStep1,
-    XStep0_1,
-    XStep0_01,
-    YStep100,
-    YStep50,
-    YStep10,
-    YStep1,
-    YStep0_1,
-    YStep0_01,
-    ZStep50,
-    ZStep25,
-    ZStep10,
-    ZStep1,
-    ZStep0_1,
-    ZStep0_01,
     Count
 };
 
@@ -58,6 +73,10 @@ public:
     static bool isLearning();
     static QtdialButtonMappingTarget learningTarget();
     static bool handleButtonPressed(uint8_t button_index);
+    static void handleButtonReleased(uint8_t button_index);
+    static void updateHeldButtons();
+    static void releaseAllButtons();
+    static bool isTargetHeld(QtdialButtonMappingTarget target);
     static uint32_t getStatusVersion();
     static const char *getStatusMessage();
 };

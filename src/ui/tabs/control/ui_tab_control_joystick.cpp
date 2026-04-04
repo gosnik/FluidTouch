@@ -112,7 +112,7 @@ void update_summary_labels() {
     }
 
     if (feed_label) {
-        lv_label_set_text_fmt(feed_label, "Feed: %d mm/min", UITabControlJog::getCurrentXYFeed());
+        lv_label_set_text_fmt(feed_label, "Feed: %.3g mm/min", static_cast<double>(UITabControlJog::getCurrentXYFeed()));
     }
 
     if (residue_label) {
@@ -431,67 +431,118 @@ void UITabControlJoystick::create(lv_obj_t *tab) {
     lv_obj_set_style_text_color(title, UITheme::TEXT_DISABLED, 0);
     lv_obj_set_pos(title, UI_SCALE_X(10), UI_SCALE_Y(5));
 
-    angle_label = lv_label_create(tab);
+    auto make_panel = [&](lv_coord_t x, lv_coord_t y, lv_coord_t w, lv_coord_t h) -> lv_obj_t * {
+        lv_obj_t *panel = lv_obj_create(tab);
+        lv_obj_set_size(panel, w, h);
+        lv_obj_set_pos(panel, x, y);
+        lv_obj_set_style_bg_color(panel, UITheme::BG_DARKER, 0);
+        lv_obj_set_style_border_width(panel, 1, 0);
+        lv_obj_set_style_border_color(panel, UITheme::BORDER_MEDIUM, 0);
+        lv_obj_set_style_radius(panel, UI_SCALE_X(6), 0);
+        lv_obj_set_style_pad_all(panel, UI_SCALE_X(10), 0);
+        lv_obj_clear_flag(panel, LV_OBJ_FLAG_SCROLLABLE);
+        return panel;
+    };
+
+    auto make_section_title = [&](lv_obj_t *parent, const char *text) {
+        lv_obj_t *label = lv_label_create(parent);
+        lv_label_set_text(label, text);
+        lv_obj_set_style_text_font(label, &lv_font_montserrat_16, 0);
+        lv_obj_set_style_text_color(label, UITheme::ACCENT_SECONDARY, 0);
+        lv_obj_set_pos(label, 0, 0);
+    };
+
+    const lv_coord_t summary_x = UI_SCALE_X(10);
+    const lv_coord_t summary_y = UI_SCALE_Y(30);
+    const lv_coord_t summary_w = UI_SCALE_X(770);
+    const lv_coord_t summary_h = UI_SCALE_Y(78);
+    const lv_coord_t section_y = UI_SCALE_Y(126);
+    const lv_coord_t section_h = UI_SCALE_Y(214);
+    const lv_coord_t angle_w = UI_SCALE_X(390);
+    const lv_coord_t step_w = UI_SCALE_X(150);
+    const lv_coord_t move_w = UI_SCALE_X(210);
+    const lv_coord_t gap = UI_SCALE_X(10);
+
+    lv_obj_t *summary_panel = make_panel(summary_x, summary_y, summary_w, summary_h);
+    lv_obj_t *angle_panel = make_panel(summary_x, section_y, angle_w, section_h);
+    lv_obj_t *step_panel = make_panel(summary_x + angle_w + gap, section_y, step_w, section_h);
+    lv_obj_t *move_panel = make_panel(summary_x + angle_w + gap + step_w + gap, section_y, move_w, section_h);
+
+    angle_label = lv_label_create(summary_panel);
     lv_obj_set_style_text_font(angle_label, &lv_font_montserrat_22, 0);
     lv_obj_set_style_text_color(angle_label, UITheme::ACCENT_SECONDARY, 0);
-    lv_obj_set_pos(angle_label, UI_SCALE_X(10), UI_SCALE_Y(34));
+    lv_obj_set_pos(angle_label, 0, 0);
 
-    formula_label = lv_label_create(tab);
+    formula_label = lv_label_create(summary_panel);
     lv_obj_set_style_text_font(formula_label, &lv_font_montserrat_16, 0);
     lv_obj_set_style_text_color(formula_label, UITheme::TEXT_LIGHT, 0);
-    lv_obj_set_pos(formula_label, UI_SCALE_X(10), UI_SCALE_Y(68));
+    lv_obj_set_pos(formula_label, 0, UI_SCALE_Y(26));
+    lv_obj_set_width(formula_label, UI_SCALE_X(520));
 
-    feed_label = lv_label_create(tab);
+    feed_label = lv_label_create(summary_panel);
     lv_obj_set_style_text_font(feed_label, &lv_font_montserrat_16, 0);
     lv_obj_set_style_text_color(feed_label, UITheme::TEXT_LIGHT, 0);
-    lv_obj_set_pos(feed_label, UI_SCALE_X(10), UI_SCALE_Y(92));
+    lv_obj_set_pos(feed_label, 0, UI_SCALE_Y(48));
 
-    residue_label = lv_label_create(tab);
+    residue_label = lv_label_create(summary_panel);
     lv_obj_set_style_text_font(residue_label, &lv_font_montserrat_14, 0);
     lv_obj_set_style_text_color(residue_label, UITheme::TEXT_DISABLED, 0);
-    lv_obj_set_pos(residue_label, UI_SCALE_X(10), UI_SCALE_Y(116));
+    lv_obj_set_pos(residue_label, UI_SCALE_X(540), 0);
+    lv_obj_set_width(residue_label, UI_SCALE_X(210));
 
-    const lv_coord_t left_x = UI_SCALE_X(10);
-    const lv_coord_t mid_x = UI_SCALE_X(290);
-    const lv_coord_t right_x = UI_SCALE_X(545);
-    const lv_coord_t start_y = UI_SCALE_Y(150);
-    const lv_coord_t row_gap = UI_SCALE_Y(12);
+    make_section_title(angle_panel, "ANGLE INPUT");
+    make_section_title(step_panel, "STEP");
+    make_section_title(move_panel, "MOVE");
 
-    make_label(tab, "Degrees:", left_x, start_y + UI_SCALE_Y(10), label_w());
-    ta_degrees = make_textarea(tab, left_x + label_w(), start_y, "0.0000", "0123456789.-");
-    make_button(tab, left_x + label_w() + field_w() + UI_SCALE_X(10), start_y, UI_SCALE_X(110), "Set", on_degree_apply, nullptr, UITheme::BTN_PLAY);
+    const lv_coord_t left_col_x = 0;
+    const lv_coord_t right_col_x = UI_SCALE_X(190);
+    const lv_coord_t top_label_y = UI_SCALE_Y(28);
+    const lv_coord_t top_field_y = UI_SCALE_Y(52);
+    const lv_coord_t bottom_label_y = UI_SCALE_Y(104);
+    const lv_coord_t bottom_field_y = UI_SCALE_Y(128);
 
-    make_label(tab, "Preset:", left_x, start_y + field_h() + row_gap + UI_SCALE_Y(10), label_w());
-    preset_dropdown = lv_dropdown_create(tab);
-    lv_obj_set_size(preset_dropdown, UI_SCALE_X(160), field_h());
-    lv_obj_set_pos(preset_dropdown, left_x + label_w(), start_y + field_h() + row_gap);
+    make_label(angle_panel, "Degrees", left_col_x, top_label_y, UI_SCALE_X(90));
+    ta_degrees = make_textarea(angle_panel, left_col_x, top_field_y, "0.0000", "0123456789.-");
+    lv_obj_set_size(ta_degrees, UI_SCALE_X(108), field_h());
+    UITabControlJog::registerNavigableNumericField(tab, ta_degrees, 'X');
+    make_button(angle_panel, UI_SCALE_X(116), top_field_y, UI_SCALE_X(64), "Set", on_degree_apply, nullptr, UITheme::BTN_PLAY);
+
+    make_label(angle_panel, "Preset", left_col_x, bottom_label_y, UI_SCALE_X(90));
+    preset_dropdown = lv_dropdown_create(angle_panel);
+    lv_obj_set_size(preset_dropdown, UI_SCALE_X(108), field_h());
+    lv_obj_set_pos(preset_dropdown, left_col_x, bottom_field_y);
     lv_obj_set_style_text_font(preset_dropdown, &lv_font_montserrat_18, 0);
     lv_dropdown_set_options(preset_dropdown, "0 deg\n30 deg\n45 deg\n60 deg\n90 deg\nMT2\nMT3");
-    make_button(tab, left_x + label_w() + UI_SCALE_X(170), start_y + field_h() + row_gap, UI_SCALE_X(110), "Load", on_preset_apply, nullptr, UITheme::BG_BUTTON);
+    make_button(angle_panel, UI_SCALE_X(116), bottom_field_y, UI_SCALE_X(64), "Load", on_preset_apply, nullptr, UITheme::BG_BUTTON);
 
-    const lv_coord_t taper_row_y = start_y + 2 * (field_h() + row_gap);
-    make_label(tab, "Taper:", left_x, taper_row_y + UI_SCALE_Y(10), UI_SCALE_X(70));
-    ta_taper = make_textarea(tab, left_x + UI_SCALE_X(72), taper_row_y, "0.000", "0123456789.-");
-    make_label(tab, "Length:", left_x + UI_SCALE_X(190), taper_row_y + UI_SCALE_Y(10), UI_SCALE_X(78));
-    ta_length = make_textarea(tab, left_x + UI_SCALE_X(270), taper_row_y, "1.000", "0123456789.-");
-    make_button(tab, left_x + UI_SCALE_X(390), taper_row_y, UI_SCALE_X(95), "Apply", on_taper_apply, nullptr, UITheme::BG_BUTTON);
+    make_label(angle_panel, "Taper / Length", right_col_x, top_label_y, UI_SCALE_X(140));
+    ta_taper = make_textarea(angle_panel, right_col_x, top_field_y, "0.000", "0123456789.-");
+    lv_obj_set_size(ta_taper, UI_SCALE_X(56), field_h());
+    UITabControlJog::registerNavigableNumericField(tab, ta_taper, 'X');
+    ta_length = make_textarea(angle_panel, right_col_x + UI_SCALE_X(64), top_field_y, "1.000", "0123456789.-");
+    lv_obj_set_size(ta_length, UI_SCALE_X(56), field_h());
+    UITabControlJog::registerNavigableNumericField(tab, ta_length, 'Y');
+    make_button(angle_panel, right_col_x + UI_SCALE_X(128), top_field_y, UI_SCALE_X(52), "Set", on_taper_apply, nullptr, UITheme::BG_BUTTON);
 
-    const lv_coord_t ratio_row_y = start_y + 3 * (field_h() + row_gap);
-    make_label(tab, "Ratio:", left_x, ratio_row_y + UI_SCALE_Y(10), UI_SCALE_X(70));
-    ta_ratio_num = make_textarea(tab, left_x + UI_SCALE_X(72), ratio_row_y, "1.000", "0123456789.-");
-    make_label(tab, "Run:", left_x + UI_SCALE_X(190), ratio_row_y + UI_SCALE_Y(10), UI_SCALE_X(78));
-    ta_ratio_den = make_textarea(tab, left_x + UI_SCALE_X(270), ratio_row_y, "1.000", "0123456789.-");
-    make_button(tab, left_x + UI_SCALE_X(390), ratio_row_y, UI_SCALE_X(95), "Apply", on_ratio_apply, nullptr, UITheme::BG_BUTTON);
+    make_label(angle_panel, "Rise / Run", right_col_x, bottom_label_y, UI_SCALE_X(140));
+    ta_ratio_num = make_textarea(angle_panel, right_col_x, bottom_field_y, "1.000", "0123456789.-");
+    lv_obj_set_size(ta_ratio_num, UI_SCALE_X(56), field_h());
+    UITabControlJog::registerNavigableNumericField(tab, ta_ratio_num, 'X');
+    ta_ratio_den = make_textarea(angle_panel, right_col_x + UI_SCALE_X(64), bottom_field_y, "1.000", "0123456789.-");
+    lv_obj_set_size(ta_ratio_den, UI_SCALE_X(56), field_h());
+    UITabControlJog::registerNavigableNumericField(tab, ta_ratio_den, 'Y');
+    make_button(angle_panel, right_col_x + UI_SCALE_X(128), bottom_field_y, UI_SCALE_X(52), "Set", on_ratio_apply, nullptr, UITheme::BG_BUTTON);
 
-    make_label(tab, "Step:", mid_x, start_y - UI_SCALE_Y(30), UI_SCALE_X(120));
-    const lv_coord_t step_button_w = UI_SCALE_X(70);
+    const lv_coord_t step_button_w = UI_SCALE_X(68);
     const lv_coord_t step_gap = UI_SCALE_X(8);
+    const lv_coord_t step_start_x = 0;
+    const lv_coord_t step_start_y = UI_SCALE_Y(34);
     for (uint32_t i = 0; i < kStepButtonCount; ++i) {
-        const lv_coord_t row = static_cast<lv_coord_t>(i / 3);
-        const lv_coord_t col = static_cast<lv_coord_t>(i % 3);
-        const lv_coord_t x = mid_x + col * (step_button_w + step_gap);
-        const lv_coord_t y = start_y + row * (UI_SCALE_Y(52));
-        step_buttons[i] = make_button(tab,
+        const lv_coord_t row = static_cast<lv_coord_t>(i / 2);
+        const lv_coord_t col = static_cast<lv_coord_t>(i % 2);
+        const lv_coord_t x = step_start_x + col * (step_button_w + step_gap);
+        const lv_coord_t y = step_start_y + row * UI_SCALE_Y(52);
+        step_buttons[i] = make_button(step_panel,
                                       x,
                                       y,
                                       step_button_w,
@@ -501,28 +552,43 @@ void UITabControlJoystick::create(lv_obj_t *tab) {
                                       UITheme::BG_BUTTON);
     }
 
-    make_label(tab, "Encoder:", right_x, start_y - UI_SCALE_Y(4), UI_SCALE_X(90));
-    encoder_switch = lv_switch_create(tab);
-    lv_obj_set_pos(encoder_switch, right_x + UI_SCALE_X(95), start_y - UI_SCALE_Y(8));
+    lv_obj_t *step_hint = lv_label_create(step_panel);
+    lv_label_set_text(step_hint, "Selected step controls\nbutton and encoder moves.");
+    lv_obj_set_style_text_font(step_hint, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_color(step_hint, UITheme::TEXT_DISABLED, 0);
+    lv_obj_set_width(step_hint, UI_SCALE_X(130));
+    lv_obj_set_pos(step_hint, 0, UI_SCALE_Y(170));
+
+    make_label(move_panel, "Encoder", 0, UI_SCALE_Y(34), UI_SCALE_X(80));
+    encoder_switch = lv_switch_create(move_panel);
+    lv_obj_set_pos(encoder_switch, UI_SCALE_X(100), UI_SCALE_Y(30));
     lv_obj_add_event_cb(encoder_switch, on_encoder_toggle, LV_EVENT_VALUE_CHANGED, nullptr);
+    UITabControlJog::registerNavigableSwitch(tab, encoder_switch);
 
-    make_button(tab, right_x, start_y + UI_SCALE_Y(70), UI_SCALE_X(210), "Move -", on_move_button, reinterpret_cast<void *>(static_cast<intptr_t>(-1)), UITheme::BG_BUTTON);
-    make_button(tab, right_x, start_y + UI_SCALE_Y(126), UI_SCALE_X(210), "Move +", on_move_button, reinterpret_cast<void *>(static_cast<intptr_t>(1)), UITheme::BTN_PLAY);
+    make_button(move_panel, 0, UI_SCALE_Y(88), UI_SCALE_X(180), "Move -", on_move_button, reinterpret_cast<void *>(static_cast<intptr_t>(-1)), UITheme::BG_BUTTON);
+    make_button(move_panel, 0, UI_SCALE_Y(142), UI_SCALE_X(180), "Move +", on_move_button, reinterpret_cast<void *>(static_cast<intptr_t>(1)), UITheme::BTN_PLAY);
 
-    lv_obj_t *hint = lv_label_create(tab);
+    lv_obj_t *hint = lv_label_create(move_panel);
     lv_label_set_text(hint,
-                      "Virtual axis move is always sent as one coordinated X/Y jog.\n"
-                      "Encoder uses step size along theta and preserves double residue.");
+                      "Moves are emitted as coordinated X/Y jogs.\n"
+                      "Encoder follows theta and preserves residue.");
     lv_obj_set_style_text_font(hint, &lv_font_montserrat_14, 0);
     lv_obj_set_style_text_color(hint, UITheme::TEXT_DISABLED, 0);
-    lv_obj_set_width(hint, UI_SCALE_X(250));
-    lv_obj_set_pos(hint, right_x, start_y + UI_SCALE_Y(190));
+    lv_obj_set_width(hint, UI_SCALE_X(180));
+    lv_obj_set_pos(hint, 0, UI_SCALE_Y(144));
 
     status_label = lv_label_create(tab);
+    lv_label_set_long_mode(status_label, LV_LABEL_LONG_DOT);
     lv_obj_set_style_text_font(status_label, &lv_font_montserrat_16, 0);
     lv_obj_set_style_text_color(status_label, UITheme::TEXT_LIGHT, 0);
+    lv_obj_set_style_bg_color(status_label, UITheme::BG_DARKER, 0);
+    lv_obj_set_style_bg_opa(status_label, LV_OPA_COVER, 0);
+    lv_obj_set_style_border_width(status_label, 1, 0);
+    lv_obj_set_style_border_color(status_label, UITheme::BORDER_MEDIUM, 0);
+    lv_obj_set_style_radius(status_label, UI_SCALE_X(6), 0);
+    lv_obj_set_style_pad_all(status_label, UI_SCALE_X(8), 0);
     lv_obj_set_width(status_label, UI_SCALE_X(760));
-    lv_obj_set_pos(status_label, UI_SCALE_X(10), UI_SCALE_Y(410));
+    lv_obj_set_pos(status_label, UI_SCALE_X(10), UI_SCALE_Y(336));
 
     update_step_button_styles();
     apply_angle(active_angle_deg, "Cross Slide ready.");

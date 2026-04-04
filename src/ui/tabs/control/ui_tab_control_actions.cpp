@@ -191,6 +191,23 @@ void UITabControlActions::create(lv_obj_t *tab) {
     lv_obj_add_event_cb(btn_zero_all, onZeroAllClicked, LV_EVENT_CLICKED, nullptr);
 }
 
+void UITabControlActions::triggerAction(Action action) {
+    switch (action) {
+        case Action::PauseResume: onPauseResumeClicked(nullptr); break;
+        case Action::Unlock: onUnlockClicked(nullptr); break;
+        case Action::SoftReset: onSoftResetClicked(nullptr); break;
+        case Action::QuickStop: onQuickStopClicked(nullptr); break;
+        case Action::HomeX: onHomeXClicked(nullptr); break;
+        case Action::HomeY: onHomeYClicked(nullptr); break;
+        case Action::HomeZ: onHomeZClicked(nullptr); break;
+        case Action::HomeAll: onHomeAllClicked(nullptr); break;
+        case Action::ZeroX: onZeroXClicked(nullptr); break;
+        case Action::ZeroY: onZeroYClicked(nullptr); break;
+        case Action::ZeroZ: onZeroZClicked(nullptr); break;
+        case Action::ZeroAll: onZeroAllClicked(nullptr); break;
+    }
+}
+
 // ========== EVENT HANDLERS ==========
 
 void UITabControlActions::updatePauseButton(int machine_state) {

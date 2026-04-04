@@ -139,6 +139,7 @@ void UITabControlProbe::create(lv_obj_t *parent) {
     lv_obj_clear_flag(feed_input_ptr, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_add_event_cb(feed_input_ptr, textarea_focused_event_handler, LV_EVENT_FOCUSED, nullptr);
     lv_obj_add_event_cb(feed_input_ptr, textarea_defocused_event_handler, LV_EVENT_DEFOCUSED, nullptr);
+    UITabControlJog::registerNavigableNumericField(parent, feed_input_ptr, 'X');
     
     lv_obj_t* feed_unit = lv_label_create(parent);
     lv_label_set_text(feed_unit, "mm/min");
@@ -164,6 +165,7 @@ void UITabControlProbe::create(lv_obj_t *parent) {
     lv_obj_clear_flag(dist_input_ptr, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_add_event_cb(dist_input_ptr, textarea_focused_event_handler, LV_EVENT_FOCUSED, nullptr);
     lv_obj_add_event_cb(dist_input_ptr, textarea_defocused_event_handler, LV_EVENT_DEFOCUSED, nullptr);
+    UITabControlJog::registerNavigableNumericField(parent, dist_input_ptr, 'X');
     
     lv_obj_t* dist_unit = lv_label_create(parent);
     lv_label_set_text(dist_unit, "mm");
@@ -189,6 +191,7 @@ void UITabControlProbe::create(lv_obj_t *parent) {
     lv_obj_clear_flag(retract_input_ptr, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_add_event_cb(retract_input_ptr, textarea_focused_event_handler, LV_EVENT_FOCUSED, nullptr);
     lv_obj_add_event_cb(retract_input_ptr, textarea_defocused_event_handler, LV_EVENT_DEFOCUSED, nullptr);
+    UITabControlJog::registerNavigableNumericField(parent, retract_input_ptr, 'X');
     
     lv_obj_t* retract_unit = lv_label_create(parent);
     lv_label_set_text(retract_unit, "mm");
@@ -214,6 +217,7 @@ void UITabControlProbe::create(lv_obj_t *parent) {
     lv_obj_clear_flag(thickness_input_ptr, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_add_event_cb(thickness_input_ptr, textarea_focused_event_handler, LV_EVENT_FOCUSED, nullptr);
     lv_obj_add_event_cb(thickness_input_ptr, textarea_defocused_event_handler, LV_EVENT_DEFOCUSED, nullptr);
+    UITabControlJog::registerNavigableNumericField(parent, thickness_input_ptr, 'X');
     
     lv_obj_t* thickness_unit = lv_label_create(parent);
     lv_label_set_text(thickness_unit, "mm");
